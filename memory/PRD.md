@@ -87,6 +87,14 @@ Sistema de gestión financiera completo con FastAPI backend + React frontend + P
 - Botón "Generar Asiento" en Gastos (igual que Facturas)
 - Dropdown "Cuenta Contable" en form de Cuentas Bancarias
 
+## Módulo Presupuestos
+- Página real /presupuestos (reemplaza placeholder)
+- CRUD completo: crear, editar, eliminar con líneas mensuales
+- Detalle expandible: categoría, mes, presupuestado vs real, diferencia
+- Filtro por año, versión automática, estado borrador
+- Endpoints: GET/POST/PUT/DELETE /presupuestos + GET /presupuestos/{id}
+- Botón "+12 Meses" para agregar todas las líneas de un año rápido
+
 ## Backlog
 - P1: Refactorizar server.py usando APIRouter
 - P2: Custom hook useFormSubmit
