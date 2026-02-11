@@ -109,9 +109,14 @@ export const CuentasContables = () => {
           <h1 className="page-title">Plan de Cuentas</h1>
           <p className="page-subtitle">{cuentas.length} cuentas</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { resetForm(); setShowModal(true); }} data-testid="nueva-cuenta-btn">
-          <Plus size={18} /> Nueva Cuenta
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn btn-outline" onClick={handleSeedPeru} disabled={seeding} data-testid="seed-peru-btn">
+            <Download size={18} /> {seeding ? 'Cargando...' : 'Seed Plan Perú'}
+          </button>
+          <button className="btn btn-primary" onClick={() => { resetForm(); setShowModal(true); }} data-testid="nueva-cuenta-btn">
+            <Plus size={18} /> Nueva Cuenta
+          </button>
+        </div>
       </div>
 
       <div className="page-content">
