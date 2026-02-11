@@ -53,6 +53,20 @@ Sistema de gestión financiera completo con FastAPI backend + React frontend + P
 - Auto-configura defaults: 6399=Cta Gastos, 4012=Cta IGV, 4212=Cta xPagar, 4099=Cta O.Trib
 - Botón "Seed Plan Perú" en UI CuentasContables.jsx
 
+## Contabilidad Doble Partida (Journal Entries)
+- Tablas: `cont_asiento`, `cont_asiento_linea`, `cont_periodo_cerrado`
+- `cont_cuenta_financiera.cuenta_contable_id` vincula bancos a cuentas contables
+- Servicio posting (contabilidad.py): generar_asiento_fprov, generar_asiento_gasto, generar_asiento_pago
+- Reglas FPROV: D=Gastos(base+noGrav)+IGV | H=CxP(total)
+- Reglas GASTO: D=Gastos+IGV | H=Banco/Caja(contado) o CxP(crédito)
+- Reglas PAGO: D=CxP | H=Banco/Caja
+- Multi-moneda: moneda+tipo_cambio+debe_base/haber_base en PEN
+- Estados: borrador→posteado→anulado
+- Reportes: Mayor, Balance(ACTIVO/PASIVO/PATRIMONIO/IMPUESTO), P&L(INGRESO/GASTO/COSTO)
+- Periodos cerrados bloquean posteo
+- Frontend: /asientos con filtros y detalle expandible, botón generar desde facturas
+- Testeado: 17/17 tests backend ✅
+
 ## Backlog
 - P1: Refactorizar server.py usando APIRouter
 - P2: Custom hook useFormSubmit
