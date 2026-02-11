@@ -142,7 +142,7 @@ async def generar_asiento_fprov(conn, empresa_id: int, factura_id: int):
         if importe <= 0:
             continue
         # IGV split: if igv applies, base = importe / 1.18, igv = importe - base
-        if fl['igv']:
+        if fl['igv_aplica']:
             base = round(importe / 1.18, 2)
             igv = round(importe - base, 2)
         else:
@@ -223,7 +223,7 @@ async def generar_asiento_gasto(conn, empresa_id: int, gasto_id: int):
         importe = round(float(gl['importe'] or 0), 2)
         if importe <= 0:
             continue
-        if gl['igv']:
+        if gl['igv_aplica']:
             base = round(importe / 1.18, 2)
             igv = round(importe - base, 2)
         else:
