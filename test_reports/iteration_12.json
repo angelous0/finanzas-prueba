@@ -1,0 +1,64 @@
+{
+  "summary": "Tested Double-Entry Accounting (Asientos Contables) module. Backend: 17/17 tests passed for FPROV/GASTO/PAGO asiento generation, postear/anular, list/get with filters, reportes contables (mayor/balance/pnl), and periodos-contables cerrar/abrir.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "note": "Frontend testing skipped as per request (backend only)"
+  },
+  "features_tested": {
+    "asiento_fprov": "PASS - POST /api/asientos/generar with origen_tipo=FPROV creates balanced entry (gasto+IGV debe, CxP haber)",
+    "asiento_gasto": "PASS - POST /api/asientos/generar with origen_tipo=GASTO creates balanced entry (gasto+IGV debe, banco/caja haber for cash paid)",
+    "asiento_pago": "PASS - POST /api/asientos/generar with origen_tipo=PAGO creates entry (CxP debe, banco haber)",
+    "asiento_idempotent": "PASS - Regenerating asiento for same document replaces borrador entry",
+    "postear": "PASS - POST /api/asientos/{id}/postear changes estado to 'posteado'",
+    "anular": "PASS - POST /api/asientos/{id}/anular changes estado to 'anulado'",
+    "cannot_postear_anulado": "PASS - Cannot post an already voided asiento (returns 400)",
+    "list_asientos": "PASS - GET /api/asientos returns list with total_debe, total_haber",
+    "filter_by_estado": "PASS - GET /api/asientos?estado=borrador filters correctly",
+    "filter_by_origen_tipo": "PASS - GET /api/asientos?origen_tipo=FPROV filters correctly",
+    "get_asiento_detail": "PASS - GET /api/asientos/{id} returns asiento with lineas (cuenta_codigo, cuenta_nombre, tercero_nombre)",
+    "reporte_mayor": "PASS - GET /api/reportes/mayor returns ledger with posted entries",
+    "reporte_balance": "PASS - GET /api/reportes/balance returns balance sheet grouped by ACTIVO/PASIVO/PATRIMONIO",
+    "reporte_pnl": "PASS - GET /api/reportes/pnl returns P&L with INGRESO/GASTO/COSTO and utilidad_neta",
+    "cerrar_periodo": "PASS - POST /api/periodos-contables/cerrar blocks posting when borrador asientos exist",
+    "abrir_periodo": "PASS - POST /api/periodos-contables/abrir opens a closed period",
+    "list_periodos": "PASS - GET /api/periodos-contables returns list of period records"
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_asientos_contables.py",
+    "/app/test_reports/pytest/pytest_asientos_iter12.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_asientos_contables.py"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "Not tested (backend only request)"
+  },
+  "test_data_context": {
+    "empresa_id": 6,
+    "proveedor_id": 43,
+    "moneda_pen_id": 7,
+    "moneda_usd_id": 8,
+    "cuenta_financiera_bcp_id": 8,
+    "cuenta_financiera_caja_id": 9,
+    "cta_gastos_default_id": 36,
+    "cta_igv_default_id": 26,
+    "cta_xpagar_default_id": 24
+  },
+  "accounting_logic_verified": {
+    "FPROV": "Debe: base_gravada (6399) + IGV (4012), Haber: total CxP (4212)",
+    "GASTO": "Debe: gasto (6399) + IGV (4012), Haber: banco/caja (101) if paid, CxP if not",
+    "PAGO": "Debe: CxP (4212), Haber: banco (cuenta financiera cuenta_contable_id or 101)"
+  },
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Double-entry accounting module fully tested. Tables: cont_asiento (journal entries), cont_asiento_linea (entry lines), cont_periodo_cerrado (closed periods). All asiento generation endpoints work correctly for FPROV/GASTO/PAGO. Reports (mayor/balance/pnl) return proper data from posted entries only. Periodo cerrar validates borrador asientos exist. Use empresa_id=6 for testing."
+}
