@@ -4859,6 +4859,84 @@ async def update_config_contable(data: ConfigEmpresaContable, empresa_id: int = 
         return dict(row)
 
 # =============================================
+# RETENCION / DETRACCION (manual fields per document)
+# =============================================
+@api_router.get("/retencion-detalle")
+async def get_retencion_detalle(origen_tipo: str, origen_id: int, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT * FROM finanzas2.cont_retencion_detalle
+            WHERE empresa_id = $1 AND origen_tipo = $2 AND origen_id = $3
+        """, empresa_id, origen_tipo, origen_id)
+        if not row:
+            return None
+        r = dict(row)
+        r.pop('id', None)
+        r.pop('created_at', None)
+        r.pop('updated_at', None)
+        return r
+
+@api_router.put("/retencion-detalle")
+async def upsert_retencion_detalle(origen_tipo: str, origen_id: int, data: RetencionDetalle, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO finanzas2.cont_retencion_detalle
+            (empresa_id, origen_tipo, origen_id, r_doc, r_numero, r_fecha, d_numero, d_fecha,
+             retencion_01, pdb_ndes, codtasa, ind_ret, b_imp, igv_ret)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            ON CONFLICT (empresa_id, origen_tipo, origen_id) DO UPDATE SET
+                r_doc=$4, r_numero=$5, r_fecha=$6, d_numero=$7, d_fecha=$8,
+                retencion_01=$9, pdb_ndes=$10, codtasa=$11, ind_ret=$12, b_imp=$13, igv_ret=$14,
+                updated_at=NOW()
+            RETURNING *
+        """, empresa_id, origen_tipo, origen_id,
+            data.r_doc, data.r_numero,
+            data.r_fecha if data.r_fecha else None,
+            data.d_numero,
+            data.d_fecha if data.d_fecha else None,
+            data.retencion_01, data.pdb_ndes, data.codtasa, data.ind_ret, data.b_imp, data.igv_ret)
+        r = dict(row)
+        r.pop('id', None)
+        r.pop('created_at', None)
+        r.pop('updated_at', None)
+        return r
+
+# =============================================
+# CUENTAS FINANCIERAS - MAPEO CUENTAS CONTABLES
+# =============================================
+@api_router.post("/cuentas-financieras/mapear-cuentas-default")
+async def mapear_cuentas_default(empresa_id: int = Depends(get_empresa_id)):
+    """Auto-map financial accounts to accounting accounts based on name matching."""
+    MAPPING = [
+        ('BCP', '1041'), ('BBVA', '1042'), ('INTERBANK', '1043'), ('IBK', '1043'), ('CAJA', '101'),
+    ]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        cuentas_fin = await conn.fetch(
+            "SELECT id, nombre FROM finanzas2.cont_cuenta_financiera WHERE empresa_id = $1", empresa_id)
+        cuentas_cont = await conn.fetch(
+            "SELECT id, codigo FROM finanzas2.cont_cuenta WHERE empresa_id = $1", empresa_id)
+        code_map = {r['codigo']: r['id'] for r in cuentas_cont}
+
+        mapped = []
+        faltantes = []
+        for cf in cuentas_fin:
+            nombre_upper = cf['nombre'].upper()
+            for keyword, codigo in MAPPING:
+                if keyword in nombre_upper:
+                    if codigo in code_map:
+                        await conn.execute(
+                            "UPDATE finanzas2.cont_cuenta_financiera SET cuenta_contable_id = $1 WHERE id = $2",
+                            code_map[codigo], cf['id'])
+                        mapped.append(f"{cf['nombre']} -> {codigo}")
+                    else:
+                        faltantes.append(f"Cuenta contable {codigo} no existe para mapear {cf['nombre']}")
+                    break
+        return {"mapped": mapped, "faltantes": faltantes}
+
+# =============================================
 # ASIENTOS CONTABLES (Journal Entries)
 # =============================================
 @api_router.post("/asientos/generar")
