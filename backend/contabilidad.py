@@ -412,7 +412,7 @@ async def reporte_balance(conn, empresa_id: int, hasta=None):
         JOIN finanzas2.cont_asiento a ON al.asiento_id = a.id
         JOIN finanzas2.cont_cuenta cc ON al.cuenta_id = cc.id
         WHERE {' AND '.join(conditions)}
-          AND cc.tipo IN ('ACTIVO','PASIVO','PATRIMONIO')
+          AND cc.tipo IN ('ACTIVO','PASIVO','PATRIMONIO','IMPUESTO')
         GROUP BY cc.tipo, cc.codigo, cc.nombre
         ORDER BY cc.codigo
     """, *params)
@@ -423,11 +423,19 @@ async def reporte_balance(conn, empresa_id: int, hasta=None):
         tipo = r['tipo']
         debe = float(r['total_debe'])
         haber = float(r['total_haber'])
-        # ACTIVO saldo deudor; PASIVO/PATRIMONIO saldo acreedor
-        saldo = debe - haber if tipo == 'ACTIVO' else haber - debe
-        entry = {'codigo': r['codigo'], 'nombre': r['nombre'], 'debe': debe, 'haber': haber, 'saldo': round(saldo, 2)}
-        result[tipo].append(entry)
-        totals[tipo] += saldo
+        # IMPUESTO accounts with debit balance (like IGV crédito) go to ACTIVO
+        if tipo == 'IMPUESTO':
+            saldo = debe - haber
+            bucket = 'ACTIVO' if saldo >= 0 else 'PASIVO'
+        elif tipo == 'ACTIVO':
+            saldo = debe - haber
+            bucket = 'ACTIVO'
+        else:
+            saldo = haber - debe
+            bucket = tipo
+        entry = {'codigo': r['codigo'], 'nombre': r['nombre'], 'tipo_original': tipo, 'debe': debe, 'haber': haber, 'saldo': round(saldo, 2)}
+        result[bucket].append(entry)
+        totals[bucket] += saldo
 
     return {
         'cuentas': result,
