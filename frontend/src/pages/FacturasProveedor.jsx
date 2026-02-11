@@ -1260,6 +1260,20 @@ export const FacturasProveedor = () => {
                                 <Trash2 size={15} />
                               </button>
                             )}
+                            {/* Generar Asiento */}
+                            <button
+                              className="action-btn"
+                              onClick={async () => {
+                                try {
+                                  await generarAsiento({ origen_tipo: 'FPROV', origen_id: factura.id });
+                                  toast.success('Asiento generado');
+                                } catch (e) { toast.error(e.response?.data?.detail || 'Error generando asiento'); }
+                              }}
+                              title="Generar Asiento"
+                              data-testid={`generar-asiento-${factura.id}`}
+                            >
+                              <BookOpen size={15} />
+                            </button>
                           </div>
                         </td>
                       </tr>
