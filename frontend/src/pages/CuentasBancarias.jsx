@@ -70,7 +70,8 @@ export const CuentasBancarias = () => {
         ...formData,
         moneda_id: parseInt(formData.moneda_id),
         saldo_inicial: parseFloat(formData.saldo_inicial) || 0,
-        saldo_actual: parseFloat(formData.saldo_inicial) || 0
+        saldo_actual: parseFloat(formData.saldo_inicial) || 0,
+        cuenta_contable_id: formData.cuenta_contable_id ? parseInt(formData.cuenta_contable_id) : null
       };
       if (editingId) {
         // When editing, only send saldo_inicial - backend will recalculate saldo_actual
