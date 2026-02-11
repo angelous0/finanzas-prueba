@@ -47,6 +47,12 @@ Sistema de gestión financiera completo con FastAPI backend + React frontend + P
 - `cont_factura_proveedor.tipo_cambio` NUMERIC(18,8)
 - `cont_gasto.tipo_cambio` NUMERIC(18,8)
 
+## Seed Cuentas Perú
+- Endpoint `POST /cuentas-contables/seed-peru` inserta 20 cuentas mínimas PCGE
+- Idempotente (ON CONFLICT DO NOTHING)
+- Auto-configura defaults: 6399=Cta Gastos, 4012=Cta IGV, 4212=Cta xPagar, 4099=Cta O.Trib
+- Botón "Seed Plan Perú" en UI CuentasContables.jsx
+
 ## Backlog
 - P1: Refactorizar server.py usando APIRouter
 - P2: Custom hook useFormSubmit
