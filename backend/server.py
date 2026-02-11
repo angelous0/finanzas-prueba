@@ -4776,7 +4776,7 @@ async def get_config_contable(empresa_id: int = Depends(get_empresa_id)):
             "SELECT * FROM finanzas2.cont_config_empresa WHERE empresa_id = $1", empresa_id
         )
         if not row:
-            return {"empresa_id": empresa_id, "cta_gastos_default_id": None, "cta_igv_default_id": None, "cta_xpagar_default_id": None}
+            return {"empresa_id": empresa_id, "cta_gastos_default_id": None, "cta_igv_default_id": None, "cta_xpagar_default_id": None, "cta_otrib_default_id": None}
         return dict(row)
 
 @api_router.put("/config-contable", response_model=ConfigEmpresaContable)
@@ -4784,12 +4784,12 @@ async def update_config_contable(data: ConfigEmpresaContable, empresa_id: int = 
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
-            INSERT INTO finanzas2.cont_config_empresa (empresa_id, cta_gastos_default_id, cta_igv_default_id, cta_xpagar_default_id)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO finanzas2.cont_config_empresa (empresa_id, cta_gastos_default_id, cta_igv_default_id, cta_xpagar_default_id, cta_otrib_default_id)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (empresa_id) DO UPDATE SET
-                cta_gastos_default_id = $2, cta_igv_default_id = $3, cta_xpagar_default_id = $4
+                cta_gastos_default_id = $2, cta_igv_default_id = $3, cta_xpagar_default_id = $4, cta_otrib_default_id = $5
             RETURNING *
-        """, empresa_id, data.cta_gastos_default_id, data.cta_igv_default_id, data.cta_xpagar_default_id)
+        """, empresa_id, data.cta_gastos_default_id, data.cta_igv_default_id, data.cta_xpagar_default_id, data.cta_otrib_default_id)
         return dict(row)
 
 @api_router.get("/export/compraapp")
