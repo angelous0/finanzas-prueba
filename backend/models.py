@@ -871,3 +871,16 @@ class Asiento(BaseModel):
 class GenerarAsientoRequest(BaseModel):
     origen_tipo: str
     origen_id: int
+
+class RetencionDetalle(BaseModel):
+    r_doc: Optional[str] = None
+    r_numero: Optional[str] = None
+    r_fecha: Optional[date] = None
+    d_numero: Optional[str] = None
+    d_fecha: Optional[date] = None
+    retencion_01: Optional[int] = None
+    pdb_ndes: Optional[str] = None
+    codtasa: Optional[str] = None
+    ind_ret: Optional[str] = None
+    b_imp: Optional[float] = None
+    igv_ret: Optional[float] = None
