@@ -28,11 +28,24 @@ Sistema de gestión financiera completo con FastAPI backend + React frontend + P
 - 1-8: Vou.Origen(01), Vou.Numero, Vou.Fecha, Doc, Numero, Fec.Doc, Fec.Venc., Codigo
 - 9: B.I.O.G y E. (A) = base_gravada
 - 12: AD. NO GRAV. = base_no_gravada
-- 13: I.S.C. = isc
+- 13: I.S.C. = isc (vacío si 0)
 - 14: IGV (A) = igv_sunat
 - 19: Moneda = 'S' (PEN) / 'D' (USD)
 - 20: TC = 1.00 (PEN) / tipo_cambio del documento (USD). USD sin TC bloquea export.
-- 22-25: Cta Gastos, Cta IGV, Cta O. Trib.(vacío), Cta x Pagar
+- 21: Glosa = notas || "{proveedor} {Doc}-{Numero}"
+- 22: Cta Gastos (categoría > default)
+- 23: Cta IGV (si IGV>0)
+- 24: Cta O. Trib. (si ISC>0, usa default cta_otrib_default_id)
+- 25: Cta x Pagar (facturas: si saldo>0; gastos: vacío si tiene pago)
+- 26: C.Costo (lookup centro_costo desde líneas; 'MIX' si múltiples)
+- 27: Presupuesto (lookup presupuesto desde líneas; 'MIX' si múltiples)
+
+## BD Migraciones recientes
+- `cont_config_empresa.cta_otrib_default_id` INT → cuenta otros tributos
+- `cont_factura_proveedor_linea.presupuesto_id` INT → presupuesto por línea
+- `cont_gasto_linea.presupuesto_id` INT → presupuesto por línea
+- `cont_factura_proveedor.tipo_cambio` NUMERIC(18,8)
+- `cont_gasto.tipo_cambio` NUMERIC(18,8)
 
 ## Backlog
 - P1: Refactorizar server.py usando APIRouter
