@@ -248,4 +248,11 @@ export const getPeriodos = () => api.get('/periodos-contables');
 export const cerrarPeriodo = (anio, mes) => api.post(`/periodos-contables/cerrar?anio=${anio}&mes=${mes}`);
 export const abrirPeriodo = (anio, mes) => api.post(`/periodos-contables/abrir?anio=${anio}&mes=${mes}`);
 
+// Retencion/Detraccion
+export const getRetencionDetalle = (origen_tipo, origen_id) => api.get('/retencion-detalle', { params: { origen_tipo, origen_id } });
+export const upsertRetencionDetalle = (origen_tipo, origen_id, data) => api.put('/retencion-detalle', data, { params: { origen_tipo, origen_id } });
+
+// Cuentas Financieras Mapeo
+export const mapearCuentasDefault = () => api.post('/cuentas-financieras/mapear-cuentas-default');
+
 export default api;
