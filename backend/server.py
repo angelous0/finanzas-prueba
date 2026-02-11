@@ -4765,6 +4765,66 @@ async def delete_cuenta_contable(id: int, empresa_id: int = Depends(get_empresa_
             raise HTTPException(404, "Cuenta no encontrada")
         return {"ok": True}
 
+@api_router.post("/cuentas-contables/seed-peru")
+async def seed_cuentas_peru(empresa_id: int = Depends(get_empresa_id)):
+    """Seed minimum chart of accounts for a Peruvian company. Idempotent (skips existing codes)."""
+    CUENTAS_PERU = [
+        ("101",  "Caja",                                "ACTIVO"),
+        ("1041", "Banco BCP",                           "ACTIVO"),
+        ("1042", "Banco BBVA",                          "ACTIVO"),
+        ("1043", "Banco Interbank",                     "ACTIVO"),
+        ("121",  "Cuentas por cobrar comerciales",      "ACTIVO"),
+        ("4212", "Cuentas por pagar comerciales",       "PASIVO"),
+        ("4011", "IGV por pagar",                       "PASIVO"),
+        ("4012", "IGV crédito fiscal (compras)",        "IMPUESTO"),
+        ("4099", "Otros tributos / tasas",              "IMPUESTO"),
+        ("6311", "Alquileres",                          "GASTO"),
+        ("6312", "Mantenimiento y reparaciones",        "GASTO"),
+        ("6321", "Energía eléctrica / agua / servicios","GASTO"),
+        ("6331", "Transporte / fletes",                 "GASTO"),
+        ("6341", "Publicidad y marketing",              "GASTO"),
+        ("6351", "Honorarios / servicios profesionales","GASTO"),
+        ("6361", "Comisiones y gastos bancarios",       "GASTO"),
+        ("6371", "Útiles / suministros",                "GASTO"),
+        ("6399", "Otros servicios y gastos",            "GASTO"),
+        ("201",  "Mercaderías / Inventario",            "ACTIVO"),
+        ("691",  "Costo de ventas",                     "GASTO"),
+    ]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        inserted = 0
+        async with conn.transaction():
+            for codigo, nombre, tipo in CUENTAS_PERU:
+                result = await conn.execute("""
+                    INSERT INTO finanzas2.cont_cuenta (empresa_id, codigo, nombre, tipo)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (empresa_id, codigo) DO NOTHING
+                """, empresa_id, codigo, nombre, tipo)
+                if result == "INSERT 0 1":
+                    inserted += 1
+
+            # Set defaults in cont_config_empresa
+            cta_gastos = await conn.fetchval(
+                "SELECT id FROM finanzas2.cont_cuenta WHERE empresa_id=$1 AND codigo='6399'", empresa_id)
+            cta_igv = await conn.fetchval(
+                "SELECT id FROM finanzas2.cont_cuenta WHERE empresa_id=$1 AND codigo='4012'", empresa_id)
+            cta_xpagar = await conn.fetchval(
+                "SELECT id FROM finanzas2.cont_cuenta WHERE empresa_id=$1 AND codigo='4212'", empresa_id)
+            cta_otrib = await conn.fetchval(
+                "SELECT id FROM finanzas2.cont_cuenta WHERE empresa_id=$1 AND codigo='4099'", empresa_id)
+
+            await conn.execute("""
+                INSERT INTO finanzas2.cont_config_empresa (empresa_id, cta_gastos_default_id, cta_igv_default_id, cta_xpagar_default_id, cta_otrib_default_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (empresa_id) DO UPDATE SET
+                    cta_gastos_default_id = COALESCE(finanzas2.cont_config_empresa.cta_gastos_default_id, $2),
+                    cta_igv_default_id = COALESCE(finanzas2.cont_config_empresa.cta_igv_default_id, $3),
+                    cta_xpagar_default_id = COALESCE(finanzas2.cont_config_empresa.cta_xpagar_default_id, $4),
+                    cta_otrib_default_id = COALESCE(finanzas2.cont_config_empresa.cta_otrib_default_id, $5)
+            """, empresa_id, cta_gastos, cta_igv, cta_xpagar, cta_otrib)
+
+        return {"inserted": inserted, "total": len(CUENTAS_PERU), "message": f"Seed completado: {inserted} cuentas nuevas insertadas"}
+
 # =============================================
 # CONFIG CONTABLE POR EMPRESA
 # =============================================
