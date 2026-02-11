@@ -108,6 +108,7 @@ class ConfigEmpresaContable(BaseModel):
     cta_gastos_default_id: Optional[int] = None
     cta_igv_default_id: Optional[int] = None
     cta_xpagar_default_id: Optional[int] = None
+    cta_otrib_default_id: Optional[int] = None
 
 # =====================
 # CENTRO COSTO
