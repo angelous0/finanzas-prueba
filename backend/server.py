@@ -4871,10 +4871,13 @@ async def export_compraapp(
             config.get('cta_gastos_default_id'),
             config.get('cta_igv_default_id'),
             config.get('cta_xpagar_default_id'),
+            config.get('cta_otrib_default_id'),
         ]))
         # Also fetch category account ids for facturas
         fp_ids = [f['id'] for f in facturas]
         cat_account_map = {}  # factura_id -> cuenta_codigo
+        fp_ccosto_map = {}    # factura_id -> centro_costo codigo (or 'MIX')
+        fp_presup_map = {}    # factura_id -> presupuesto nombre (or 'MIX')
         if fp_ids:
             cat_rows = await conn.fetch("""
                 SELECT DISTINCT fpl.factura_id, cc.codigo as cta_codigo, cc.id as cta_id
@@ -4886,9 +4889,39 @@ async def export_compraapp(
             for cr in cat_rows:
                 cat_account_map[cr['factura_id']] = cr['cta_codigo']
 
-        # Same for gastos
+            # Centro costo lookup for facturas
+            cc_rows = await conn.fetch("""
+                SELECT fpl.factura_id, cco.codigo as cc_codigo
+                FROM finanzas2.cont_factura_proveedor_linea fpl
+                JOIN finanzas2.cont_centro_costo cco ON fpl.centro_costo_id = cco.id
+                WHERE fpl.factura_id = ANY($1) AND fpl.centro_costo_id IS NOT NULL
+            """, fp_ids)
+            for r in cc_rows:
+                fid = r['factura_id']
+                if fid not in fp_ccosto_map:
+                    fp_ccosto_map[fid] = r['cc_codigo']
+                elif fp_ccosto_map[fid] != r['cc_codigo']:
+                    fp_ccosto_map[fid] = 'MIX'
+
+            # Presupuesto lookup for facturas
+            pr_rows = await conn.fetch("""
+                SELECT fpl.factura_id, p.nombre as pr_nombre
+                FROM finanzas2.cont_factura_proveedor_linea fpl
+                JOIN finanzas2.cont_presupuesto p ON fpl.presupuesto_id = p.id
+                WHERE fpl.factura_id = ANY($1) AND fpl.presupuesto_id IS NOT NULL
+            """, fp_ids)
+            for r in pr_rows:
+                fid = r['factura_id']
+                if fid not in fp_presup_map:
+                    fp_presup_map[fid] = r['pr_nombre']
+                elif fp_presup_map[fid] != r['pr_nombre']:
+                    fp_presup_map[fid] = 'MIX'
+
+        # Same lookups for gastos
         g_ids = [g['id'] for g in gastos]
         gasto_cat_account_map = {}
+        g_ccosto_map = {}
+        g_presup_map = {}
         if g_ids:
             gcat_rows = await conn.fetch("""
                 SELECT DISTINCT gl.gasto_id, cc.codigo as cta_codigo
@@ -4899,6 +4932,34 @@ async def export_compraapp(
             """, g_ids)
             for gr in gcat_rows:
                 gasto_cat_account_map[gr['gasto_id']] = gr['cta_codigo']
+
+            # Centro costo lookup for gastos
+            gcc_rows = await conn.fetch("""
+                SELECT gl.gasto_id, cco.codigo as cc_codigo
+                FROM finanzas2.cont_gasto_linea gl
+                JOIN finanzas2.cont_centro_costo cco ON gl.centro_costo_id = cco.id
+                WHERE gl.gasto_id = ANY($1) AND gl.centro_costo_id IS NOT NULL
+            """, g_ids)
+            for r in gcc_rows:
+                gid = r['gasto_id']
+                if gid not in g_ccosto_map:
+                    g_ccosto_map[gid] = r['cc_codigo']
+                elif g_ccosto_map[gid] != r['cc_codigo']:
+                    g_ccosto_map[gid] = 'MIX'
+
+            # Presupuesto lookup for gastos
+            gpr_rows = await conn.fetch("""
+                SELECT gl.gasto_id, p.nombre as pr_nombre
+                FROM finanzas2.cont_gasto_linea gl
+                JOIN finanzas2.cont_presupuesto p ON gl.presupuesto_id = p.id
+                WHERE gl.gasto_id = ANY($1) AND gl.presupuesto_id IS NOT NULL
+            """, g_ids)
+            for r in gpr_rows:
+                gid = r['gasto_id']
+                if gid not in g_presup_map:
+                    g_presup_map[gid] = r['pr_nombre']
+                elif g_presup_map[gid] != r['pr_nombre']:
+                    g_presup_map[gid] = 'MIX'
 
         # Build account id -> codigo map
         all_cta_ids = list(cta_ids)
@@ -4912,6 +4973,7 @@ async def export_compraapp(
         default_cta_gastos = cta_code_map.get(config.get('cta_gastos_default_id'), '')
         default_cta_igv = cta_code_map.get(config.get('cta_igv_default_id'), '')
         default_cta_xpagar = cta_code_map.get(config.get('cta_xpagar_default_id'), '')
+        default_cta_otrib = cta_code_map.get(config.get('cta_otrib_default_id'), '')
 
         # Validate: check for missing required fields
         errors = []
