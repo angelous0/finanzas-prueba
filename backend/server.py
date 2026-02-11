@@ -5125,6 +5125,18 @@ async def export_compraapp(
             saldo = float(f.get('saldo_pendiente') or 0)
             cta_xpagar = default_cta_xpagar if saldo > 0 else None
             m_letra, m_tc = moneda_tc(f.get('moneda_codigo'), f.get('tipo_cambio'))
+            # Glosa
+            glosa = f.get('notas') or ''
+            if not glosa.strip():
+                doc_str = f.get('tipo_comprobante_sunat') or ''
+                num_str = f.get('numero') or ''
+                glosa = f"{f.get('proveedor_nombre', '')} {doc_str}-{num_str}".strip()
+            # Cta O. Trib.: if ISC>0 => use default
+            isc_val = fmt_num(f['isc'])
+            cta_otrib = default_cta_otrib if isc_val else None
+            # C.Costo and Presupuesto from line lookups
+            ccosto = fp_ccosto_map.get(f['id']) or None
+            presupuesto = fp_presup_map.get(f['id']) or None
 
             row_data = {
                 "Vou.Origen": VOU_ORIGEN,
@@ -5137,13 +5149,17 @@ async def export_compraapp(
                 "Codigo": clean_doc(f['proveedor_doc']) or None,
                 "B.I.O.G y E. (A)": fmt_num(f['base_gravada']),
                 "AD. NO GRAV.": fmt_num(f['base_no_gravada']),
-                "I.S.C.": fmt_num(f['isc']),
+                "I.S.C.": isc_val,
                 "IGV (A)": igv_val,
                 "Moneda": m_letra,
                 "TC": m_tc,
+                "Glosa": glosa or None,
                 "Cta Gastos": cta_gasto,
                 "Cta IGV": cta_igv,
+                "Cta O. Trib.": cta_otrib,
                 "Cta x Pagar": cta_xpagar,
+                "C.Costo": ccosto,
+                "Presupuesto": presupuesto,
             }
             write_row(ws, row_num, row_data)
             row_num += 1
@@ -5155,8 +5171,22 @@ async def export_compraapp(
             cta_gasto = gasto_cat_account_map.get(g['id'], default_cta_gastos) or None
             igv_val = fmt_num(g['igv_sunat'])
             cta_igv = default_cta_igv if igv_val else None
-            cta_xpagar = default_cta_xpagar if float(g.get('total') or 0) > 0 else None
+            # Cta x Pagar: gastos with pago_id are already paid => vacío
+            has_pago = g.get('pago_id') is not None
+            cta_xpagar = None if has_pago else (default_cta_xpagar if float(g.get('total') or 0) > 0 else None)
             m_letra, m_tc = moneda_tc(g.get('moneda_codigo'), g.get('tipo_cambio'))
+            # Glosa
+            glosa = g.get('notas') or ''
+            if not glosa.strip():
+                doc_str = g.get('tipo_comprobante_sunat') or ''
+                num_str = g.get('numero_documento') or ''
+                glosa = f"{g.get('proveedor_nombre', '')} {doc_str}-{num_str}".strip()
+            # Cta O. Trib.
+            isc_val = fmt_num(g['isc'])
+            cta_otrib = default_cta_otrib if isc_val else None
+            # C.Costo and Presupuesto from line lookups
+            ccosto = g_ccosto_map.get(g['id']) or None
+            presupuesto = g_presup_map.get(g['id']) or None
 
             row_data = {
                 "Vou.Origen": VOU_ORIGEN,
@@ -5168,13 +5198,17 @@ async def export_compraapp(
                 "Codigo": clean_doc(g['proveedor_doc']) or None,
                 "B.I.O.G y E. (A)": fmt_num(g['base_gravada']),
                 "AD. NO GRAV.": fmt_num(g['base_no_gravada']),
-                "I.S.C.": fmt_num(g['isc']),
+                "I.S.C.": isc_val,
                 "IGV (A)": igv_val,
                 "Moneda": m_letra,
                 "TC": m_tc,
+                "Glosa": glosa or None,
                 "Cta Gastos": cta_gasto,
                 "Cta IGV": cta_igv,
+                "Cta O. Trib.": cta_otrib,
                 "Cta x Pagar": cta_xpagar,
+                "C.Costo": ccosto,
+                "Presupuesto": presupuesto,
             }
             write_row(ws, row_num, row_data)
             row_num += 1
