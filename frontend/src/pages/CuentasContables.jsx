@@ -15,6 +15,7 @@ export const CuentasContables = () => {
   const [submitting, setSubmitting] = useState(false);
   const [filtro, setFiltro] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
+  const [seeding, setSeeding] = useState(false);
   const [formData, setFormData] = useState({ codigo: '', nombre: '', tipo: 'GASTO', es_activa: true });
 
   useEffect(() => { loadData(); }, [empresaActual]);
