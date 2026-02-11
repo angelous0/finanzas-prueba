@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getCuentasContables, createCuentaContable, updateCuentaContable, deleteCuentaContable } from '../services/api';
+import { getCuentasContables, createCuentaContable, updateCuentaContable, deleteCuentaContable, seedCuentasPeru } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
-import { Plus, Trash2, BookOpen, X, Edit, Search } from 'lucide-react';
+import { Plus, Trash2, BookOpen, X, Edit, Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 const TIPOS_CUENTA = ['ACTIVO', 'PASIVO', 'GASTO', 'INGRESO', 'IMPUESTO', 'OTRO'];
