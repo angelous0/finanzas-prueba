@@ -371,6 +371,20 @@ export const CuentasBancarias = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, saldo_inicial: e.target.value }))}
                   />
                 </div>
+                <div className="form-group">
+                  <label className="form-label">Cuenta Contable</label>
+                  <select
+                    className="form-input form-select"
+                    value={formData.cuenta_contable_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cuenta_contable_id: e.target.value ? parseInt(e.target.value) : '' }))}
+                    data-testid="cuenta-contable-select"
+                  >
+                    <option value="">Sin asignar</option>
+                    {cuentasContables.map(cc => (
+                      <option key={cc.id} value={cc.id}>{cc.codigo} - {cc.nombre}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="modal-footer">
