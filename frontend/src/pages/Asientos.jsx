@@ -20,7 +20,7 @@ const Asientos = () => {
   const [filters, setFilters] = useState({ desde: '', hasta: '', estado: '', origen_tipo: '' });
 
   const loadData = useCallback(async () => {
-    if (!empresaId) return;
+    if (!empresaId) { setLoading(false); return; }
     setLoading(true);
     try {
       const params = {};
