@@ -17,6 +17,7 @@ export const CuentasBancarias = () => {
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [monedas, setMonedas] = useState([]);
+  const [cuentasContables, setCuentasContables] = useState([]);
   const [kardex, setKardex] = useState(null);
   const [kardexCuentaId, setKardexCuentaId] = useState(null);
   const [kardexLoading, setKardexLoading] = useState(false);
@@ -28,7 +29,8 @@ export const CuentasBancarias = () => {
     numero_cuenta: '',
     cci: '',
     moneda_id: '',
-    saldo_inicial: 0
+    saldo_inicial: 0,
+    cuenta_contable_id: ''
   });
 
   useEffect(() => {
