@@ -554,6 +554,19 @@ export default function Gastos() {
                           >
                             <Eye size={15} />
                           </button>
+                          <button
+                            className="action-btn"
+                            onClick={async () => {
+                              try {
+                                await generarAsiento({ origen_tipo: 'GASTO', origen_id: gasto.id });
+                                toast.success('Asiento generado');
+                              } catch (e) { toast.error(e.response?.data?.detail || 'Error generando asiento'); }
+                            }}
+                            title="Generar Asiento"
+                            data-testid={`generar-asiento-gasto-${gasto.id}`}
+                          >
+                            <BookOpen size={15} />
+                          </button>
                           <button 
                             className="action-btn action-danger"
                             onClick={() => handleDelete(gasto)}
