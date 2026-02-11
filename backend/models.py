@@ -155,6 +155,7 @@ class CuentaFinancieraBase(BaseModel):
     saldo_actual: float = 0
     saldo_inicial: float = 0
     activo: bool = True
+    cuenta_contable_id: Optional[int] = None
 
 class CuentaFinancieraCreate(CuentaFinancieraBase):
     pass
@@ -168,6 +169,7 @@ class CuentaFinancieraUpdate(BaseModel):
     moneda_id: Optional[int] = None
     saldo_inicial: Optional[float] = None
     activo: Optional[bool] = None
+    cuenta_contable_id: Optional[int] = None
 
 class CuentaFinanciera(CuentaFinancieraBase):
     id: int
