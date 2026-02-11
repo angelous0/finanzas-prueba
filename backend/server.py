@@ -5532,6 +5532,56 @@ async def export_compraapp(
                 cell = ws.cell(row=row, column=col_idx, value=val)
                 cell.border = thin_border
 
+        def build_pago_cols(pago_info):
+            """Build P.* columns from a pago info dict."""
+            if not pago_info:
+                return {}
+            pm_code = pago_info.get('pago_moneda_codigo')
+            pm_letra = 'D' if pm_code == 'USD' else ('S' if pm_code else None)
+            pm_tc = 1.00 if pm_letra == 'S' else None
+            return {
+                "Medio de Pago": pago_info.get('medio_pago') or None,
+                "P.fecha": fmt_date(pago_info.get('pago_fecha')),
+                "P.fecha D.": fmt_date(pago_info.get('pago_fecha')),
+                "P.cta cob": pago_info.get('cuenta_contable_codigo') or None,
+                "P.m.pago": pago_info.get('medio_pago') or None,
+                "P.num doc": pago_info.get('referencia') or None,
+                "P.moneda": pm_letra,
+                "P.tc": pm_tc,
+                "P.monto": fmt_num(pago_info.get('monto_aplicado') or pago_info.get('monto')),
+                "P.glosa": pago_info.get('pago_notas') or None,
+            }
+
+        def build_ret_cols(ret):
+            """Build retention/deduction columns from ret dict."""
+            if not ret:
+                return {}
+            return {
+                "R.Doc": ret.get('r_doc') or None,
+                "R.numero": ret.get('r_numero') or None,
+                "R.Fecha": fmt_date(ret.get('r_fecha')),
+                "D.Numero": ret.get('d_numero') or None,
+                "D.Fecha": fmt_date(ret.get('d_fecha')),
+                "Retencion 0/1": ret.get('retencion_01'),
+                "PDB ndes": ret.get('pdb_ndes') or None,
+                "CodTasa": ret.get('codtasa') or None,
+                "Ind.Ret": ret.get('ind_ret') or None,
+                "B.Imp": fmt_num(ret.get('b_imp')),
+                "IGV": fmt_num(ret.get('igv_ret')),
+            }
+
+        def build_prov_cols(doc):
+            """Build proveedor columns 33-40."""
+            return {
+                "RUC": clean_doc(doc.get('proveedor_doc')) or None,
+                "R.Social": doc.get('proveedor_nombre') or None,
+                "Tipo": doc.get('tipo_persona') or None,
+                "Tip.Doc.Iden": doc.get('tip_doc_iden') or None,
+                "Apellido 1": doc.get('apellido1') or None,
+                "Apellido 2": doc.get('apellido2') or None,
+                "Nombre": doc.get('prov_nombres') or None,
+            }
+
         # Write facturas proveedor
         for f in facturas:
             f = dict(f) if not isinstance(f, dict) else f
@@ -5542,20 +5592,17 @@ async def export_compraapp(
             saldo = float(f.get('saldo_pendiente') or 0)
             cta_xpagar = default_cta_xpagar if saldo > 0 else None
             m_letra, m_tc = moneda_tc(f.get('moneda_codigo'), f.get('tipo_cambio'))
-            # Glosa
             glosa = f.get('notas') or ''
             if not glosa.strip():
                 doc_str = f.get('tipo_comprobante_sunat') or ''
                 num_str = f.get('numero') or ''
                 glosa = f"{f.get('proveedor_nombre', '')} {doc_str}-{num_str}".strip()
-            # Cta O. Trib.: if ISC>0 => use default
             isc_val = fmt_num(f['isc'])
             cta_otrib = default_cta_otrib if isc_val else None
-            # C.Costo and Presupuesto from line lookups
             ccosto = fp_ccosto_map.get(f['id']) or None
             presupuesto = fp_presup_map.get(f['id']) or None
 
-            row_data = {
+            base_row = {
                 "Vou.Origen": VOU_ORIGEN,
                 "Vou.Numero": f.get('vou_numero') or None,
                 "Vou.Fecha": fmt_date(vou_fecha),
@@ -5578,8 +5625,18 @@ async def export_compraapp(
                 "C.Costo": ccosto,
                 "Presupuesto": presupuesto,
             }
-            write_row(ws, row_num, row_data)
-            row_num += 1
+            base_row.update(build_prov_cols(f))
+            base_row.update(build_ret_cols(ret_map.get(('FPROV', f['id']))))
+
+            pagos = fp_pagos_map.get(f['id'], [])
+            if pagos:
+                for pago in pagos:
+                    row_data = {**base_row, **build_pago_cols(pago)}
+                    write_row(ws, row_num, row_data)
+                    row_num += 1
+            else:
+                write_row(ws, row_num, base_row)
+                row_num += 1
 
         # Write gastos
         for g in gastos:
@@ -5588,24 +5645,20 @@ async def export_compraapp(
             cta_gasto = gasto_cat_account_map.get(g['id'], default_cta_gastos) or None
             igv_val = fmt_num(g['igv_sunat'])
             cta_igv = default_cta_igv if igv_val else None
-            # Cta x Pagar: gastos with pago_id are already paid => vacío
             has_pago = g.get('pago_id') is not None
             cta_xpagar = None if has_pago else (default_cta_xpagar if float(g.get('total') or 0) > 0 else None)
             m_letra, m_tc = moneda_tc(g.get('moneda_codigo'), g.get('tipo_cambio'))
-            # Glosa
             glosa = g.get('notas') or ''
             if not glosa.strip():
                 doc_str = g.get('tipo_comprobante_sunat') or ''
                 num_str = g.get('numero_documento') or ''
                 glosa = f"{g.get('proveedor_nombre', '')} {doc_str}-{num_str}".strip()
-            # Cta O. Trib.
             isc_val = fmt_num(g['isc'])
             cta_otrib = default_cta_otrib if isc_val else None
-            # C.Costo and Presupuesto from line lookups
             ccosto = g_ccosto_map.get(g['id']) or None
             presupuesto = g_presup_map.get(g['id']) or None
 
-            row_data = {
+            base_row = {
                 "Vou.Origen": VOU_ORIGEN,
                 "Vou.Numero": g.get('vou_numero') or None,
                 "Vou.Fecha": fmt_date(vou_fecha),
@@ -5627,8 +5680,18 @@ async def export_compraapp(
                 "C.Costo": ccosto,
                 "Presupuesto": presupuesto,
             }
-            write_row(ws, row_num, row_data)
-            row_num += 1
+            base_row.update(build_prov_cols(g))
+            base_row.update(build_ret_cols(ret_map.get(('GASTO', g['id']))))
+
+            pagos = g_pagos_map.get(g['id'], [])
+            if pagos:
+                for pago in pagos:
+                    row_data = {**base_row, **build_pago_cols(pago)}
+                    write_row(ws, row_num, row_data)
+                    row_num += 1
+            else:
+                write_row(ws, row_num, base_row)
+                row_num += 1
 
         # Auto-adjust column widths for 61 columns
         for i in range(1, 62):
