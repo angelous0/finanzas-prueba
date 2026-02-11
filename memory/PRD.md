@@ -67,6 +67,26 @@ Sistema de gestión financiera completo con FastAPI backend + React frontend + P
 - Frontend: /asientos con filtros y detalle expandible, botón generar desde facturas
 - Testeado: 17/17 tests backend ✅
 
+## Export compraAPP - Columnas 28-61 Completadas
+- Cols 28-32: Retención/Detracción (r_doc, r_numero, r_fecha, d_numero, d_fecha) desde tabla cont_retencion_detalle
+- Cols 33-34: RUC y R.Social desde cont_tercero (proveedor)
+- Cols 35-36: Tipo persona y Tip.Doc.Iden (campos manuales en cont_tercero)
+- Cols 38-40: Apellido1/2, Nombre (persona natural, campos manuales)
+- Col 37: Medio de Pago desde pago aplicado
+- Cols 42-55: P.* desde pago_aplicacion + pago_detalle (fecha, cta cob, medio, moneda, tc, monto, glosa)
+- Cols 56-61: Retencion 0/1, PDB ndes, CodTasa, Ind.Ret, B.Imp, IGV desde cont_retencion_detalle
+- Si factura tiene N pagos aplicados → se duplica la fila N veces (1 por pago)
+- Si no hay pago → cols P.* vacías
+- Si no hay retención → cols R.*/56-61 vacías
+
+## Sprint Post-Contabilidad
+- cont_retencion_detalle: CRUD endpoints GET/PUT (upsert por empresa+origen)
+- cont_tercero: campos tipo_persona, tip_doc_iden, apellido1, apellido2, nombres
+- cont_cuenta_financiera.cuenta_contable_id: link a cuenta contable
+- POST /cuentas-financieras/mapear-cuentas-default: auto-mapeo BCP→1041, BBVA→1042, etc.
+- Botón "Generar Asiento" en Gastos (igual que Facturas)
+- Dropdown "Cuenta Contable" en form de Cuentas Bancarias
+
 ## Backlog
 - P1: Refactorizar server.py usando APIRouter
 - P2: Custom hook useFormSubmit
