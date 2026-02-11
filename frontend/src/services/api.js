@@ -173,6 +173,8 @@ export const getCxP = (params) => api.get('/cxp', { params });
 export const getPresupuestos = (anio) => api.get('/presupuestos', { params: { anio } });
 export const getPresupuesto = (id) => api.get(`/presupuestos/${id}`);
 export const createPresupuesto = (data) => api.post('/presupuestos', data);
+export const updatePresupuesto = (id, data) => api.put(`/presupuestos/${id}`, data);
+export const deletePresupuesto = (id) => api.delete(`/presupuestos/${id}`);
 
 // Conciliacion
 export const getConciliaciones = (cuentaFinancieraId) => 
