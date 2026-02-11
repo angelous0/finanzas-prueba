@@ -5193,8 +5193,9 @@ async def export_compraapp(
             SELECT fp.id, fp.numero, fp.fecha_factura, fp.fecha_contable, fp.fecha_vencimiento,
                    fp.tipo_comprobante_sunat, fp.base_gravada, fp.igv_sunat,
                    fp.base_no_gravada, fp.isc, fp.total, fp.vou_numero, fp.saldo_pendiente,
-                   fp.tipo_cambio, fp.notas,
+                   fp.tipo_cambio, fp.notas, fp.proveedor_id,
                    t.numero_documento as proveedor_doc, t.nombre as proveedor_nombre,
+                   t.tipo_persona, t.tip_doc_iden, t.apellido1, t.apellido2, t.nombres as prov_nombres,
                    m.codigo as moneda_codigo
             FROM finanzas2.cont_factura_proveedor fp
             LEFT JOIN finanzas2.cont_tercero t ON fp.proveedor_id = t.id
@@ -5208,8 +5209,9 @@ async def export_compraapp(
             SELECT g.id, g.numero_documento, g.fecha, g.fecha_contable,
                    g.tipo_comprobante_sunat, g.base_gravada, g.igv_sunat,
                    g.base_no_gravada, g.isc, g.total, g.vou_numero,
-                   g.tipo_cambio, g.pago_id, g.notas,
+                   g.tipo_cambio, g.pago_id, g.notas, g.proveedor_id,
                    t.numero_documento as proveedor_doc, t.nombre as proveedor_nombre,
+                   t.tipo_persona, t.tip_doc_iden, t.apellido1, t.apellido2, t.nombres as prov_nombres,
                    m.codigo as moneda_codigo
             FROM finanzas2.cont_gasto g
             LEFT JOIN finanzas2.cont_tercero t ON g.proveedor_id = t.id
@@ -5217,6 +5219,63 @@ async def export_compraapp(
             WHERE {' AND '.join(g_conditions)}
             ORDER BY COALESCE(g.fecha_contable, g.fecha), g.id
         """, *params_g)
+
+        # Fetch retencion details
+        fp_ids_all = [f['id'] for f in facturas]
+        g_ids_all = [g['id'] for g in gastos]
+        ret_map = {}
+        if fp_ids_all:
+            ret_rows = await conn.fetch("""
+                SELECT * FROM finanzas2.cont_retencion_detalle
+                WHERE empresa_id = $1 AND origen_tipo = 'FPROV' AND origen_id = ANY($2)
+            """, empresa_id, fp_ids_all)
+            for r in ret_rows:
+                ret_map[('FPROV', r['origen_id'])] = dict(r)
+        if g_ids_all:
+            ret_rows = await conn.fetch("""
+                SELECT * FROM finanzas2.cont_retencion_detalle
+                WHERE empresa_id = $1 AND origen_tipo = 'GASTO' AND origen_id = ANY($2)
+            """, empresa_id, g_ids_all)
+            for r in ret_rows:
+                ret_map[('GASTO', r['origen_id'])] = dict(r)
+
+        # Fetch pago aplicaciones for facturas
+        fp_pagos_map = {}
+        if fp_ids_all:
+            pago_rows = await conn.fetch("""
+                SELECT pa.documento_id, pa.monto_aplicado,
+                       p.fecha as pago_fecha, p.numero as pago_numero, p.notas as pago_notas,
+                       pd.medio_pago, pd.referencia,
+                       cf.cuenta_contable_id, cc.codigo as cuenta_contable_codigo,
+                       pm.codigo as pago_moneda_codigo
+                FROM finanzas2.cont_pago_aplicacion pa
+                JOIN finanzas2.cont_pago p ON p.id = pa.pago_id
+                LEFT JOIN finanzas2.cont_pago_detalle pd ON pd.pago_id = p.id
+                LEFT JOIN finanzas2.cont_cuenta_financiera cf ON cf.id = pd.cuenta_financiera_id
+                LEFT JOIN finanzas2.cont_cuenta cc ON cc.id = cf.cuenta_contable_id
+                LEFT JOIN finanzas2.cont_moneda pm ON pm.id = p.moneda_id
+                WHERE pa.tipo_documento = 'factura' AND pa.documento_id = ANY($1) AND p.empresa_id = $2
+            """, fp_ids_all, empresa_id)
+            for pr in pago_rows:
+                fp_pagos_map.setdefault(pr['documento_id'], []).append(dict(pr))
+
+        g_pagos_map = {}
+        if g_ids_all:
+            gpago_rows = await conn.fetch("""
+                SELECT g.id as gasto_id, p.fecha as pago_fecha, p.numero as pago_numero, p.notas as pago_notas,
+                       pd.medio_pago, pd.referencia, pd.monto,
+                       cf.cuenta_contable_id, cc.codigo as cuenta_contable_codigo,
+                       pm.codigo as pago_moneda_codigo
+                FROM finanzas2.cont_gasto g
+                JOIN finanzas2.cont_pago p ON p.id = g.pago_id
+                LEFT JOIN finanzas2.cont_pago_detalle pd ON pd.pago_id = p.id
+                LEFT JOIN finanzas2.cont_cuenta_financiera cf ON cf.id = pd.cuenta_financiera_id
+                LEFT JOIN finanzas2.cont_cuenta cc ON cc.id = cf.cuenta_contable_id
+                LEFT JOIN finanzas2.cont_moneda pm ON pm.id = p.moneda_id
+                WHERE g.id = ANY($1) AND g.empresa_id = $2 AND g.pago_id IS NOT NULL
+            """, g_ids_all, empresa_id)
+            for gpr in gpago_rows:
+                g_pagos_map.setdefault(gpr['gasto_id'], []).append(dict(gpr))
 
         # Fetch config contable and build account lookup
         config_row = await conn.fetchrow(
