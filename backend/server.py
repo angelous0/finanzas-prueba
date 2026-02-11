@@ -3783,12 +3783,15 @@ async def create_presupuesto(data: PresupuestoCreate, empresa_id: int = Depends(
             
             return await get_presupuesto(presupuesto_id)
 
-async def get_presupuesto(id: int) -> dict:
+async def get_presupuesto(id: int, emp_id: int = None) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         
-        row = await conn.fetchrow("SELECT * FROM finanzas2.cont_presupuesto WHERE id = $1 AND empresa_id = $2", id, empresa_id)
+        if emp_id:
+            row = await conn.fetchrow("SELECT * FROM finanzas2.cont_presupuesto WHERE id = $1 AND empresa_id = $2", id, emp_id)
+        else:
+            row = await conn.fetchrow("SELECT * FROM finanzas2.cont_presupuesto WHERE id = $1", id)
         if not row:
             raise HTTPException(404, "Presupuesto not found")
         
