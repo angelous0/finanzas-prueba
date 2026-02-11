@@ -3808,7 +3808,36 @@ async def get_presupuesto(id: int, emp_id: int = None) -> dict:
 
 @api_router.get("/presupuestos/{id}", response_model=Presupuesto)
 async def get_presupuesto_endpoint(id: int, empresa_id: int = Depends(get_empresa_id)):
-    return await get_presupuesto(id)
+    return await get_presupuesto(id, empresa_id)
+
+@api_router.delete("/presupuestos/{id}")
+async def delete_presupuesto(id: int, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM finanzas2.cont_presupuesto WHERE id = $1 AND empresa_id = $2", id, empresa_id)
+        if result == "DELETE 0":
+            raise HTTPException(404, "Presupuesto no encontrado")
+        return {"ok": True}
+
+@api_router.put("/presupuestos/{id}")
+async def update_presupuesto(id: int, data: PresupuestoCreate, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("""
+                UPDATE finanzas2.cont_presupuesto SET nombre=$1, notas=$2, updated_at=NOW()
+                WHERE id=$3 AND empresa_id=$4
+            """, data.nombre, data.notas, id, empresa_id)
+            await conn.execute("DELETE FROM finanzas2.cont_presupuesto_linea WHERE presupuesto_id=$1", id)
+            for linea in data.lineas:
+                await conn.execute("""
+                    INSERT INTO finanzas2.cont_presupuesto_linea
+                    (presupuesto_id, categoria_id, centro_costo_id, linea_negocio_id, mes, monto_presupuestado, empresa_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                """, id, linea.categoria_id, linea.centro_costo_id,
+                    linea.linea_negocio_id, linea.mes, linea.monto_presupuestado, empresa_id)
+            return await get_presupuesto(id, empresa_id)
 
 # =====================
 # CONCILIACION BANCARIA
