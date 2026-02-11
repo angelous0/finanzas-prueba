@@ -246,6 +246,7 @@ class TestAsientosPAGO:
             "tipo": "egreso",
             "fecha": str(today),
             "moneda_id": MONEDA_PEN_ID,
+            "monto_total": total_factura,  # Required field
             "referencia": f"TEST-PAGO-{today.strftime('%Y%m%d%H%M%S')}",
             "notas": "TEST_PAGO for asiento testing",
             "detalles": [
