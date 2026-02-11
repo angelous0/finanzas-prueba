@@ -231,4 +231,21 @@ export const seedCuentasPeru = () => api.post('/cuentas-contables/seed-peru');
 export const getConfigContable = () => api.get('/config-contable');
 export const updateConfigContable = (data) => api.put('/config-contable', data);
 
+// Asientos Contables
+export const generarAsiento = (data) => api.post('/asientos/generar', data);
+export const postearAsiento = (id) => api.post(`/asientos/${id}/postear`);
+export const anularAsiento = (id) => api.post(`/asientos/${id}/anular`);
+export const getAsientos = (params) => api.get('/asientos', { params });
+export const getAsiento = (id) => api.get(`/asientos/${id}`);
+
+// Reportes Contables
+export const getReporteMayor = (params) => api.get('/reportes/mayor', { params });
+export const getReporteBalanceContable = (params) => api.get('/reportes/balance', { params });
+export const getReportePnl = (params) => api.get('/reportes/pnl', { params });
+
+// Periodos Contables
+export const getPeriodos = () => api.get('/periodos-contables');
+export const cerrarPeriodo = (anio, mes) => api.post(`/periodos-contables/cerrar?anio=${anio}&mes=${mes}`);
+export const abrirPeriodo = (anio, mes) => api.post(`/periodos-contables/abrir?anio=${anio}&mes=${mes}`);
+
 export default api;
