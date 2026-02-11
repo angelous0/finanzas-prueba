@@ -121,13 +121,15 @@ async def generar_asiento_fprov(conn, empresa_id: int, factura_id: int):
     tc = float(fp['tipo_cambio'] or 1)
     total = round(float(fp['total'] or 0), 2)
     tercero_id = fp['tercero_id']
+    base_gravada = round(float(fp['base_gravada'] or 0), 2)
+    igv_sunat = round(float(fp['igv_sunat'] or 0), 2)
+    base_no_gravada = round(float(fp['base_no_gravada'] or 0), 2)
 
-    # Get lines with category accounts
+    # Get lines to determine account per category (use first category with account, else default)
     fp_lineas = await conn.fetch("""
-        SELECT fpl.*, cat.cuenta_gasto_id, cc.codigo as cuenta_gasto_codigo
+        SELECT fpl.*, cat.cuenta_gasto_id
         FROM finanzas2.cont_factura_proveedor_linea fpl
         LEFT JOIN finanzas2.cont_categoria cat ON fpl.categoria_id = cat.id
-        LEFT JOIN finanzas2.cont_cuenta cc ON cat.cuenta_gasto_id = cc.id
         WHERE fpl.factura_id = $1
     """, factura_id)
 
@@ -136,39 +138,40 @@ async def generar_asiento_fprov(conn, empresa_id: int, factura_id: int):
     cta_igv_id = cfg.get('cta_igv_default_id')
     cta_xpagar_id = cfg.get('cta_xpagar_default_id')
 
-    # Debe: gastos por línea
+    # Determine gasto account: use category account if all lines share the same, else default
+    cta_gasto_id = default_gastos_id
+    unique_accounts = set()
     for fl in fp_lineas:
-        importe = round(float(fl['importe'] or 0), 2)
-        if importe <= 0:
-            continue
-        # IGV split: if igv applies, base = importe / 1.18, igv = importe - base
-        if fl['igv_aplica']:
-            base = round(importe / 1.18, 2)
-            igv = round(importe - base, 2)
-        else:
-            base = importe
-            igv = 0
+        if fl['cuenta_gasto_id']:
+            unique_accounts.add(fl['cuenta_gasto_id'])
+    if len(unique_accounts) == 1:
+        cta_gasto_id = unique_accounts.pop()
 
-        cuenta_gasto_id = fl['cuenta_gasto_id'] or default_gastos_id
-        if not cuenta_gasto_id:
-            raise HTTPException(400, f"Sin cuenta de gasto para línea '{fl['descripcion']}'")
+    if not cta_gasto_id:
+        raise HTTPException(400, "Sin cuenta de gasto configurada")
 
+    # Debe: base gravada + no gravada
+    monto_gasto = base_gravada + base_no_gravada
+    if monto_gasto > 0:
+        centro_costo_id = fp_lineas[0].get('centro_costo_id') if len(fp_lineas) == 1 else None
+        presupuesto_id = fp_lineas[0].get('presupuesto_id') if len(fp_lineas) == 1 else None
         lineas.append({
-            'cuenta_id': cuenta_gasto_id,
+            'cuenta_id': cta_gasto_id,
             'tercero_id': tercero_id,
-            'centro_costo_id': fl.get('centro_costo_id'),
-            'presupuesto_id': fl.get('presupuesto_id'),
-            'debe': base, 'haber': 0,
-            'glosa': fl.get('descripcion')
+            'centro_costo_id': centro_costo_id,
+            'presupuesto_id': presupuesto_id,
+            'debe': monto_gasto, 'haber': 0,
+            'glosa': f"Compra {fp['numero']}"
         })
 
-        if igv > 0 and cta_igv_id:
-            lineas.append({
-                'cuenta_id': cta_igv_id,
-                'tercero_id': tercero_id,
-                'debe': igv, 'haber': 0,
-                'glosa': f"IGV - {fl.get('descripcion', '')}"
-            })
+    # Debe: IGV
+    if igv_sunat > 0 and cta_igv_id:
+        lineas.append({
+            'cuenta_id': cta_igv_id,
+            'tercero_id': tercero_id,
+            'debe': igv_sunat, 'haber': 0,
+            'glosa': f"IGV {fp['numero']}"
+        })
 
     # Haber: CxP por total
     if not cta_xpagar_id:
