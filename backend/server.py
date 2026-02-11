@@ -3837,7 +3837,7 @@ async def update_presupuesto(id: int, data: PresupuestoCreate, empresa_id: int =
                     VALUES ($1, $2, $3, $4, $5, $6, $7)
                 """, id, linea.categoria_id, linea.centro_costo_id,
                     linea.linea_negocio_id, linea.mes, linea.monto_presupuestado, empresa_id)
-            return await get_presupuesto(id, empresa_id)
+        return await get_presupuesto(id, empresa_id)
 
 # =====================
 # CONCILIACION BANCARIA
