@@ -36,8 +36,8 @@ import ConciliacionBancaria from './pages/ConciliacionBancaria';
 import { HistorialConciliaciones } from './pages/HistorialConciliaciones';
 import { 
   Clientes,
-  Presupuestos,
 } from './pages/PlaceholderPages';
+import Presupuestos from './pages/Presupuestos';
 import FlujoCaja from './pages/FlujoCaja';
 import EstadoResultados from './pages/EstadoResultados';
 import Articulos from './pages/Articulos';
