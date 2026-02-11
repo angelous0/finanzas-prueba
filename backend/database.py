@@ -904,4 +904,35 @@ async def create_schema():
             END $$;
         """)
 
+        # Table: cont_retencion_detalle (manual retention/deduction fields per document)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_retencion_detalle (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                origen_tipo TEXT NOT NULL CHECK (origen_tipo IN ('FPROV','GASTO')),
+                origen_id INT NOT NULL,
+                r_doc TEXT, r_numero TEXT, r_fecha DATE,
+                d_numero TEXT, d_fecha DATE,
+                retencion_01 SMALLINT,
+                pdb_ndes TEXT, codtasa TEXT, ind_ret TEXT,
+                b_imp NUMERIC(18,2), igv_ret NUMERIC(18,2),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE (empresa_id, origen_tipo, origen_id)
+            )
+        """)
+
+        # Migration: add persona natural fields to cont_tercero
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_tercero' AND column_name='tipo_persona') THEN
+                    ALTER TABLE finanzas2.cont_tercero ADD COLUMN tipo_persona TEXT;
+                    ALTER TABLE finanzas2.cont_tercero ADD COLUMN tip_doc_iden TEXT;
+                    ALTER TABLE finanzas2.cont_tercero ADD COLUMN apellido1 TEXT;
+                    ALTER TABLE finanzas2.cont_tercero ADD COLUMN apellido2 TEXT;
+                    ALTER TABLE finanzas2.cont_tercero ADD COLUMN nombres TEXT;
+                END IF;
+            END $$;
+        """)
+
         logger.info("Schema finanzas2 and all tables created/verified successfully")
