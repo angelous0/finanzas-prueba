@@ -4857,6 +4857,220 @@ async def update_config_contable(data: ConfigEmpresaContable, empresa_id: int = 
         """, empresa_id, data.cta_gastos_default_id, data.cta_igv_default_id, data.cta_xpagar_default_id, data.cta_otrib_default_id)
         return dict(row)
 
+# =============================================
+# ASIENTOS CONTABLES (Journal Entries)
+# =============================================
+@api_router.post("/asientos/generar")
+async def generar_asiento(data: GenerarAsientoRequest, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            if data.origen_tipo == 'FPROV':
+                asiento = await generar_asiento_fprov(conn, empresa_id, data.origen_id)
+            elif data.origen_tipo == 'GASTO':
+                asiento = await generar_asiento_gasto(conn, empresa_id, data.origen_id)
+            elif data.origen_tipo == 'PAGO':
+                asiento = await generar_asiento_pago(conn, empresa_id, data.origen_id)
+            else:
+                raise HTTPException(400, f"origen_tipo no soportado: {data.origen_tipo}")
+            # Return with lines
+            lineas = await conn.fetch("""
+                SELECT al.*, cc.codigo as cuenta_codigo, cc.nombre as cuenta_nombre
+                FROM finanzas2.cont_asiento_linea al
+                JOIN finanzas2.cont_cuenta cc ON al.cuenta_id = cc.id
+                WHERE al.asiento_id = $1 ORDER BY al.id
+            """, asiento['id'])
+            result = dict(asiento)
+            result['lineas'] = [dict(l) for l in lineas]
+            result['total_debe'] = round(sum(float(l['debe']) for l in lineas), 2)
+            result['total_haber'] = round(sum(float(l['haber']) for l in lineas), 2)
+            return result
+
+@api_router.post("/asientos/{asiento_id}/postear")
+async def postear_asiento(asiento_id: int, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        asiento = await conn.fetchrow(
+            "SELECT * FROM finanzas2.cont_asiento WHERE id = $1 AND empresa_id = $2",
+            asiento_id, empresa_id)
+        if not asiento:
+            raise HTTPException(404, "Asiento no encontrado")
+        if asiento['estado'] == 'posteado':
+            raise HTTPException(400, "El asiento ya está posteado")
+        if asiento['estado'] == 'anulado':
+            raise HTTPException(400, "No se puede postear un asiento anulado")
+
+        await check_periodo_cerrado(conn, empresa_id, asiento['fecha_contable'])
+
+        # Validate balance
+        sums = await conn.fetchrow("""
+            SELECT COALESCE(SUM(debe), 0) as total_debe, COALESCE(SUM(haber), 0) as total_haber
+            FROM finanzas2.cont_asiento_linea WHERE asiento_id = $1
+        """, asiento_id)
+        if abs(float(sums['total_debe']) - float(sums['total_haber'])) > 0.01:
+            raise HTTPException(400, "Asiento descuadrado")
+
+        await conn.execute("""
+            UPDATE finanzas2.cont_asiento SET estado = 'posteado', updated_at = NOW()
+            WHERE id = $1
+        """, asiento_id)
+        return {"ok": True, "message": "Asiento posteado"}
+
+@api_router.post("/asientos/{asiento_id}/anular")
+async def anular_asiento(asiento_id: int, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        asiento = await conn.fetchrow(
+            "SELECT * FROM finanzas2.cont_asiento WHERE id = $1 AND empresa_id = $2",
+            asiento_id, empresa_id)
+        if not asiento:
+            raise HTTPException(404, "Asiento no encontrado")
+        await conn.execute("""
+            UPDATE finanzas2.cont_asiento SET estado = 'anulado', updated_at = NOW()
+            WHERE id = $1
+        """, asiento_id)
+        return {"ok": True, "message": "Asiento anulado"}
+
+@api_router.get("/asientos")
+async def list_asientos(
+    empresa_id: int = Depends(get_empresa_id),
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    cuenta_id: Optional[int] = None,
+    tercero_id: Optional[int] = None,
+    estado: Optional[str] = None,
+    origen_tipo: Optional[str] = None,
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        conditions = ["a.empresa_id = $1"]
+        params = [empresa_id]
+        idx = 2
+        if desde:
+            conditions.append(f"a.fecha_contable >= ${idx}"); params.append(desde); idx += 1
+        if hasta:
+            conditions.append(f"a.fecha_contable <= ${idx}"); params.append(hasta); idx += 1
+        if estado:
+            conditions.append(f"a.estado = ${idx}"); params.append(estado); idx += 1
+        if origen_tipo:
+            conditions.append(f"a.origen_tipo = ${idx}"); params.append(origen_tipo); idx += 1
+        if cuenta_id:
+            conditions.append(f"a.id IN (SELECT asiento_id FROM finanzas2.cont_asiento_linea WHERE cuenta_id = ${idx})")
+            params.append(cuenta_id); idx += 1
+        if tercero_id:
+            conditions.append(f"a.id IN (SELECT asiento_id FROM finanzas2.cont_asiento_linea WHERE tercero_id = ${idx})")
+            params.append(tercero_id); idx += 1
+
+        rows = await conn.fetch(f"""
+            SELECT a.*,
+                   (SELECT COALESCE(SUM(debe),0) FROM finanzas2.cont_asiento_linea WHERE asiento_id = a.id) as total_debe,
+                   (SELECT COALESCE(SUM(haber),0) FROM finanzas2.cont_asiento_linea WHERE asiento_id = a.id) as total_haber
+            FROM finanzas2.cont_asiento a
+            WHERE {' AND '.join(conditions)}
+            ORDER BY a.fecha_contable DESC, a.id DESC
+        """, *params)
+        return [dict(r) for r in rows]
+
+@api_router.get("/asientos/{asiento_id}")
+async def get_asiento(asiento_id: int, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        asiento = await conn.fetchrow(
+            "SELECT * FROM finanzas2.cont_asiento WHERE id = $1 AND empresa_id = $2",
+            asiento_id, empresa_id)
+        if not asiento:
+            raise HTTPException(404, "Asiento no encontrado")
+        lineas = await conn.fetch("""
+            SELECT al.*, cc.codigo as cuenta_codigo, cc.nombre as cuenta_nombre,
+                   t.nombre as tercero_nombre
+            FROM finanzas2.cont_asiento_linea al
+            JOIN finanzas2.cont_cuenta cc ON al.cuenta_id = cc.id
+            LEFT JOIN finanzas2.cont_tercero t ON al.tercero_id = t.id
+            WHERE al.asiento_id = $1 ORDER BY al.id
+        """, asiento_id)
+        result = dict(asiento)
+        result['lineas'] = [dict(l) for l in lineas]
+        result['total_debe'] = round(sum(float(l['debe']) for l in lineas), 2)
+        result['total_haber'] = round(sum(float(l['haber']) for l in lineas), 2)
+        return result
+
+# =============================================
+# REPORTES CONTABLES
+# =============================================
+@api_router.get("/reportes/mayor")
+async def api_reporte_mayor(
+    empresa_id: int = Depends(get_empresa_id),
+    cuenta_id: Optional[int] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        data = await reporte_mayor(conn, empresa_id, cuenta_id, desde, hasta)
+        return data
+
+@api_router.get("/reportes/balance")
+async def api_reporte_balance(
+    empresa_id: int = Depends(get_empresa_id),
+    hasta: Optional[date] = None,
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await reporte_balance(conn, empresa_id, hasta)
+
+@api_router.get("/reportes/pnl")
+async def api_reporte_pnl(
+    empresa_id: int = Depends(get_empresa_id),
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await reporte_pnl(conn, empresa_id, desde, hasta)
+
+# =============================================
+# PERIODOS CONTABLES
+# =============================================
+@api_router.get("/periodos-contables")
+async def list_periodos(empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT * FROM finanzas2.cont_periodo_cerrado
+            WHERE empresa_id = $1 ORDER BY anio DESC, mes DESC
+        """, empresa_id)
+        return [dict(r) for r in rows]
+
+@api_router.post("/periodos-contables/cerrar")
+async def cerrar_periodo(anio: int = Query(...), mes: int = Query(...), empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Check all asientos in period are posteado
+        pendientes = await conn.fetchval("""
+            SELECT COUNT(*) FROM finanzas2.cont_asiento
+            WHERE empresa_id = $1 AND estado = 'borrador'
+              AND EXTRACT(YEAR FROM fecha_contable) = $2
+              AND EXTRACT(MONTH FROM fecha_contable) = $3
+        """, empresa_id, anio, mes)
+        if pendientes > 0:
+            raise HTTPException(400, f"Hay {pendientes} asiento(s) en borrador en el periodo {anio}-{mes:02d}")
+        await conn.execute("""
+            INSERT INTO finanzas2.cont_periodo_cerrado (empresa_id, anio, mes, cerrado, cerrado_at)
+            VALUES ($1, $2, $3, true, NOW())
+            ON CONFLICT (empresa_id, anio, mes) DO UPDATE SET cerrado = true, cerrado_at = NOW()
+        """, empresa_id, anio, mes)
+        return {"ok": True, "message": f"Periodo {anio}-{mes:02d} cerrado"}
+
+@api_router.post("/periodos-contables/abrir")
+async def abrir_periodo(anio: int = Query(...), mes: int = Query(...), empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE finanzas2.cont_periodo_cerrado SET cerrado = false
+            WHERE empresa_id = $1 AND anio = $2 AND mes = $3
+        """, empresa_id, anio, mes)
+        return {"ok": True, "message": f"Periodo {anio}-{mes:02d} abierto"}
+
 @api_router.get("/export/compraapp")
 async def export_compraapp(
     empresa_id: int = Depends(get_empresa_id),
