@@ -820,3 +820,54 @@ class DashboardKPIs(BaseModel):
     gastos_mes: float = 0
     facturas_pendientes: int = 0
     letras_por_vencer: int = 0
+
+
+# ── Contabilidad: Asientos ──
+class AsientoLineaCreate(BaseModel):
+    cuenta_id: int
+    tercero_id: Optional[int] = None
+    centro_costo_id: Optional[int] = None
+    presupuesto_id: Optional[int] = None
+    debe: float = 0
+    haber: float = 0
+    glosa: Optional[str] = None
+
+class AsientoLinea(AsientoLineaCreate):
+    id: int
+    asiento_id: int
+    empresa_id: int
+    debe_base: float = 0
+    haber_base: float = 0
+    cuenta_codigo: Optional[str] = None
+    cuenta_nombre: Optional[str] = None
+
+class AsientoCreate(BaseModel):
+    fecha_contable: date
+    origen_tipo: str
+    origen_id: int
+    origen_numero: Optional[str] = None
+    glosa: Optional[str] = None
+    moneda: str = 'PEN'
+    tipo_cambio: float = 1
+    lineas: List[AsientoLineaCreate] = []
+
+class Asiento(BaseModel):
+    id: int
+    empresa_id: int
+    fecha_contable: date
+    origen_tipo: str
+    origen_id: int
+    origen_numero: Optional[str] = None
+    glosa: Optional[str] = None
+    moneda: str
+    tipo_cambio: float
+    estado: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    lineas: List[AsientoLinea] = []
+    total_debe: Optional[float] = None
+    total_haber: Optional[float] = None
+
+class GenerarAsientoRequest(BaseModel):
+    origen_tipo: str
+    origen_id: int
