@@ -4850,7 +4850,7 @@ async def export_compraapp(
             SELECT g.id, g.numero_documento, g.fecha, g.fecha_contable,
                    g.tipo_comprobante_sunat, g.base_gravada, g.igv_sunat,
                    g.base_no_gravada, g.isc, g.total, g.vou_numero,
-                   g.tipo_cambio,
+                   g.tipo_cambio, g.pago_id, g.notas,
                    t.numero_documento as proveedor_doc, t.nombre as proveedor_nombre,
                    m.codigo as moneda_codigo
             FROM finanzas2.cont_gasto g
