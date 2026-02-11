@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Trash2, Eye, X, DollarSign, Download, Printer } from 'lucide-react';
+import { Plus, FileText, Trash2, Eye, X, DollarSign, Download, Printer, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   getGastos, 
@@ -10,7 +10,8 @@ import {
   getCategorias,
   getLineasNegocio,
   getCentrosCosto,
-  getCuentasFinancieras
+  getCuentasFinancieras,
+  generarAsiento
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import SearchableSelect from '../components/SearchableSelect';
