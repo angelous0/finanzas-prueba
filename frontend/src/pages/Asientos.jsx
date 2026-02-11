@@ -12,7 +12,8 @@ const ESTADO_COLORS = {
 const ORIGEN_LABELS = { FPROV: 'Factura', GASTO: 'Gasto', PAGO: 'Pago', AJUSTE: 'Ajuste' };
 
 const Asientos = () => {
-  const { empresaId } = useEmpresa();
+  const { empresaActual } = useEmpresa();
+  const empresaId = empresaActual?.id;
   const [asientos, setAsientos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
