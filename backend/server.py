@@ -657,11 +657,11 @@ async def create_cuenta_financiera(data: CuentaFinancieraCreate, empresa_id: int
         await conn.execute("SET search_path TO finanzas2, public")
         row = await conn.fetchrow("""
             INSERT INTO finanzas2.cont_cuenta_financiera 
-            (empresa_id, nombre, tipo, banco, numero_cuenta, cci, moneda_id, saldo_actual, saldo_inicial, activo)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9)
+            (empresa_id, nombre, tipo, banco, numero_cuenta, cci, moneda_id, saldo_actual, saldo_inicial, activo, cuenta_contable_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10)
             RETURNING *
         """, empresa_id, data.nombre, data.tipo, data.banco, data.numero_cuenta, data.cci, 
-            data.moneda_id, data.saldo_actual, data.activo)
+            data.moneda_id, data.saldo_actual, data.activo, data.cuenta_contable_id)
         return dict(row)
 
 @api_router.put("/cuentas-financieras/{id}", response_model=CuentaFinanciera)
