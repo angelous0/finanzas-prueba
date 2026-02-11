@@ -838,4 +838,70 @@ async def create_schema():
         for stmt in index_stmts:
             await conn.execute(stmt)
 
+        # ── Contabilidad: Asientos (Journal Entries) ──
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_asiento (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                fecha_contable DATE NOT NULL,
+                origen_tipo TEXT NOT NULL,
+                origen_id INT NOT NULL,
+                origen_numero TEXT,
+                glosa TEXT,
+                moneda TEXT NOT NULL DEFAULT 'PEN',
+                tipo_cambio NUMERIC(18,6) NOT NULL DEFAULT 1,
+                estado TEXT NOT NULL DEFAULT 'borrador',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE (empresa_id, origen_tipo, origen_id)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_asiento_linea (
+                id SERIAL PRIMARY KEY,
+                asiento_id INT NOT NULL REFERENCES finanzas2.cont_asiento(id) ON DELETE CASCADE,
+                empresa_id INT NOT NULL,
+                cuenta_id INT NOT NULL REFERENCES finanzas2.cont_cuenta(id),
+                tercero_id INT REFERENCES finanzas2.cont_tercero(id),
+                centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id),
+                presupuesto_id INT REFERENCES finanzas2.cont_presupuesto(id),
+                debe NUMERIC(18,2) NOT NULL DEFAULT 0,
+                haber NUMERIC(18,2) NOT NULL DEFAULT 0,
+                debe_base NUMERIC(18,2) NOT NULL DEFAULT 0,
+                haber_base NUMERIC(18,2) NOT NULL DEFAULT 0,
+                glosa TEXT,
+                CHECK ( (debe >= 0 AND haber >= 0) AND (debe > 0 OR haber > 0) )
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_periodo_cerrado (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                anio INT NOT NULL,
+                mes INT NOT NULL,
+                cerrado BOOLEAN NOT NULL DEFAULT false,
+                cerrado_por TEXT,
+                cerrado_at TIMESTAMP,
+                UNIQUE (empresa_id, anio, mes)
+            )
+        """)
+        # Indexes for asientos
+        asiento_indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_cont_asiento_empresa_fecha ON finanzas2.cont_asiento(empresa_id, fecha_contable)",
+            "CREATE INDEX IF NOT EXISTS idx_cont_asiento_origen ON finanzas2.cont_asiento(empresa_id, origen_tipo, origen_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cont_asiento_linea_cuenta ON finanzas2.cont_asiento_linea(empresa_id, cuenta_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cont_asiento_linea_asiento ON finanzas2.cont_asiento_linea(asiento_id)",
+        ]
+        for stmt in asiento_indexes:
+            await conn.execute(stmt)
+
+        # Migration: add cuenta_contable_id to cont_cuenta_financiera
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_cuenta_financiera' AND column_name='cuenta_contable_id') THEN
+                    ALTER TABLE finanzas2.cont_cuenta_financiera ADD COLUMN cuenta_contable_id INT REFERENCES finanzas2.cont_cuenta(id);
+                END IF;
+            END $$;
+        """)
+
         logger.info("Schema finanzas2 and all tables created/verified successfully")
