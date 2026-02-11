@@ -194,6 +194,11 @@ class TerceroBase(BaseModel):
     limite_credito: float = 0
     notas: Optional[str] = None
     activo: bool = True
+    tipo_persona: Optional[str] = None
+    tip_doc_iden: Optional[str] = None
+    apellido1: Optional[str] = None
+    apellido2: Optional[str] = None
+    nombres: Optional[str] = None
 
 class TerceroCreate(TerceroBase):
     pass
@@ -213,6 +218,11 @@ class TerceroUpdate(BaseModel):
     limite_credito: Optional[float] = None
     notas: Optional[str] = None
     activo: Optional[bool] = None
+    tipo_persona: Optional[str] = None
+    tip_doc_iden: Optional[str] = None
+    apellido1: Optional[str] = None
+    apellido2: Optional[str] = None
+    nombres: Optional[str] = None
 
 class Tercero(TerceroBase):
     id: int
