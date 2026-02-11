@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 export const ConfigContable = () => {
   const { empresaActual } = useEmpresa();
   const [cuentas, setCuentas] = useState([]);
-  const [config, setConfig] = useState({ cta_gastos_default_id: '', cta_igv_default_id: '', cta_xpagar_default_id: '' });
+  const [config, setConfig] = useState({ cta_gastos_default_id: '', cta_igv_default_id: '', cta_xpagar_default_id: '', cta_otrib_default_id: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -23,6 +23,7 @@ export const ConfigContable = () => {
         cta_gastos_default_id: cfg.cta_gastos_default_id || '',
         cta_igv_default_id: cfg.cta_igv_default_id || '',
         cta_xpagar_default_id: cfg.cta_xpagar_default_id || '',
+        cta_otrib_default_id: cfg.cta_otrib_default_id || '',
       });
     } catch (error) {
       toast.error('Error al cargar configuración');
@@ -38,6 +39,7 @@ export const ConfigContable = () => {
         cta_gastos_default_id: config.cta_gastos_default_id || null,
         cta_igv_default_id: config.cta_igv_default_id || null,
         cta_xpagar_default_id: config.cta_xpagar_default_id || null,
+        cta_otrib_default_id: config.cta_otrib_default_id || null,
       });
       toast.success('Configuración guardada');
     } catch (error) {
@@ -95,6 +97,9 @@ export const ConfigContable = () => {
               <CuentaSelect label="Cuenta por Pagar (default)" desc="Se usa en Cta x Pagar del export cuando hay saldo pendiente"
                 value={config.cta_xpagar_default_id} onChange={(e) => setConfig(prev => ({ ...prev, cta_xpagar_default_id: e.target.value ? parseInt(e.target.value) : '' }))}
                 tipos={['PASIVO', 'OTRO']} testId="config-cta-xpagar" />
+              <CuentaSelect label="Cuenta Otros Tributos (default)" desc="Se usa en Cta O. Trib. del export cuando ISC > 0 u otros tributos aplican"
+                value={config.cta_otrib_default_id} onChange={(e) => setConfig(prev => ({ ...prev, cta_otrib_default_id: e.target.value ? parseInt(e.target.value) : '' }))}
+                tipos={['IMPUESTO', 'GASTO', 'OTRO']} testId="config-cta-otrib" />
             </>
           )}
         </div>
