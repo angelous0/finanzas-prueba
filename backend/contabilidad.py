@@ -209,6 +209,9 @@ async def generar_asiento_gasto(conn, empresa_id: int, gasto_id: int):
     tc = float(g['tipo_cambio'] or 1)
     total = round(float(g['total'] or 0), 2)
     tercero_id = g['tercero_id']
+    base_gravada = round(float(g['base_gravada'] or 0), 2)
+    igv_sunat = round(float(g['igv_sunat'] or 0), 2)
+    base_no_gravada = round(float(g['base_no_gravada'] or 0), 2)
 
     g_lineas = await conn.fetch("""
         SELECT gl.*, cat.cuenta_gasto_id
@@ -222,36 +225,38 @@ async def generar_asiento_gasto(conn, empresa_id: int, gasto_id: int):
     cta_igv_id = cfg.get('cta_igv_default_id')
     cta_xpagar_id = cfg.get('cta_xpagar_default_id')
 
+    # Determine gasto account
+    cta_gasto_id = default_gastos_id
+    unique_accounts = set()
     for gl in g_lineas:
-        importe = round(float(gl['importe'] or 0), 2)
-        if importe <= 0:
-            continue
-        if gl['igv_aplica']:
-            base = round(importe / 1.18, 2)
-            igv = round(importe - base, 2)
-        else:
-            base = importe
-            igv = 0
+        if gl['cuenta_gasto_id']:
+            unique_accounts.add(gl['cuenta_gasto_id'])
+    if len(unique_accounts) == 1:
+        cta_gasto_id = unique_accounts.pop()
 
-        cuenta_gasto_id = gl['cuenta_gasto_id'] or default_gastos_id
-        if not cuenta_gasto_id:
-            raise HTTPException(400, f"Sin cuenta de gasto para línea '{gl['descripcion']}'")
+    if not cta_gasto_id:
+        raise HTTPException(400, "Sin cuenta de gasto configurada")
 
+    monto_gasto = base_gravada + base_no_gravada
+    if monto_gasto > 0:
+        centro_costo_id = g_lineas[0].get('centro_costo_id') if len(g_lineas) == 1 else None
+        presupuesto_id = g_lineas[0].get('presupuesto_id') if len(g_lineas) == 1 else None
         lineas.append({
-            'cuenta_id': cuenta_gasto_id,
+            'cuenta_id': cta_gasto_id,
             'tercero_id': tercero_id,
-            'centro_costo_id': gl.get('centro_costo_id'),
-            'presupuesto_id': gl.get('presupuesto_id'),
-            'debe': base, 'haber': 0,
-            'glosa': gl.get('descripcion')
+            'centro_costo_id': centro_costo_id,
+            'presupuesto_id': presupuesto_id,
+            'debe': monto_gasto, 'haber': 0,
+            'glosa': f"Gasto {g['numero_documento']}"
         })
-        if igv > 0 and cta_igv_id:
-            lineas.append({
-                'cuenta_id': cta_igv_id,
-                'tercero_id': tercero_id,
-                'debe': igv, 'haber': 0,
-                'glosa': f"IGV - {gl.get('descripcion', '')}"
-            })
+
+    if igv_sunat > 0 and cta_igv_id:
+        lineas.append({
+            'cuenta_id': cta_igv_id,
+            'tercero_id': tercero_id,
+            'debe': igv_sunat, 'haber': 0,
+            'glosa': f"IGV {g['numero_documento']}"
+        })
 
     # Haber: check if paid (has pago_id) => Banco/Caja; else => CxP
     has_pago = g.get('pago_id') is not None
