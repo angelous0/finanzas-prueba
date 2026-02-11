@@ -32,7 +32,12 @@ from models import (
     Presupuesto, PresupuestoCreate,
     Conciliacion, ConciliacionCreate, BancoMovRaw, BancoMov,
     DashboardKPIs,
-    CuentaContable, CuentaContableCreate, CuentaContableUpdate, ConfigEmpresaContable
+    CuentaContable, CuentaContableCreate, CuentaContableUpdate, ConfigEmpresaContable,
+    Asiento, AsientoCreate, AsientoLinea, GenerarAsientoRequest
+)
+from contabilidad import (
+    generar_asiento_fprov, generar_asiento_gasto, generar_asiento_pago,
+    check_periodo_cerrado, reporte_mayor, reporte_balance, reporte_pnl
 )
 from odoo_service import OdooService
 
