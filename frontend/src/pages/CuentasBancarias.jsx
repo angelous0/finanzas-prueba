@@ -40,12 +40,14 @@ export const CuentasBancarias = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [cuentasRes, monedasRes] = await Promise.all([
+      const [cuentasRes, monedasRes, ccRes] = await Promise.all([
         getCuentasFinancieras(),
-        getMonedas()
+        getMonedas(),
+        getCuentasContables()
       ]);
       setCuentas(cuentasRes.data);
       setMonedas(monedasRes.data);
+      setCuentasContables(ccRes.data.filter(c => c.tipo === 'ACTIVO'));
       
       const pen = monedasRes.data.find(m => m.codigo === 'PEN');
       if (pen) {
