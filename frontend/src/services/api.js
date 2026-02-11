@@ -225,6 +225,7 @@ export const getCuentasContables = () => api.get('/cuentas-contables');
 export const createCuentaContable = (data) => api.post('/cuentas-contables', data);
 export const updateCuentaContable = (id, data) => api.put(`/cuentas-contables/${id}`, data);
 export const deleteCuentaContable = (id) => api.delete(`/cuentas-contables/${id}`);
+export const seedCuentasPeru = () => api.post('/cuentas-contables/seed-peru');
 
 // Config Contable
 export const getConfigContable = () => api.get('/config-contable');
