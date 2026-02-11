@@ -77,6 +77,20 @@ export const CuentasContables = () => {
     setEditingId(null);
   };
 
+  const handleSeedPeru = async () => {
+    if (!window.confirm('¿Poblar plan de cuentas mínimo Perú?\nSe insertarán cuentas que no existan y se configurarán los defaults contables.')) return;
+    setSeeding(true);
+    try {
+      const res = await seedCuentasPeru();
+      toast.success(res.data.message);
+      loadData();
+    } catch (error) {
+      toast.error('Error al ejecutar seed');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const cuentasFiltradas = cuentas.filter(c => {
     const matchTexto = !filtro || c.codigo.toLowerCase().includes(filtro.toLowerCase()) || c.nombre.toLowerCase().includes(filtro.toLowerCase());
     const matchTipo = !filtroTipo || c.tipo === filtroTipo;
