@@ -44,6 +44,7 @@ import Articulos from './pages/Articulos';
 import ReportePagos from './pages/ReportePagos';
 import CuentasContables from './pages/CuentasContables';
 import ConfigContable from './pages/ConfigContable';
+import Asientos from './pages/Asientos';
 
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
