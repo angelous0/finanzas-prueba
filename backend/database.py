@@ -762,6 +762,15 @@ async def create_schema():
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_categoria' AND column_name='cuenta_gasto_id') THEN
                     ALTER TABLE finanzas2.cont_categoria ADD COLUMN cuenta_gasto_id INT;
                 END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_config_empresa' AND column_name='cta_otrib_default_id') THEN
+                    ALTER TABLE finanzas2.cont_config_empresa ADD COLUMN cta_otrib_default_id INT REFERENCES finanzas2.cont_cuenta(id);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_factura_proveedor_linea' AND column_name='presupuesto_id') THEN
+                    ALTER TABLE finanzas2.cont_factura_proveedor_linea ADD COLUMN presupuesto_id INT REFERENCES finanzas2.cont_presupuesto(id);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_gasto_linea' AND column_name='presupuesto_id') THEN
+                    ALTER TABLE finanzas2.cont_gasto_linea ADD COLUMN presupuesto_id INT REFERENCES finanzas2.cont_presupuesto(id);
+                END IF;
             END $$;
         """)
 
