@@ -72,6 +72,7 @@ const navSections = [
     items: [
       { icon: BookOpen, label: 'Plan de Cuentas', path: '/cuentas-contables' },
       { icon: Settings, label: 'Config. Contable', path: '/config-contable' },
+      { icon: BookOpen, label: 'Asientos', path: '/asientos' },
       { icon: BarChart3, label: 'Balance General', path: '/balance-general' },
       { icon: FileText, label: 'Estado de Resultados', path: '/estado-resultados' },
       { icon: DollarSign, label: 'Flujo de Caja', path: '/flujo-caja' },
