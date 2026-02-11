@@ -33,7 +33,8 @@ from models import (
     Conciliacion, ConciliacionCreate, BancoMovRaw, BancoMov,
     DashboardKPIs,
     CuentaContable, CuentaContableCreate, CuentaContableUpdate, ConfigEmpresaContable,
-    Asiento, AsientoCreate, AsientoLinea, GenerarAsientoRequest
+    Asiento, AsientoCreate, AsientoLinea, GenerarAsientoRequest,
+    RetencionDetalle
 )
 from contabilidad import (
     generar_asiento_fprov, generar_asiento_gasto, generar_asiento_pago,
