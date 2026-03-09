@@ -23,7 +23,7 @@ import os
 from datetime import date, timedelta
 
 # API Configuration
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://fastapi-migrate-5.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://finance-arch-1.preview.emergentagent.com')
 BASE_URL = BASE_URL.rstrip('/')
 
 # Reference IDs from catalog data
