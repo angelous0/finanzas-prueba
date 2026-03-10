@@ -71,7 +71,8 @@ export default function Gastos() {
     igv_sunat: 0,
     base_no_gravada: 0,
     isc: 0,
-    notas: ''
+    notas: '',
+    impuestos_incluidos: true
   });
   const [fechaContableManual, setFechaContableManual] = useState(false);
   
@@ -143,13 +144,27 @@ export default function Gastos() {
     lineasGasto.forEach(l => {
       const importe = parseFloat(l.importe) || 0;
       if (l.igv_aplica) {
-        subtotal += importe;
-        igv += importe * 0.18;
-        base_gravada += importe;
-        igv_sunat += importe * 0.18;
+        if (formData.impuestos_incluidos) {
+          const base = importe / 1.18;
+          const lineaIgv = importe - base;
+          subtotal += base;
+          igv += lineaIgv;
+          base_gravada += base;
+          igv_sunat += lineaIgv;
+        } else {
+          subtotal += importe;
+          igv += importe * 0.18;
+          base_gravada += importe;
+          igv_sunat += importe * 0.18;
+        }
       } else {
-        subtotal += importe;
-        base_no_gravada += importe;
+        if (formData.impuestos_incluidos) {
+          subtotal += importe;
+          base_no_gravada += importe;
+        } else {
+          subtotal += importe;
+          base_no_gravada += importe;
+        }
       }
     });
 
@@ -183,7 +198,8 @@ export default function Gastos() {
       igv_sunat: 0,
       base_no_gravada: 0,
       isc: 0,
-      notas: ''
+      notas: '',
+      impuestos_incluidos: true
     });
     setFechaContableManual(false);
     setLineasGasto([{
@@ -682,6 +698,18 @@ export default function Gastos() {
                       onChange={(e) => setFormData({ ...formData, numero_documento: e.target.value })}
                       placeholder="001-00001"
                     />
+                  </div>
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.25rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.impuestos_incluidos}
+                        onChange={(e) => setFormData({ ...formData, impuestos_incluidos: e.target.checked })}
+                        data-testid="gasto-igv-incluido"
+                        style={{ width: '18px', height: '18px', accentColor: '#1B4D3E' }}
+                      />
+                      IGV Incluido
+                    </label>
                   </div>
                 </div>
 

@@ -1,0 +1,81 @@
+{
+  "summary": "Deep testing of Gastos (Expenses) module with IGV Incluido feature. Fixed CRITICAL bug: POST /api/gastos was failing with 500 error because 'data.numero' attribute didn't exist in GastoCreate model. Added auto-generation of gasto numbers (GAS-YYYY-NNNNN format) and support for frontend's pagos array structure. All 11 backend tests pass. Frontend IGV calculations work correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_tested": {
+    "backend_api": {
+      "GET /api/gastos": "PASS - Returns list of expenses for empresa_id=6",
+      "POST /api/gastos": "PASS - Creates expense with auto-generated numero and handles pagos array",
+      "GET /api/gastos/{id}": "PASS - Returns expense details with lineas",
+      "GET /api/gastos/{id} (404)": "PASS - Returns 404 for non-existent gasto",
+      "DELETE /api/gastos/{id}": "PASS - Deletes expense (blocked if pago exists - expected behavior)",
+      "GET /api/cuentas-financieras": "PASS - Returns financial accounts for Pagos section",
+      "GET /api/proveedores": "PASS - Returns suppliers for proveedor selection",
+      "GET /api/monedas": "PASS - Returns currencies",
+      "GET /api/categorias?tipo=egreso": "PASS - Returns expense categories",
+      "GET /api/lineas-negocio": "PASS - Returns business lines",
+      "GET /api/centros-costo": "PASS - Returns cost centers"
+    },
+    "frontend_igv_calculations": {
+      "IGV Incluido = TRUE (default)": "PASS - importe=118 -> Base Gravada=100.00, IGV=18.00, Total=118.00",
+      "IGV Incluido = FALSE": "PASS - importe=100 -> Base Gravada=100.00, IGV=18.00, Total=118.00",
+      "Line IGV checkbox toggle": "PASS - Unchecking moves amount to No Gravada field"
+    },
+    "frontend_form": {
+      "Nuevo Gasto button": "PASS - Opens modal form",
+      "IGV Incluido checkbox": "PASS - Visible and checked by default",
+      "Form fields": "PASS - Fecha, Moneda, Tipo Doc, Nº Documento, Proveedor/Beneficiario present",
+      "Detalle del Gasto section": "PASS - Categoría, Descripción, Línea Negocio, Centro Costo, Importe, IGV checkbox",
+      "Pagos section (obligatorio)": "PASS - Cuenta selection, Medio pago, Monto, Referencia",
+      "Doc SUNAT, Base Gravada, IGV, No Gravada": "PASS - Auto-calculate correctly based on IGV Incluido toggle",
+      "Create expense flow": "PASS - Successfully created GAS-2026-00007 and GAS-2026-00008",
+      "View expense modal": "PASS - Shows date, beneficiario, documento, detalle lines, subtotal, IGV, total",
+      "Delete expense": "PASS - Blocked for paid expenses (expected behavior)"
+    }
+  },
+  "bug_fixed": {
+    "issue": "POST /api/gastos returning 500 Internal Server Error",
+    "root_cause": "Backend tried to use 'data.numero' which doesn't exist in GastoCreate model. Also not handling the new 'pagos' array from frontend.",
+    "fix_applied": [
+      "Added generate_gasto_number() function to auto-generate GAS-YYYY-NNNNN format numbers",
+      "Updated create_gasto to generate numero automatically using get_next_correlativo",
+      "Updated create_gasto to use frontend-provided base_gravada, igv_sunat, base_no_gravada values (which respect impuestos_incluidos)",
+      "Updated create_gasto to process data.pagos array instead of deprecated data.pagado/data.cuenta_financiera_id"
+    ],
+    "file_modified": "/app/backend/routers/gastos.py"
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_gastos_crud.py",
+    "/app/test_reports/pytest/pytest_gastos_iter18.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend now correctly uses frontend-calculated base_gravada, igv_sunat values which respect the impuestos_incluidos toggle",
+    "Gasto deletion is blocked when pago exists - this is expected business logic",
+    "Test data created: GAS-2026-00007 (TEST_Proveedor_IGV_Incluido), GAS-2026-00008 (Test Proveedor UI) - both have associated pagos so cannot be deleted without first deleting the pago"
+  ],
+  "updated_files": [
+    "/app/backend/routers/gastos.py",
+    "/app/backend/tests/test_gastos_crud.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (all IGV calculations and form functionality verified)"
+  },
+  "test_credentials": {
+    "empresa_id": 6,
+    "empresa_name": "Ambission Industries SAC",
+    "api_base_url": "https://pos-data-bridge.preview.emergentagent.com"
+  },
+  "seed_data_creation": "Created 2 test gastos (GAS-2026-00007, GAS-2026-00008) with associated pagos for testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Gastos module fully tested with IGV Incluido feature. The POST /api/gastos endpoint was broken and has been fixed - now auto-generates numero and handles pagos array from frontend. Two test gastos exist in DB (empresa_id=6) with associated pagos - they cannot be deleted without first deleting the pago records. All IGV calculations verified: IGV Incluido=True means importe already includes IGV (divide by 1.18), IGV Incluido=False means IGV is added on top (multiply by 0.18)."
+}

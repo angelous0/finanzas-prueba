@@ -3,10 +3,17 @@ from typing import List, Optional
 from datetime import date, datetime
 from database import get_pool
 from models import Gasto, GastoCreate, Adelanto, AdelantoCreate
-from dependencies import get_empresa_id, safe_date_param
+from dependencies import get_empresa_id, safe_date_param, get_next_correlativo
 from routers.pagos import generate_pago_number
 
 router = APIRouter()
+
+
+async def generate_gasto_number(conn, empresa_id: int) -> str:
+    """Generate auto-incrementing gasto number"""
+    year = datetime.now().year
+    prefijo = f"GAS-{year}-"
+    return await get_next_correlativo(conn, empresa_id, 'gasto', prefijo)
 
 
 # =====================
@@ -66,13 +73,21 @@ async def create_gasto(data: GastoCreate, empresa_id: int = Depends(get_empresa_
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         async with conn.transaction():
-            subtotal = sum(l.importe for l in data.lineas)
-            igv = sum(l.importe * 0.18 for l in data.lineas if l.igv_aplica)
-            total = subtotal + igv
-            base_gravada = sum(l.importe for l in data.lineas if l.igv_aplica)
-            igv_sunat = round(base_gravada * 0.18, 2)
-            base_no_gravada = sum(l.importe for l in data.lineas if not l.igv_aplica)
+            # Generate auto-incrementing gasto number
+            numero = await generate_gasto_number(conn, empresa_id)
+            
+            # Use pre-calculated values from frontend (which respects impuestos_incluidos toggle)
+            # The frontend calculates these correctly based on whether IGV is included or not
+            base_gravada = data.base_gravada
+            igv_sunat = data.igv_sunat
+            base_no_gravada = data.base_no_gravada
             isc_val = data.isc or 0.0
+            
+            # Calculate totals for storage
+            subtotal = base_gravada + base_no_gravada
+            igv = igv_sunat
+            total = subtotal + igv + isc_val
+            
             fecha_contable = data.fecha_contable or data.fecha
             row = await conn.fetchrow("""
                 INSERT INTO finanzas2.cont_gasto
@@ -80,11 +95,13 @@ async def create_gasto(data: GastoCreate, empresa_id: int = Depends(get_empresa_
                  tipo_documento, numero_documento, notas, tipo_comprobante_sunat, base_gravada, igv_sunat, base_no_gravada, isc, tipo_cambio)
                 VALUES ($1, $2, TO_DATE($3, 'YYYY-MM-DD'), TO_DATE($4, 'YYYY-MM-DD'), $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
                 RETURNING *
-            """, empresa_id, data.numero, safe_date_param(data.fecha), safe_date_param(fecha_contable), data.beneficiario_nombre,
+            """, empresa_id, numero, safe_date_param(data.fecha), safe_date_param(fecha_contable), data.beneficiario_nombre,
                 data.proveedor_id, data.moneda_id, subtotal, igv, total,
                 data.tipo_documento, data.numero_documento, data.notas,
                 data.tipo_comprobante_sunat, base_gravada, igv_sunat, base_no_gravada, isc_val, data.tipo_cambio)
             gasto_id = row['id']
+            
+            # Insert line items
             for linea in data.lineas:
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_gasto_linea
@@ -92,31 +109,46 @@ async def create_gasto(data: GastoCreate, empresa_id: int = Depends(get_empresa_
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 """, empresa_id, gasto_id, linea.categoria_id, linea.descripcion, linea.importe, linea.igv_aplica,
                     linea.linea_negocio_id, linea.centro_costo_id)
+            
+            # Process payments from the pagos array (new frontend structure)
             pago_id = None
-            if data.pagado and data.cuenta_financiera_id:
+            if data.pagos and len(data.pagos) > 0:
                 centro_costo_id_val = data.lineas[0].centro_costo_id if data.lineas and data.lineas[0].centro_costo_id else None
                 linea_negocio_id_val = data.lineas[0].linea_negocio_id if data.lineas and data.lineas[0].linea_negocio_id else None
+                
+                # Create a single pago record for the gasto
                 pago_numero = await generate_pago_number(conn, 'egreso', empresa_id)
                 pago = await conn.fetchrow("""
                     INSERT INTO finanzas2.cont_pago
                     (empresa_id, numero, tipo, fecha, cuenta_financiera_id, moneda_id, monto_total, referencia, notas, centro_costo_id, linea_negocio_id)
                     VALUES ($1, $2, 'egreso', TO_DATE($3, 'YYYY-MM-DD'), $4, $5, $6, $7, $8, $9, $10)
                     RETURNING id
-                """, empresa_id, pago_numero, safe_date_param(data.fecha), data.cuenta_financiera_id,
-                    data.moneda_id, total, data.numero_documento or data.numero, data.notas, centro_costo_id_val, linea_negocio_id_val)
+                """, empresa_id, pago_numero, safe_date_param(data.fecha), data.pagos[0].cuenta_financiera_id,
+                    data.moneda_id, total, data.numero_documento or numero, data.notas, centro_costo_id_val, linea_negocio_id_val)
                 pago_id = pago['id']
-                await conn.execute("""
-                    INSERT INTO finanzas2.cont_pago_detalle
-                    (empresa_id, pago_id, cuenta_financiera_id, medio_pago, monto)
-                    VALUES ($1, $2, $3, $4, $5)
-                """, empresa_id, pago_id, data.cuenta_financiera_id, data.medio_pago or 'transferencia', total)
-                await conn.execute("UPDATE finanzas2.cont_cuenta_financiera SET saldo_actual = saldo_actual - $1 WHERE id = $2", total, data.cuenta_financiera_id)
+                
+                # Insert pago detalles for each payment in the array
+                for pago_item in data.pagos:
+                    await conn.execute("""
+                        INSERT INTO finanzas2.cont_pago_detalle
+                        (empresa_id, pago_id, cuenta_financiera_id, medio_pago, monto)
+                        VALUES ($1, $2, $3, $4, $5)
+                    """, empresa_id, pago_id, pago_item.cuenta_financiera_id, pago_item.medio_pago, pago_item.monto)
+                    
+                    # Update cuenta financiera balance
+                    await conn.execute("UPDATE finanzas2.cont_cuenta_financiera SET saldo_actual = saldo_actual - $1 WHERE id = $2", 
+                                       pago_item.monto, pago_item.cuenta_financiera_id)
+                
+                # Create pago aplicacion
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_pago_aplicacion
                     (empresa_id, pago_id, tipo_documento, documento_id, monto_aplicado)
                     VALUES ($1, $2, 'gasto', $3, $4)
                 """, empresa_id, pago_id, gasto_id, total)
+                
+                # Link pago to gasto
                 await conn.execute("UPDATE finanzas2.cont_gasto SET pago_id = $1 WHERE id = $2", pago_id, gasto_id)
+            
             gasto_dict = dict(row)
             gasto_dict['pago_id'] = pago_id
             lineas = await conn.fetch("""
