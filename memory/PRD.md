@@ -62,6 +62,8 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 - [x] Sync buttons removed from frontend UI (backend sync endpoint kept read-only)
 - [x] Testing: 100% pass rate (13 backend + all frontend tests for POS module)
 
+- [x] Boton "Actualizar" en Ventas POS que re-ejecuta fetch con filtros actuales + campo max_date_order en respuesta API (Mar 2026)
+
 ## Backlog
 - P1: Delete /app/odoo_service.py after confirming all functionality stable
 - P1: Formally remove POST /ventas-pos/sync endpoint after VentasPOS.jsx is stable in production

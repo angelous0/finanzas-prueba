@@ -131,9 +131,11 @@ async def _list_from_odoo(conn, empresa_id, company_key,
         {estado_filter}
     """
 
-    # Count total
-    count_query = f"SELECT COUNT(*) {from_clause}"
-    total = await conn.fetchval(count_query, *params)
+    # Count total + max date
+    count_query = f"SELECT COUNT(*), MAX(o.date_order) {from_clause}"
+    row_agg = await conn.fetchrow(count_query, *params)
+    total = row_agg[0]
+    max_date_order = row_agg[1]
 
     offset = (page - 1) * page_size
 
@@ -209,7 +211,8 @@ async def _list_from_odoo(conn, empresa_id, company_key,
         "total": total,
         "page": page,
         "page_size": page_size,
-        "total_pages": math.ceil(total / page_size) if page_size > 0 else 0
+        "total_pages": math.ceil(total / page_size) if page_size > 0 else 0,
+        "max_date_order": max_date_order.isoformat() if max_date_order else None
     }
 
 

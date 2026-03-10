@@ -7,7 +7,7 @@ import {
   getOdooCompanyMap, setOdooCompanyMap
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
-import { Check, CreditCard, X, ShoppingCart, Download, Plus, Trash2, Eye, RotateCcw, Search, Edit, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Check, CreditCard, X, ShoppingCart, Download, Plus, Trash2, Eye, RotateCcw, Search, Edit, ChevronLeft, ChevronRight, Settings, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
@@ -180,6 +180,7 @@ export const VentasPOS = () => {
   const [pageSize] = useState(50);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [maxDateOrder, setMaxDateOrder] = useState(null);
 
   // Filters
   const [fechaDesde, setFechaDesde] = useState(getYesterdayInLima());
@@ -241,12 +242,14 @@ export const VentasPOS = () => {
         setVentas([]);
         setTotalRecords(0);
         setTotalPages(0);
+        setMaxDateOrder(null);
         return;
       }
 
       setVentas(data.data || []);
       setTotalRecords(data.total || 0);
       setTotalPages(data.total_pages || 0);
+      setMaxDateOrder(data.max_date_order || null);
     } catch (error) {
       console.error('Error loading ventas:', error);
       toast.error('Error al cargar ventas');
@@ -541,9 +544,25 @@ export const VentasPOS = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">Ventas POS</h1>
-          <p className="page-subtitle">Ventas desde Odoo {totalRecords > 0 && `(${totalRecords} registros)`}</p>
+          <p className="page-subtitle">
+            Ventas desde Odoo {totalRecords > 0 && `(${totalRecords} registros)`}
+            {maxDateOrder && (
+              <span style={{ marginLeft: '0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                | Ultima venta: {formatDateTime(maxDateOrder)}
+              </span>
+            )}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            className="btn btn-outline"
+            onClick={loadVentas}
+            disabled={loading}
+            data-testid="refresh-ventas-btn"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            Actualizar
+          </button>
           <button 
             className="btn btn-success"
             onClick={handleExportExcel}
