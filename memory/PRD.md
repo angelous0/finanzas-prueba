@@ -13,7 +13,7 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
   models.py              # Pydantic models
   database.py            # PostgreSQL pool + schema init
   contabilidad.py        # Accounting business logic
-  odoo_service.py        # Odoo POS integration
+  odoo_service.py        # (DEPRECATED) Odoo POS integration - kept temporarily for backward compat
   routers/
     core.py              # health, root (2 endpoints)
     dashboard.py         # KPIs (1 endpoint)
@@ -26,14 +26,13 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
     pagos.py             # pagos + letras (8 endpoints)
     gastos.py            # gastos + adelantos (9 endpoints)
     planillas.py         # planillas (5 endpoints)
-    ventas_pos.py        # ventas POS + pagos POS (12 endpoints)
+    ventas_pos.py        # ventas POS from odoo schema + pagos POS + config mapping (14 endpoints)
     cxc_cxp.py           # cuentas por cobrar/pagar (2 endpoints)
     presupuestos.py      # presupuestos (5 endpoints)
     banco.py             # conciliacion bancaria (9 endpoints)
     reportes.py          # reportes financieros (3 endpoints)
     contabilidad.py      # cuentas contables + config + asientos + periodos (20 endpoints)
     export.py            # export CompraAPP Excel (1 endpoint)
-  Total: 132 endpoints
 ```
 
 ### Frontend
@@ -43,18 +42,30 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 
 ### Database
 - PostgreSQL (asyncpg) at 72.60.241.216:9090/datos
-- Schema: finanzas2
-- Key tables: cont_empresa, cont_factura_proveedor, cont_pago, cont_gasto, cont_venta_pos, cont_asiento, etc.
+- Schemas: finanzas2 (app data), odoo (pre-synced Odoo views)
+- Key tables: cont_empresa, cont_factura_proveedor, cont_pago, cont_gasto, cont_venta_pos, cont_asiento, cont_empresa_odoo_map, cont_venta_pos_estado
+- Key views (odoo schema): v_pos_order_enriched, v_pos_line_full
 
 ## What's Been Implemented
 - [x] Full backend refactoring from monolithic 5760-line server.py to 18 domain routers (Mar 2026)
-- [x] All 132 API endpoints preserved and working
+- [x] All 132+ API endpoints preserved and working
 - [x] Frontend fully compatible with refactored backend
 - [x] Testing: 100% pass rate (33 backend tests + 8 frontend page tests)
 - [x] Shared dependencies module (get_empresa_id, get_next_correlativo, safe_date_param)
+- [x] POS Data Source Change: Backend reads from odoo schema (v_pos_order_enriched, v_pos_line_full) (Mar 2026)
+- [x] Company mapping table (cont_empresa_odoo_map) + GET/PUT /config/odoo-company-map endpoints
+- [x] Local state table (cont_venta_pos_estado) for estado_local, notas per order
+- [x] MISSING_ODOO_COMPANY_KEY error + frontend config screen
+- [x] Mandatory pagination on GET /ventas-pos (page, page_size params, ordered by date_order DESC)
+- [x] On-demand product line fetching: GET /ventas-pos/{order_id}/lineas
+- [x] Frontend VentasPOS.jsx fully adapted to new paginated API
+- [x] Sync buttons removed from frontend UI (backend sync endpoint kept read-only)
+- [x] Testing: 100% pass rate (13 backend + all frontend tests for POS module)
 
 ## Backlog
-- P1: Remove unused /app/backend/app/ scaffold directory completely
-- P2: Custom hook useFormSubmit in frontend
+- P1: Delete /app/odoo_service.py after confirming all functionality stable
+- P1: Formally remove POST /ventas-pos/sync endpoint after VentasPOS.jsx is stable in production
+- P2: UI/endpoints for managing company mappings (/config/odoo-company-map management page)
 - P2: Add OpenAPI tags to routers for better Swagger docs
 - P3: Add unit tests per router module
+- P3: Custom hook useFormSubmit in frontend
