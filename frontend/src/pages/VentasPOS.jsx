@@ -18,8 +18,7 @@ const formatCurrency = (value, symbol = 'S/') => {
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '';
   const utcDate = new Date(dateStr);
-  const limaDate = new Date(utcDate.getTime() - (5 * 60 * 60 * 1000));
-  return limaDate.toLocaleString('es-PE', {
+  return utcDate.toLocaleString('es-PE', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
