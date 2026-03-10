@@ -163,6 +163,10 @@ export const deletePagoVentaPOS = (ventaId, pagoId) => api.delete(`/ventas-pos/$
 // Ventas POS - Líneas de productos
 export const getLineasVentaPOS = (ventaId) => api.get(`/ventas-pos/${ventaId}/lineas`);
 
+// Config - Odoo Company Map
+export const getOdooCompanyMap = () => api.get('/config/odoo-company-map');
+export const setOdooCompanyMap = (data) => api.put('/config/odoo-company-map', data);
+
 // CxC
 export const getCxC = (params) => api.get('/cxc', { params });
 

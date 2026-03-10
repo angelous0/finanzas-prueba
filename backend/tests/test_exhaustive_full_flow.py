@@ -11,7 +11,7 @@ import os
 from datetime import date, timedelta
 from decimal import Decimal
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://finance-arch-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://pos-data-bridge.preview.emergentagent.com').rstrip('/')
 EMPRESA_ID = 3
 
 # Test data storage (persisted across tests)
