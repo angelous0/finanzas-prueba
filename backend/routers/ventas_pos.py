@@ -11,8 +11,11 @@ import httpx
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-ODOO_MODULE_BASE_URL = os.environ.get('ODOO_MODULE_BASE_URL', '').rstrip('/')
-ODOO_SYNC_TOKEN = os.environ.get('ODOO_SYNC_TOKEN', '')
+
+def _get_odoo_config():
+    url = os.environ.get('ODOO_MODULE_BASE_URL', '').rstrip('/')
+    token = os.environ.get('ODOO_SYNC_TOKEN', '')
+    return url, token
 
 
 async def get_company_key(conn, empresa_id: int) -> Optional[str]:
@@ -61,7 +64,9 @@ async def refresh_ventas_pos(
     empresa_id: int = Depends(get_empresa_id),
 ):
     """Trigger sync in the Odoo module, then return sync metrics."""
-    if not ODOO_MODULE_BASE_URL:
+    odoo_url, odoo_token = _get_odoo_config()
+
+    if not odoo_url:
         raise HTTPException(503, "ODOO_MODULE_BASE_URL no configurada. Configure la variable de entorno.")
 
     pool = await get_pool()
@@ -83,8 +88,8 @@ async def refresh_ventas_pos(
     if hasta:
         payload["hasta"] = hasta
 
-    url = f"{ODOO_MODULE_BASE_URL}/api/sync/pos"
-    headers = {"X-Internal-Token": ODOO_SYNC_TOKEN, "Content-Type": "application/json"}
+    url = f"{odoo_url}/api/sync/pos"
+    headers = {"X-Internal-Token": odoo_token, "Content-Type": "application/json"}
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -94,8 +99,8 @@ async def refresh_ventas_pos(
             return {
                 "ok": True,
                 "message": result.get("message", "Sync completado"),
-                "inserted": result.get("inserted", 0),
-                "updated": result.get("updated", 0),
+                "inserted": result.get("inserted_orders", result.get("inserted", 0)),
+                "updated": result.get("updated_orders", result.get("updated", 0)),
                 "last_sync_at": result.get("last_sync_at"),
                 "company_key": company_key
             }
