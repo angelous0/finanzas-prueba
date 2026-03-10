@@ -63,6 +63,7 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 - [x] Testing: 100% pass rate (13 backend + all frontend tests for POS module)
 
 - [x] Boton "Actualizar" en Ventas POS que re-ejecuta fetch con filtros actuales + campo max_date_order en respuesta API (Mar 2026)
+- [x] POST /api/ventas-pos/refresh: proxy endpoint que dispara sync en modulo Odoo externo via POST {ODOO_MODULE_BASE_URL}/api/sync/pos (Mar 2026)
 
 ## Backlog
 - P1: Delete /app/odoo_service.py after confirming all functionality stable

@@ -144,6 +144,7 @@ export const pagarPlanilla = (id, cuentaFinancieraId) =>
 
 // Ventas POS
 export const getVentasPOS = (params) => api.get('/ventas-pos', { params });
+export const refreshVentasPOS = (data) => api.post('/ventas-pos/refresh', data);
 export const syncVentasPOS = (company, days) => 
   api.post(`/ventas-pos/sync?company=${company}&days_back=${days}`);
 export const confirmarVentaPOS = (id) => api.post(`/ventas-pos/${id}/confirmar`);

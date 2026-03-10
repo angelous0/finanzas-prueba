@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  getVentasPOS, confirmarVentaPOS, desconfirmarVentaPOS,
+  getVentasPOS, refreshVentasPOS, confirmarVentaPOS, desconfirmarVentaPOS,
   marcarCreditoVentaPOS, descartarVentaPOS,
   getPagosVentaPOS, getPagosOficialesVentaPOS, addPagoVentaPOS, updatePagoVentaPOS, deletePagoVentaPOS,
   getCuentasFinancieras, getLineasVentaPOS,
@@ -171,6 +171,7 @@ export const VentasPOS = () => {
 
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('pendiente');
   const [missingCompanyKey, setMissingCompanyKey] = useState(false);
@@ -555,13 +556,33 @@ export const VentasPOS = () => {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
-            className="btn btn-outline"
-            onClick={loadVentas}
-            disabled={loading}
+            className="btn btn-primary"
+            onClick={async () => {
+              setRefreshing(true);
+              try {
+                const result = await refreshVentasPOS({
+                  desde: fechaDesde || undefined,
+                  hasta: fechaHasta || undefined
+                });
+                const d = result.data;
+                toast.success(`Sync completado: ${d.inserted || 0} nuevos, ${d.updated || 0} actualizados`);
+                loadVentas();
+              } catch (error) {
+                const detail = error.response?.data?.detail;
+                if (typeof detail === 'object' && detail?.error === 'MISSING_ODOO_COMPANY_KEY') {
+                  toast.error('Falta configurar el mapeo empresa - Odoo');
+                } else {
+                  toast.error(typeof detail === 'string' ? detail : 'Error al sincronizar con Odoo');
+                }
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+            disabled={refreshing || loading}
             data-testid="refresh-ventas-btn"
           >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-            Actualizar
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Sincronizando...' : 'Actualizar'}
           </button>
           <button 
             className="btn btn-success"

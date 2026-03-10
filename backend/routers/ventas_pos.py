@@ -5,9 +5,14 @@ from database import get_pool
 from dependencies import get_empresa_id, safe_date_param
 import logging
 import math
+import os
+import httpx
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+ODOO_MODULE_BASE_URL = os.environ.get('ODOO_MODULE_BASE_URL', '').rstrip('/')
+ODOO_SYNC_TOKEN = os.environ.get('ODOO_SYNC_TOKEN', '')
 
 
 async def get_company_key(conn, empresa_id: int) -> Optional[str]:
@@ -45,6 +50,65 @@ async def set_odoo_company_map(data: dict, empresa_id: int = Depends(get_empresa
             ON CONFLICT (empresa_id) DO UPDATE SET company_key = $2, updated_at = NOW()
         """, empresa_id, company_key)
         return {"empresa_id": empresa_id, "company_key": company_key}
+
+
+# =====================
+# VENTAS POS — REFRESH (proxy to Odoo module sync)
+# =====================
+@router.post("/ventas-pos/refresh")
+async def refresh_ventas_pos(
+    body: dict = None,
+    empresa_id: int = Depends(get_empresa_id),
+):
+    """Trigger sync in the Odoo module, then return sync metrics."""
+    if not ODOO_MODULE_BASE_URL:
+        raise HTTPException(503, "ODOO_MODULE_BASE_URL no configurada. Configure la variable de entorno.")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        company_key = await get_company_key(conn, empresa_id)
+
+    if not company_key:
+        raise HTTPException(400, detail={
+            "error": "MISSING_ODOO_COMPANY_KEY",
+            "message": "No hay mapeo empresa - company_key configurado."
+        })
+
+    desde = body.get('desde') if body else None
+    hasta = body.get('hasta') if body else None
+
+    payload = {"company_key": company_key}
+    if desde:
+        payload["desde"] = desde
+    if hasta:
+        payload["hasta"] = hasta
+
+    url = f"{ODOO_MODULE_BASE_URL}/api/sync/pos"
+    headers = {"X-Internal-Token": ODOO_SYNC_TOKEN, "Content-Type": "application/json"}
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            result = resp.json()
+            return {
+                "ok": True,
+                "message": result.get("message", "Sync completado"),
+                "inserted": result.get("inserted", 0),
+                "updated": result.get("updated", 0),
+                "last_sync_at": result.get("last_sync_at"),
+                "company_key": company_key
+            }
+    except httpx.ConnectError:
+        raise HTTPException(502, "No se pudo conectar con el modulo Odoo. Verifique ODOO_MODULE_BASE_URL.")
+    except httpx.HTTPStatusError as e:
+        detail = e.response.text[:500] if e.response else str(e)
+        raise HTTPException(e.response.status_code if e.response else 502, f"Error del modulo Odoo: {detail}")
+    except httpx.TimeoutException:
+        raise HTTPException(504, "Timeout al conectar con el modulo Odoo. El sync puede estar tomando mucho tiempo.")
+    except Exception as e:
+        logger.error(f"Error calling Odoo sync: {e}")
+        raise HTTPException(502, f"Error inesperado al llamar al modulo Odoo: {str(e)}")
 
 
 # =====================
