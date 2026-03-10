@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+from typing import Optional
 from datetime import date, datetime, timedelta
 from database import get_pool
 from dependencies import get_empresa_id, safe_date_param
@@ -278,49 +278,6 @@ async def _list_from_odoo(conn, empresa_id, company_key,
         "total_pages": math.ceil(total / page_size) if page_size > 0 else 0,
         "max_date_order": max_date_order.isoformat() if max_date_order else None
     }
-
-
-async def _list_from_legacy(conn, empresa_id, estado, fecha_desde, fecha_hasta, search):
-    """Fallback: read from finanzas2.cont_venta_pos (old table)."""
-    await conn.execute("SET search_path TO finanzas2, public")
-    conditions = ["v.empresa_id = $1"]
-    params = [empresa_id]
-    idx = 2
-    if estado:
-        conditions.append(f"estado_local = ${idx}"); params.append(estado); idx += 1
-    if fecha_desde:
-        conditions.append(f"date_order >= ${idx}")
-        params.append(datetime.combine(fecha_desde, datetime.min.time()) + timedelta(hours=5))
-        idx += 1
-    if fecha_hasta:
-        conditions.append(f"date_order <= ${idx}")
-        params.append(datetime.combine(fecha_hasta, datetime.max.time()) + timedelta(hours=5))
-        idx += 1
-    if search:
-        conditions.append(f"(num_comp ILIKE ${idx} OR partner_name ILIKE ${idx} OR name ILIKE ${idx})")
-        params.append(f"%{search}%"); idx += 1
-    query = f"""
-        SELECT v.*,
-               COALESCE((SELECT SUM(p.monto) FROM finanzas2.cont_venta_pos_pago p
-                         WHERE p.venta_pos_id = v.id), 0) as pagos_asignados,
-               COALESCE((SELECT COUNT(*) FROM finanzas2.cont_venta_pos_pago p
-                         WHERE p.venta_pos_id = v.id), 0) as num_pagos,
-               COALESCE((SELECT SUM(pa.monto_aplicado) FROM finanzas2.cont_pago_aplicacion pa
-                         WHERE pa.tipo_documento = 'venta_pos' AND pa.documento_id = v.id), 0) as pagos_oficiales,
-               COALESCE((SELECT COUNT(*) FROM finanzas2.cont_pago_aplicacion pa
-                         WHERE pa.tipo_documento = 'venta_pos' AND pa.documento_id = v.id), 0) as num_pagos_oficiales
-        FROM finanzas2.cont_venta_pos v
-        WHERE {' AND '.join(conditions)}
-        ORDER BY v.date_order DESC
-    """
-    rows = await conn.fetch(query, *params)
-    result = []
-    for r in rows:
-        d = dict(r)
-        d['source'] = 'legacy'
-        d['odoo_order_id'] = d.get('odoo_id')
-        result.append(d)
-    return result
 
 
 # =====================
@@ -834,26 +791,3 @@ async def delete_pago_venta_pos(order_id: int, pago_id: int, empresa_id: int = D
                 "DELETE FROM finanzas2.cont_venta_pos_pago WHERE id=$1 AND venta_pos_id=$2",
                 pago_id, order_id)
         return {"message": "Pago eliminado"}
-
-
-# =====================
-# DEPRECATED: Sync from Odoo (kept but returns deprecation notice)
-# =====================
-@router.post("/ventas-pos/sync")
-async def sync_ventas_pos(empresa_id: int = Depends(get_empresa_id)):
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        company_key = await get_company_key(conn, empresa_id)
-        if company_key:
-            return {
-                "message": "Sync directo deshabilitado. Los datos POS se leen del schema odoo (sincronizado por el modulo Odoo).",
-                "synced": 0,
-                "deprecated": True,
-                "company_key": company_key
-            }
-        else:
-            return {
-                "message": "No hay mapeo empresa->company_key configurado. Configure el mapeo en Config > Odoo Company Map.",
-                "synced": 0,
-                "error": "no_mapping"
-            }
