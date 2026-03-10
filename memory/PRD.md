@@ -65,9 +65,11 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 - [x] Boton "Actualizar" en Ventas POS que re-ejecuta fetch con filtros actuales + campo max_date_order en respuesta API (Mar 2026)
 - [x] POST /api/ventas-pos/refresh: proxy endpoint que dispara sync en modulo Odoo externo via POST {ODOO_MODULE_BASE_URL}/api/sync/pos (Mar 2026)
 
+- [x] Cleanup dead code: eliminado odoo_service.py, _list_from_legacy(), POST /ventas-pos/sync, syncVentasPOS export, import List no usado (Mar 2026)
+- [x] Fix timezone: formatDateTime ya no hace doble conversion UTC-5 (Mar 2026)
+
 ## Backlog
-- P1: Delete /app/odoo_service.py after confirming all functionality stable
-- P1: Formally remove POST /ventas-pos/sync endpoint after VentasPOS.jsx is stable in production
+- P1: Configurar ODOO_MODULE_BASE_URL cuando modulo Odoo este listo
 - P2: UI/endpoints for managing company mappings (/config/odoo-company-map management page)
 - P2: Add OpenAPI tags to routers for better Swagger docs
 - P3: Add unit tests per router module
