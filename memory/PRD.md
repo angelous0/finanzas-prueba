@@ -60,9 +60,13 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 - [x] Fixed: CxP enum 'pagado' vs 'pagada', tercero_nombre JOIN
 
 ### Fase 3: CxC + CxP Mejoradas (P0)
-- [ ] Rewrite CxC: aging, abonos, alertas, auto-create from credito + saldo pendiente
-- [ ] Rewrite CxP: aging, pagos parciales, cronograma
-- [ ] Auto-create CxC when venta POS goes to "credito" or has saldo_pendiente
+- [x] Rewrite CxC: aging buckets, abonos, KPIs, manual creation, expandable detail rows
+- [x] Rewrite CxP: aging buckets, pagos parciales, KPIs, manual creation, expandable detail rows
+- [x] Endpoints: /api/cxc/resumen, /api/cxp/resumen (aging totals)
+- [x] Endpoints: POST /api/cxc, POST /api/cxp (manual creation)
+- [x] Endpoints: GET/POST /api/cxc/{id}/abonos, /api/cxp/{id}/abonos
+- [x] Abono validation: monto>0, monto<=saldo_pendiente
+- [x] Auto-update estado on abono: parcial->cobrada/pagado
 
 ### Fase 4: Flujo de Caja (P1)
 ### Fase 5: Rentabilidad (P1)
