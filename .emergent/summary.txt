@@ -1,72 +1,80 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was a complete refactoring of the monolithic FastAPI backend () into a structured, domain-driven architecture.
-
-Following the successful completion of the refactor, the user provided a new requirement:
-**PROMPT FINANZAS — Consumir ventas POS desde módulo Odoo (schema odoo) y eliminar sync duplicado**
+The user has requested a new, comprehensive Finanzas Gerenciales (Management Finance) module. This module is designed with a CFO-level perspective, prioritizing real-time cash flow, profitability analysis, and investment tracking over traditional, rigid accounting.
 
 **PRODUCT REQUIREMENTS:**
--   **Data Source Change:** The finance module must stop syncing POS sales data directly from Odoo. Instead, it should read from pre-synced tables within a different PostgreSQL schema named .
--   **Source Views:** Use  for order lists and  for order details.
--   **Company Mapping:** Create a new table () to map the finance app's  to Odoo's . Provide a UI/endpoint to manage this mapping.
--   **Backward Compatibility:** Implement a fallback mechanism. If a company has a  mapping, read from the  schema. If not, continue using the old  table to avoid breaking functionality for unmapped companies.
--   **API Structure:** The frontend should first fetch a list of orders () and then fetch the lines for a specific order on-demand () to improve performance.
--   **Local State:** Create a  table to store local metadata (like notes or tags) linked to an Odoo order via .
--   **Deprecate Old Sync:** Remove or disable the old direct Odoo sync functionality ( and the related ).
+-   **Financial State Control:** A POS sale must be manually confirmed to be recognized as financial income. The system must differentiate between commercial sales and recognized financial revenue using states like , , , .
+-   **Separate Confirmed vs. Cobrada:** The design must distinguish between a sale being confirmed (income is recognized) and cobrada (cash is received). This requires tracking  and .
+-   **Multi-Brand Analytics:** A single POS ticket can contain items from multiple brands. All financial analysis (revenue, cost, margin) must be derived from the line-item details, not the sale header.
+-   **Analytical Hierarchy:** All financial transactions (income, expenses, treasury movements) must be taggable with a hierarchy: , , , , and .
+-   **Core Sections:** The module will include a financial dashboard, treasury, accounts receivable (CxC), accounts payable (CxP), expenses, cash flow, profitability, ROI, and budget vs. real analysis.
+-   **Automatic CxC Generation:** An account receivable should be automatically generated for any sale with a , not just those explicitly marked as credito.
+-   **Key KPIs:** The system must track cash/bank balances, confirmed income, paid expenses, net cash flow, CxC/CxP, and profitability/ROI by the defined analytical dimensions.
+-   **Implementation Phases:** The project is broken down into phases, starting with foundational DB changes and master data management (Marcas, Proyectos), followed by the Dashboard, improved CxC/CxP, the financial validation workflow, and then other reports.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application's backend has been successfully refactored from a single  file into a modular architecture with individual router files located in . This major refactoring is complete and was verified by the testing agent.
+The initial task of refactoring the POS module to consume data from a PostgreSQL  schema is fully complete, tested, and working. This includes an Actualizar button in the frontend that successfully triggers a sync with an external Odoo module. All related bugs (timezone, API connectivity) and dead code have been resolved and cleaned up.
 
-Following the refactor, the agent started implementing the new POS data source requirement. The backend portion of this task is complete:
--   New DB tables (, ) have been created.
--   The  router has been rewritten to use the new data sources ( schema) and includes the specified fallback logic.
--   The new backend endpoints have been tested via  and are working.
--   The old  is no longer imported or used.
-
-The application is running, but the frontend for POS Sales is not yet updated to work with the new backend API structure.
+The agent has now started building the new Finanzas Gerenciales module. **Phase 1 is complete**:
+-   A detailed design document () has been created based on the user's extensive requirements and subsequent adjustments.
+-   The database schema has been migrated to support the new module:
+    -   New tables  and  were created.
+    -   Analytical columns (, , etc.) were added to , , , and others.
+    -   Financial status columns (, , , ) were added to .
+-   CRUD APIs and corresponding React frontend pages for Marcas and Proyectos have been built and are accessible from the sidebar.
+-   The  table has been seeded with data from the Odoo database.
 
 **Last working item**:
-The agent was in the process of adapting the frontend to the new, refactored backend API for POS sales.
+The agent just completed the foundational work for the new module (Phase 1) and received the user's go-ahead (sigue haciendo) to proceed.
 
-- **Last item agent was working:** Analyzing the frontend component  to understand the necessary changes to align it with the new two-step data fetching API (get orders, then get lines). The agent has read the file and is ready to implement the changes.
-- **Status:** IN PROGRESS
-- **Agent Testing Done:** N (Only backend was tested with curl).
-- **Which testing method agent to use?** both (First, a screenshot to verify the UI loads. Then, the frontend testing agent to confirm full functionality).
-- **User Testing Done:** N
+- **Last item agent was working:** Starting the implementation of **Phase 2: Dashboard Financiero**, beginning with the backend API endpoint.
+- **Status:** NOT STARTED
+- **Agent Testing Done:** Y (For Phase 1 completion)
+- **Which testing method agent to use?** both (The dashboard is a major new feature requiring backend endpoint creation and frontend UI development, justifying a full testing cycle).
+- **User Testing Done:** N (User implicitly approved continuing by saying sigue haciendo after seeing the results of Phase 1).
 
 **All Pending/In progress Issue list**:
 - None.
 
 **In progress Task List**:
-- **Task 1: Adapt Frontend for New POS API (P0)**
-  - **Where to resume:** The agent needs to modify the  file.
-    1.  Change the data fetching logic to call  to retrieve the list of orders.
-    2.  Implement an on-demand fetching mechanism. When a user interacts with an order (e.g., clicks to expand), it should trigger a call to  to get the line items for that specific order.
-    3.  Adjust the component's state and rendering logic to handle the new hierarchical data structure (a list of orders, each potentially containing a list of lines).
-  - **What will be achieved with this?** The Ventas POS page will function correctly with the more efficient and scalable backend, loading data from the  schema.
+- **Task 1: Implement Finanzas Gerenciales Module (P0)**
+  - **Where to resume:** Continue with the implementation plan outlined in . The immediate next step is to start **Phase 2**, which involves creating the backend endpoint for the financial dashboard (). This endpoint needs to aggregate data for all the KPIs defined by the user (cash/bank balances, confirmed income, expenses, CxC/CxP, etc.) using the newly extended data model.
+  - **What will be achieved with this?** This will provide the data foundation for the main financial dashboard UI.
   - **Status:** IN PROGRESS
   - **Should Test frontend/backend/both after fix?** both
   - **Blocked on something:** No.
 
 **Upcoming and Future Tasks**
-- **Cleanup (P1):** Delete the now-unused  file.
-- **Feature (P2):** Implement the UI and / endpoints for  to allow users to manage the company mappings.
-- **Deprecation (P2):** Formally remove the old  endpoint from the router and ensure it's inaccessible from the UI.
+Based on the design document :
+-   **Upcoming Tasks (Next Phases):**
+    -   **Fase 2 (cont.)**: Build the frontend UI for the Financial Dashboard. (P0)
+    -   **Fase 3**: Implement Enhanced CxC/CxP, including logic for , balances, and payment applications (). (P1)
+    -   **Fase 4**: Create the Bandeja de Validación Financiera UI to allow manual confirmation of POS sales. (P1)
+    -   **Fase 5**: Build the Treasury module UI for managing cash and bank movements. (P2)
+-   **Future Tasks:**
+    -   **Fase 6**: Cash Flow Report UI.
+    -   **Fase 7**: Profitability Report UI.
+    -   **Fase 8**: Budget vs. Real module.
+    -   ROI (Return on Investment) module.
+    -   Full integration with a formal accounting module.
 
 **Completed work in this session**
-- **Massive Backend Refactoring (DONE):**
-  - Migrated the entire backend logic from a monolithic  into a domain-driven structure with over 15 router files in .
-  - Created a new lean  as an orchestrator.
-  - Fixed numerous import errors and database schema mismatches discovered during the migration.
-  - Verified the entire refactoring with the testing agent, achieving a 100% pass rate on 33 backend and all frontend tests.
-- **POS Data Source Rework - Backend (DONE):**
-  - Created new tables  and  in .
-  - Seeded the initial mapping for  to .
-  - Completely rewrote  to fetch data from the  schema with a fallback to the old tables.
-  - Removed all dependencies on .
-  - Successfully tested the new  and  endpoints with .
-- **Documentation:** Updated  with the completed refactoring task.
+- **POS Data Source Refactor (DONE):**
+  - Fully migrated the POS sales frontend () and backend to consume data from a PostgreSQL  schema.
+  - Implemented an Actualizar button that calls a proxy endpoint () to trigger a sync on an external Odoo module.
+  - Successfully configured and tested the connection to the user's Odoo module at .
+- **Bug Fixes and Cleanup (DONE):**
+  - Fixed a critical timezone display bug on the Ventas POS page.
+  - Added IGV Incluido toggle to the Gastos module and fixed a critical bug in the creation endpoint found by the testing agent.
+  - Performed a full code audit and removed dead code, including  and the old  endpoint.
+- **Data Reset (DONE):**
+  - Truncated all transactional data (facturas, gastos, pagos, letras, etc.) as requested by the user for a clean testing environment.
+- **Finanzas Gerenciales - Phase 1 (DONE):**
+  - Authored a comprehensive design document: .
+  - Executed all database migrations for Phase 1, adding new tables (, ) and extending existing ones with analytical and financial status fields.
+  - Built and tested CRUD APIs (, ) and frontend pages (, ).
+  - Seeded the  table with existing data from Odoo.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -74,79 +82,83 @@ The agent was in the process of adapting the frontend to the new, refactored bac
 **Known issue recurrence from previous fork**
 - **Issue:**  page getting stuck in a Cargando... state.
 - **Recurrence count:** 2
-- **Status:** RESOLVED (This did not recur in the current session).
+- **Status:** RESOLVED. The issue was not present in this session and full-app testing confirmed the page now loads correctly.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI
-- **Frontend:** React
-- **Database:** PostgreSQL, using multiple schemas ( and ).
-- **Architecture:** Modular, domain-driven API structure.
+- **Backend:** FastAPI, Python,  for server-to-server calls.
+- **Frontend:** React, Shadcn UI.
+- **Database:** PostgreSQL with multiple schemas (, ).
+- **Architecture:** Modular API, CFO-centric financial data modeling.
 
 **key DB schema**
-- ****: 
-- ****: 
-- ****: View used for fetching POS order list.
-- ****: View used for fetching POS order lines.
+- ****:  (New)
+- ****:  (New)
+- ****: Extended with 
+- ****: Extended with 
+- **All transactional tables** (, , etc.) extended with analytical keys (, ).
+- ****:  (New schema, part of Phase 1)
+- ****:  (New schema, part of Phase 1)
 
 **changes in tech stack**
-- No changes to the core technologies. The change is in the data access pattern (reading from a different schema instead of an external API call).
+-  was added to the backend dependencies to facilitate server-to-server API calls.
 
 **All files of reference**
-- **File to be modified:** 
-- **Relevant backend files (already modified):**
-  - 
-  - 
-- **File to be deleted:** 
-- **Main application entrypoint:** 
+- **Primary Guide:** 
+- **Database Schema:** 
+- **New/Modified Backend:** , , 
+- **New/Modified Frontend:** , , , , 
 
 **Areas that need refactoring**:
-- The file  is now obsolete and should be deleted to prevent future confusion.
+- None. A major cleanup was recently performed.
 
 **key api endpoints**
-- : (Modified) Lists POS orders. Uses  schema if company mapping exists, otherwise falls back to old data.
-- : (New) Gets line items for a specific order from the  schema.
-- : (Modified) Gets status/notes for a specific order from .
-- : (Modified) Updates status/notes for a specific order.
+- : (Working) Triggers sync with the external Odoo module.
+- : (New) CRUD for brands.
+- : (New) CRUD for projects.
 
 **Critical Info for New Agent**
-- **Focus on the Frontend:** The backend part of the POS Data Source Change task is complete, tested with , and functional. Your primary and immediate task is to adapt the frontend React component () to work with the new API.
-- **New API Behavior:** The frontend must be changed from a single data fetch to a two-step process:
-    1.  Fetch the list of orders.
-    2.  Fetch the lines for an individual order only when the user requests them (e.g., on click).
-- **Backward Compatibility is Key:** Remember that the backend has a fallback. The frontend should gracefully handle cases where data comes from either the new API structure or the old one, although the current priority is implementing the new path for mapped companies.
-- **User has Approved the Plan:** The current implementation plan, including the API structure and fallback logic, was explicitly approved by the user.
+- **Follow the Design Document:** The project has pivoted to building the large Finanzas Gerenciales module. All future work must align with the plan detailed in .
+- **Continue Phased Implementation:** You are to start **Phase 2: Dashboard Financiero**. Begin by creating the backend endpoint to calculate and return all the necessary KPIs. The database schema is already prepared for this.
+- **External Dependencies:** The connection to the user's Odoo module is working. The credentials ( and ) are correctly set in .
 
 **documents and test reports created in this job**
--  (from the successful backend refactor testing)
--  (updated after the refactor)
+-  (Primary design document)
+-  (Updated with new module goals)
+-  (Multiple successful test runs for POS refactor, Gastos fix, and code cleanup)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Plan aprobado con 3 ajustes... (Plan approved with 3 adjustments). **Status: Completed.** The user approved the POS refactor plan with specific instructions:
-    -   Use a two-step fetch (orders then lines) for performance.
-    -   Confirmed the schema for .
-    -   Confirmed the backward compatibility fallback logic.
-2.  **User:** Provided details for pre-seeding the mapping table ( -> ). **Status: Completed.**
-3.  **User:** porque demor mucho hacer todo ello // pero esta bien que hagamos esto ?? si es asi sigue haciendo (Why did it take so long // but is it good that we do this? if so, keep going). **Status: Completed.** The user questioned the time taken for the initial analysis of the refactor but gave full approval to proceed.
+1.  **User:** Requested a full-scale test of all application modules. (Completed)
+2.  **User:** Pointed out that the Gastos module was missing an IGV Incluido option, unlike Facturas. (Completed)
+3.  **User:** Requested that all  and  be deleted for manual testing. (Completed)
+4.  **User:** Noticed that deleting invoices left orphaned payment records and asked for them to be cleaned up too. (Completed)
+5.  **User:** Requested a final cleanup of all transactional data for a fresh start. (Completed)
+6.  **User:** Provided an extremely detailed prompt to design and build a new Finanzas Gerenciales module from a CFO's perspective. (Completed - design doc created)
+7.  **User:** Provided a detailed prompt acting as a Senior Architect, reiterating the requirements for the new module. (Completed - design doc created)
+8.  **User:** Approved the initial design document but provided 7 critical adjustments before starting Phase 1. (Completed - design doc updated)
+9.  **User:** After seeing the successful implementation of Phase 1 (new tables, CRUD pages for Marcas/Proyectos), said sigue haciendo (keep going). (This is the current state).
 
 **Project Health Check:**
-- **Broken:** The Ventas POS feature on the frontend is currently non-functional as it has not been updated to match the new backend API.
-- **Mocked:** None.
-- **Degraded:** No.
+- **Broken:** None
+- **Mocked:** None
+- **Degraded:** None
 
 **3rd Party Integrations**
-- No new integrations. The work involved removing a direct Odoo XML-RPC integration in favor of a database-level integration between schemas.
+- **Odoo Sync Module:** A custom API integration with the user's self-hosted Odoo helper module.
+  - **URL:** 
+  - **Endpoint:** 
+  - **Authentication:** Header  with a shared secret.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES (after the major backend refactor, with 100% success).
+- **Testing agent used after significant changes:** YES. It has been used multiple times for the POS refactor, Gastos fix, and code cleanup, achieving 100% pass rates and even finding/fixing a critical bug.
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** None
-- **Known regressions:** None from the refactor. The POS page is broken due to planned, in-progress changes.
+- **Known regressions:** None
 
 **Credentials to test flow:**
-- Not applicable.
+- The required credentials for the Odoo module integration ( and ) are correctly configured in . No user input is needed.
 
 **What agent forgot to execute**
-- The agent has not forgotten anything. It correctly completed the backend portion of the task and is now logically proceeding to the frontend implementation.</analysis>
+- Nothing. The agent has meticulously followed user requests, including the large pivot to the new financial module, and has kept documentation and testing up to date.</analysis>
