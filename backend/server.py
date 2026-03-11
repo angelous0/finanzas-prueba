@@ -31,6 +31,7 @@ from routers.marcas import router as marcas_router
 from routers.proyectos import router as proyectos_router
 from routers.dashboard_financiero import router as dashboard_financiero_router
 from routers.finanzas_gerencial import router as finanzas_gerencial_router
+from routers.reportes_gerenciales import router as reportes_gerenciales_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -71,6 +72,7 @@ api_router.include_router(marcas_router)
 api_router.include_router(proyectos_router)
 api_router.include_router(dashboard_financiero_router)
 api_router.include_router(finanzas_gerencial_router)
+api_router.include_router(reportes_gerenciales_router)
 
 # Include main router in app
 app.include_router(api_router)

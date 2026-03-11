@@ -5,7 +5,7 @@ import {
   Building2, Users, Wallet, BarChart3, FileSpreadsheet, Settings,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock, FolderOpen,
   Package, Tags, GitBranch, Target, Menu, X, ChevronLeft, BookOpen,
-  Tag, FolderKanban, PieChart, TrendingUp, Activity
+  Tag, FolderKanban, PieChart, TrendingUp, Activity, ClipboardList
 } from 'lucide-react';
 
 const navSections = [
@@ -23,6 +23,7 @@ const navSections = [
       { icon: TrendingUp, label: 'Rentabilidad', path: '/rentabilidad' },
       { icon: Target, label: 'Presupuesto vs Real', path: '/presupuesto-vs-real' },
       { icon: PieChart, label: 'ROI Proyectos', path: '/roi-proyectos' },
+      { icon: ClipboardList, label: 'Reportes Gerenciales', path: '/reportes-gerenciales' },
     ]
   },
   {

@@ -283,6 +283,14 @@ export const getPresupuestoVsReal = (params) => api.get('/presupuesto-vs-real', 
 // ROI Proyectos
 export const getRoiProyectos = (params) => api.get('/roi-proyectos', { params });
 
+// Reportes Gerenciales
+export const getResumenEjecutivo = () => api.get('/reportes/resumen-ejecutivo');
+export const exportarCxC = (params) => `${api.defaults.baseURL}/reportes/exportar/cxc?empresa_id=${params?.empresa_id || 6}${params?.estado ? '&estado=' + params.estado : ''}`;
+export const exportarCxP = (params) => `${api.defaults.baseURL}/reportes/exportar/cxp?empresa_id=${params?.empresa_id || 6}${params?.estado ? '&estado=' + params.estado : ''}`;
+export const exportarFlujoCaja = (params) => `${api.defaults.baseURL}/reportes/exportar/flujo-caja?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
+export const exportarRentabilidad = (params) => `${api.defaults.baseURL}/reportes/exportar/rentabilidad?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}&dimension=${params?.dimension || 'marca'}`;
+export const exportarGastos = (params) => `${api.defaults.baseURL}/reportes/exportar/gastos?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
+
 // Marcas
 export const getMarcas = () => api.get('/marcas');
 export const createMarca = (data) => api.post('/marcas', data);
