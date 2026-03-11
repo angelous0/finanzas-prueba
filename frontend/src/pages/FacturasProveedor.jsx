@@ -1598,7 +1598,7 @@ export const FacturasProveedor = () => {
                               value={linea.linea_negocio_id}
                               onChange={(value) => handleLineaChange(index, 'linea_negocio_id', value)}
                               placeholder="Línea"
-                              displayKey="nombre_completo"
+                              displayKey="nombre"
                               valueKey="id"
                             />
                           </td>
@@ -1763,7 +1763,7 @@ export const FacturasProveedor = () => {
                                       value={articulo.linea_negocio_id}
                                       onChange={(value) => handleArticuloChange(index, 'linea_negocio_id', value)}
                                       placeholder="Línea"
-                                      displayKey="nombre_completo"
+                                      displayKey="nombre"
                                       valueKey="id"
                                     />
                                   </td>
