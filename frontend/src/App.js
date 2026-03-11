@@ -54,6 +54,7 @@ import RoiProyectos from './pages/RoiProyectos';
 import Reportes from './pages/Reportes';
 import Tesoreria from './pages/Tesoreria';
 import ValorizacionInventario from './pages/ValorizacionInventario';
+import RentabilidadLinea from './pages/RentabilidadLinea';
 
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
@@ -170,6 +171,7 @@ function App() {
             <Route path="/reportes-gerenciales" element={<Reportes />} />
             <Route path="/tesoreria" element={<Tesoreria />} />
             <Route path="/valorizacion-inventario" element={<ValorizacionInventario />} />
+            <Route path="/rentabilidad-linea" element={<RentabilidadLinea />} />
             
             {/* Ventas */}
             <Route path="/ventas-pos" element={<VentasPOS />} />

@@ -23,6 +23,7 @@ const navSections = [
       { icon: Vault, label: 'Tesoreria', path: '/tesoreria' },
       { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
       { icon: TrendingUp, label: 'Rentabilidad', path: '/rentabilidad' },
+      { icon: Target, label: 'Rentabilidad x Linea', path: '/rentabilidad-linea' },
       { icon: Target, label: 'Presupuesto vs Real', path: '/presupuesto-vs-real' },
       { icon: PieChart, label: 'ROI Proyectos', path: '/roi-proyectos' },
       { icon: ClipboardList, label: 'Reportes Gerenciales', path: '/reportes-gerenciales' },

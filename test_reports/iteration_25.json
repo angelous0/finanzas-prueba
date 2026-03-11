@@ -1,0 +1,103 @@
+{
+  "summary": "Complete testing of Capital Linea Negocio CRUD, Rentabilidad per business line, and FIFO Valorizacion Inventario. Backend: 25/25 tests passed (100%). Frontend: All UI elements verified including both pages, view toggles, capital modal, FIFO expandable lots, search/filter functionality.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_tested": {
+    "backend_api": {
+      "GET /api/capital-linea-negocio": "PASS - List capital movements with optional linea_negocio_id filter",
+      "POST /api/capital-linea-negocio (capital_inicial)": "PASS - Creates capital_inicial movement",
+      "POST /api/capital-linea-negocio (aporte)": "PASS - Creates aporte movement",
+      "POST /api/capital-linea-negocio (retiro)": "PASS - Creates retiro movement",
+      "POST /api/capital-linea-negocio (invalid tipo)": "PASS - Returns 400 for invalid tipo_movimiento",
+      "POST /api/capital-linea-negocio (negative monto)": "PASS - Returns 400 for negative monto",
+      "POST /api/capital-linea-negocio (zero monto)": "PASS - Returns 400 for zero monto",
+      "DELETE /api/capital-linea-negocio/{id}": "PASS - Deletes movement, returns 404 for non-existent",
+      "GET /api/rentabilidad-linea-negocio": "PASS - Returns per-line data with all required fields",
+      "GET /api/rentabilidad-linea-negocio (structure)": "PASS - lineas array with capital_neto, ingresos, costos, gastos, utilidad, roi_pct, cobrado_real, pagado_real, flujo_neto_caja, saldo_por_recuperar, payback_meses",
+      "GET /api/rentabilidad-linea-negocio (totals)": "PASS - totales object with all aggregated values",
+      "GET /api/rentabilidad-linea-negocio (date filter)": "PASS - fecha_desde and fecha_hasta filters work",
+      "GET /api/rentabilidad-linea-negocio (calculations)": "PASS - capital_neto = invertido - retirado, utilidad = ingresos - costos - gastos",
+      "GET /api/valorizacion-inventario": "PASS - Returns FIFO valuation from produccion schema",
+      "GET /api/valorizacion-inventario (article structure)": "PASS - id, codigo, nombre, categoria, unidad, stock_actual, stock_fifo, costo_fifo_unitario, valor_fifo, lotes_fifo",
+      "GET /api/valorizacion-inventario (lotes structure)": "PASS - id, cantidad_disponible, costo_unitario, fecha, documento",
+      "GET /api/valorizacion-inventario (FIFO calculation)": "PASS - valor_fifo = sum(cantidad_disponible * costo_unitario)",
+      "GET /api/valorizacion-inventario (search)": "PASS - search filter by nombre/codigo works",
+      "GET /api/valorizacion-inventario (categoria)": "PASS - categoria filter works",
+      "GET /api/valorizacion-inventario (totals)": "PASS - total_valor_fifo consistent with sum of individual valores"
+    },
+    "frontend_ui": {
+      "Rentabilidad Linea page /rentabilidad-linea": "PASS - Page loads with data-testid='rentabilidad-linea-page'",
+      "Vista toggle (Rendimiento Economico / Recuperacion de Caja)": "PASS - Toggle buttons change views",
+      "KPIs Rendimiento Economico": "PASS - Shows Capital Total, Ingresos, Costos + Gastos, Utilidad, ROI Global",
+      "KPIs Recuperacion de Caja": "PASS - Shows Capital Invertido, Cobrado Real, Pagado Real, Flujo Neto Caja, Por Recuperar",
+      "Rentabilidad table (Rendimiento view)": "PASS - Shows Linea de Negocio, Capital Neto, Ingresos, Costos, Gastos, Utilidad, ROI",
+      "Rentabilidad table (Recuperacion view)": "PASS - Shows Linea de Negocio, Capital Neto, Cobrado Real, Pagado Real, Flujo Neto, Por Recuperar, Payback Est., Flujo Mensual",
+      "Registrar Capital modal": "PASS - Opens with all form fields (linea_negocio_id, fecha, tipo_movimiento, monto, observacion)",
+      "Capital creation flow": "PASS - Form submits successfully, toast shows 'Movimiento registrado', modal closes",
+      "Capital movimientos table": "PASS - Shows Fecha, Linea, Tipo, Monto, Observacion with delete button",
+      "Valorizacion Inventario page /valorizacion-inventario": "PASS - Page loads with data-testid='valorizacion-page'",
+      "Valorizacion KPIs": "PASS - Shows Total Articulos (10), Valor Total FIFO (S/ 5,141.50), Valor Total Promedio (S/ 0.00)",
+      "Valorizacion filters": "PASS - Search box and category dropdown working",
+      "Valorizacion table": "PASS - Shows Codigo, Nombre, Categoria, Unidad, Stock, Costo FIFO Unit., Valor FIFO, Costo Promedio, Valor Promedio",
+      "Expandable FIFO lots": "PASS - Clicking row expands to show lotes with Fecha Ingreso, Documento, Cant. Disponible, Costo Unitario, Valor Lote",
+      "Search filter": "PASS - Typing 'BOTON' filters to show 1 result",
+      "Sidebar Rentabilidad x Linea link": "PASS - data-testid='nav-rentabilidad-linea' navigates to /rentabilidad-linea",
+      "Sidebar Valorizacion Inventario link": "PASS - data-testid='nav-valorizacion-inventario' navigates to /valorizacion-inventario"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_capital_linea_valorizacion.py",
+    "/app/test_reports/pytest/pytest_capital_linea_iter25.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_capital_linea_valorizacion.py"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 tests passed)",
+    "frontend": "100% (all UI elements and integrations verified)"
+  },
+  "test_credentials": {
+    "empresa_id": "6 (Ambission Industries SAC)",
+    "linea_negocio_ids": "7 (Línea Principal), 8 (Línea Secundaria)",
+    "api_base_url": "https://three-layer-erp.preview.emergentagent.com"
+  },
+  "test_data_observed": {
+    "rentabilidad_linea": {
+      "linea_principal": {
+        "capital_neto": "S/ 0.00 (no capital movements)",
+        "ingresos": "S/ 0.00",
+        "costos": "S/ 15,000.00",
+        "utilidad": "S/ -15,000.00"
+      },
+      "linea_secundaria": {
+        "capital_neto": "S/ 0.00",
+        "ingresos": "S/ 0.00",
+        "costos": "S/ 0.00",
+        "utilidad": "S/ 0.00"
+      }
+    },
+    "valorizacion_inventario": {
+      "total_articulos": 10,
+      "total_valor_fifo": "S/ 5,141.50",
+      "categorias": ["Avios", "Otros", "Telas"],
+      "sample_articles": [
+        "EBT-001 BOTON DORADO: Stock 450, FIFO S/ 67.50 (costo unit S/ 0.15)",
+        "ENL-001 NYLON 28: Stock 1,215, FIFO S/ 972.00 (costo unit S/ 0.80)",
+        "PT-003 Pantalón Cargo Comfort: Stock 300, FIFO S/ 2,094.00 (costo unit S/ 6.98)"
+      ]
+    }
+  },
+  "seed_data_creation": "Created and cleaned up 1 test capital movement via UI (UI_TEST: Capital inicial from Playwright)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Capital Linea Negocio CRUD fully working. Rentabilidad per line shows both Rendimiento Economico (devengado) and Recuperacion de Caja (real cash) views. Valorizacion Inventario reads from produccion schema (read-only) with FIFO lots expandable. Both pages have sidebar navigation working. Linea Principal has S/ 15,000 in costos from factura proveedor. No capital movements exist currently (cleaned up after tests)."
+}

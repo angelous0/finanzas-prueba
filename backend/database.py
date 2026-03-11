@@ -1139,5 +1139,27 @@ async def create_schema():
         for stmt in tesoreria_indexes:
             await conn.execute(stmt)
 
+        # ══════════════════════════════════════
+        # CAPITAL POR LINEA DE NEGOCIO
+        # ══════════════════════════════════════
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_capital_linea_negocio (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                linea_negocio_id INT NOT NULL REFERENCES finanzas2.cont_linea_negocio(id),
+                marca_id INT REFERENCES finanzas2.cont_marca(id),
+                proyecto_id INT REFERENCES finanzas2.cont_proyecto(id),
+                fecha DATE NOT NULL,
+                tipo_movimiento VARCHAR(20) NOT NULL CHECK (tipo_movimiento IN ('capital_inicial', 'aporte', 'retiro')),
+                monto NUMERIC(15,2) NOT NULL CHECK (monto > 0),
+                observacion TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_capital_ln_empresa ON finanzas2.cont_capital_linea_negocio(empresa_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_capital_ln_linea ON finanzas2.cont_capital_linea_negocio(empresa_id, linea_negocio_id)")
+
+
 
         logger.info("Schema finanzas2 and all tables created/verified successfully")
