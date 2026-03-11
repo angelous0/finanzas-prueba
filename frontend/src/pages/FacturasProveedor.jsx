@@ -395,14 +395,28 @@ export const FacturasProveedor = () => {
         fecha_factura: formData.fecha_factura || null,
         fecha_contable: formData.fecha_contable || formData.fecha_factura || null,
         fecha_vencimiento: formData.fecha_vencimiento || null,
-        lineas: formData.lineas.map(l => ({
-          ...l,
-          categoria_id: l.categoria_id ? parseInt(l.categoria_id) : null,
-          linea_negocio_id: l.linea_negocio_id ? parseInt(l.linea_negocio_id) : null,
-          centro_costo_id: l.centro_costo_id ? parseInt(l.centro_costo_id) : null,
-          importe: parseFloat(l.importe) || 0
-        }))
+        lineas: [
+          ...formData.lineas.map(l => ({
+            ...l,
+            categoria_id: l.categoria_id ? parseInt(l.categoria_id) : null,
+            linea_negocio_id: l.linea_negocio_id ? parseInt(l.linea_negocio_id) : null,
+            centro_costo_id: l.centro_costo_id ? parseInt(l.centro_costo_id) : null,
+            importe: parseFloat(l.importe) || 0
+          })),
+          ...formData.articulos.map(art => ({
+            articulo_id: art.articulo_id ? parseInt(art.articulo_id) : null,
+            modelo_corte_id: art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
+            linea_negocio_id: art.linea_negocio_id ? parseInt(art.linea_negocio_id) : null,
+            descripcion: art.unidad || null,
+            cantidad: parseFloat(art.cantidad) || 0,
+            precio_unitario: parseFloat(art.precio) || 0,
+            importe: (parseFloat(art.cantidad) || 0) * (parseFloat(art.precio) || 0),
+            igv_aplica: art.igv_aplica !== false
+          }))
+        ]
       };
+      // Remove articulos from payload (already merged into lineas)
+      delete dataToSend.articulos;
       
       // Validate required fields
       if (!dataToSend.fecha_factura) {
@@ -657,27 +671,31 @@ export const FacturasProveedor = () => {
       base_no_gravada: factura.base_no_gravada || 0,
       isc: factura.isc || 0,
       notas: factura.notas || '',
-      lineas: factura.lineas && factura.lineas.length > 0 
-        ? factura.lineas.map(l => ({
-            categoria_id: l.categoria_id || '',
-            descripcion: l.descripcion || '',
-            linea_negocio_id: l.linea_negocio_id || '',
-            centro_costo_id: l.centro_costo_id || '',
-            importe: l.importe || 0,
-            igv_aplica: l.igv_aplica !== false
-          }))
-        : [{ categoria_id: '', descripcion: '', linea_negocio_id: '', centro_costo_id: '', importe: 0, igv_aplica: true }],
-      articulos: factura.articulos && factura.articulos.length > 0
-        ? factura.articulos.map(a => ({
-            articulo_id: a.articulo_id || '',
-            modelo_corte_id: a.modelo_corte_id || '',
-            unidad: a.unidad || '',
-            cantidad: a.cantidad || 1,
-            precio: a.precio || 0,
-            linea_negocio_id: a.linea_negocio_id || '',
-            igv_aplica: a.igv_aplica !== false
-          }))
-        : []
+      lineas: (() => {
+        const catLines = (factura.lineas || []).filter(l => !l.articulo_id);
+        return catLines.length > 0
+          ? catLines.map(l => ({
+              categoria_id: l.categoria_id || '',
+              descripcion: l.descripcion || '',
+              linea_negocio_id: l.linea_negocio_id || '',
+              centro_costo_id: l.centro_costo_id || '',
+              importe: l.importe || 0,
+              igv_aplica: l.igv_aplica !== false
+            }))
+          : [{ categoria_id: '', descripcion: '', linea_negocio_id: '', centro_costo_id: '', importe: 0, igv_aplica: true }];
+      })(),
+      articulos: (() => {
+        const artLines = (factura.lineas || []).filter(l => l.articulo_id);
+        return artLines.map(a => ({
+          articulo_id: a.articulo_id || '',
+          modelo_corte_id: a.modelo_corte_id || '',
+          unidad: a.descripcion || '',
+          cantidad: a.cantidad || 1,
+          precio: a.precio_unitario || 0,
+          linea_negocio_id: a.linea_negocio_id || '',
+          igv_aplica: a.igv_aplica !== false
+        }));
+      })()
     });
     
     setShowModal(true);

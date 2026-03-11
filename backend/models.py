@@ -341,6 +341,9 @@ class FacturaLineaBase(BaseModel):
     centro_costo_id: Optional[int] = None
     importe: float
     igv_aplica: bool = True
+    cantidad: Optional[float] = None
+    precio_unitario: Optional[float] = None
+    modelo_corte_id: Optional[int] = None
 
 class FacturaLineaCreate(FacturaLineaBase):
     pass

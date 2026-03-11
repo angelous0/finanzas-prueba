@@ -383,10 +383,11 @@ async def create_factura_proveedor(data: FacturaProveedorCreate, empresa_id: int
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_factura_proveedor_linea
                     (empresa_id, factura_id, categoria_id, articulo_id, descripcion, linea_negocio_id,
-                     centro_costo_id, importe, igv_aplica)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                     centro_costo_id, importe, igv_aplica, cantidad, precio_unitario, modelo_corte_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 """, empresa_id, factura_id, linea.categoria_id, linea.articulo_id, linea.descripcion,
-                    linea.linea_negocio_id, linea.centro_costo_id, linea.importe, linea.igv_aplica)
+                    linea.linea_negocio_id, linea.centro_costo_id, linea.importe, linea.igv_aplica,
+                    linea.cantidad, linea.precio_unitario, linea.modelo_corte_id)
             await conn.execute("""
                 INSERT INTO finanzas2.cont_cxp
                 (empresa_id, factura_id, proveedor_id, monto_original, saldo_pendiente, fecha_vencimiento, estado)
