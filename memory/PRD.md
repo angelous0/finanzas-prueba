@@ -86,6 +86,10 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 - [x] Sidebar: 4 items in Finanzas Gerenciales section
 
 ### Fase 7: Reportes Gerenciales (P2)
+- [x] Endpoint /api/reportes/resumen-ejecutivo (CFO dashboard: tesoreria, CxC/CxP, ventas/gastos MTD, liquidez neta)
+- [x] 5 CSV export endpoints: CxC, CxP, Flujo de Caja, Rentabilidad por Marca, Gastos
+- [x] Reportes.jsx: 10 KPI cards (Resumen Ejecutivo CFO) + 5 download rows with date filters
+- [x] Fixed: exportar_gastos g.tercero_id -> g.proveedor_id
 
 ## Key Design Rules
 1. "El reconocimiento financiero se decide en la cabecera; la atribucion economica se calcula en el detalle"
