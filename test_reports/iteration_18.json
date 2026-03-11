@@ -72,7 +72,7 @@
   "test_credentials": {
     "empresa_id": 6,
     "empresa_name": "Ambission Industries SAC",
-    "api_base_url": "https://cash-flow-hub-41.preview.emergentagent.com"
+    "api_base_url": "https://three-layer-erp.preview.emergentagent.com"
   },
   "seed_data_creation": "Created 2 test gastos (GAS-2026-00007, GAS-2026-00008) with associated pagos for testing",
   "retest_needed": false,

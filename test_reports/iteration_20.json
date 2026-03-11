@@ -80,7 +80,7 @@
   "test_credentials": {
     "empresa_id": "6 (Ambission Industries SAC)",
     "test_data": "CxC/CxP records created during testing have 'TEST-' prefix",
-    "api_base_url": "https://cash-flow-hub-41.preview.emergentagent.com"
+    "api_base_url": "https://three-layer-erp.preview.emergentagent.com"
   },
   "seed_data_creation": "Test data created with prefixes: TEST-CXC-001, E2E-TEST-CXC-ABONO, TEST-CXP-001, etc. These can be cleaned up if needed.",
   "retest_needed": false,
