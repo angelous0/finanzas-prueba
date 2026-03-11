@@ -23,6 +23,7 @@ const ChartTooltip = ({ active, payload }) => {
     <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.8rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '0.78rem' }}>
       <div style={{ fontWeight: 600, marginBottom: '0.3rem' }}>{d?.dimension}</div>
       <div>Ingreso: <strong style={{ color: '#22C55E' }}>{fmt(d?.ingreso)}</strong></div>
+      <div>Costo: <strong style={{ color: '#F59E0B' }}>{fmt(d?.costo)}</strong></div>
       <div>Gasto: <strong style={{ color: '#EF4444' }}>{fmt(d?.gasto)}</strong></div>
       <div>Utilidad: <strong style={{ color: d?.utilidad >= 0 ? '#1B4D3E' : '#EF4444' }}>{fmt(d?.utilidad)}</strong></div>
       <div>Margen: <strong>{d?.margen_pct}%</strong></div>
@@ -97,7 +98,7 @@ export default function Rentabilidad() {
         </div>
 
         {/* KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
           <div className="card" style={{ padding: '1.25rem' }} data-testid="kpi-ingreso-total">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -107,10 +108,19 @@ export default function Rentabilidad() {
               <TrendingUp size={24} color="#22C55E" />
             </div>
           </div>
+          <div className="card" style={{ padding: '1.25rem' }} data-testid="kpi-costo-total">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>Costos (Compras)</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#F59E0B', fontFamily: "'Manrope', sans-serif" }}>{fmt(totales.costo)}</div>
+              </div>
+              <DollarSign size={24} color="#F59E0B" />
+            </div>
+          </div>
           <div className="card" style={{ padding: '1.25rem' }} data-testid="kpi-gasto-total">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>Gasto Total</div>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>Gastos Operativos</div>
                 <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#EF4444', fontFamily: "'Manrope', sans-serif" }}>{fmt(totales.gasto)}</div>
               </div>
               <DollarSign size={24} color="#EF4444" />
@@ -157,6 +167,7 @@ export default function Rentabilidad() {
                   <Tooltip content={<ChartTooltip />} />
                   <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
                   <Bar dataKey="ingreso" name="Ingreso" fill="#22C55E" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="costo" name="Costo" fill="#F59E0B" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="gasto" name="Gasto" fill="#EF4444" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="utilidad" name="Utilidad" radius={[4, 4, 0, 0]}>
                     {items.map((entry, i) => (
@@ -188,6 +199,7 @@ export default function Rentabilidad() {
                   <tr>
                     <th>{DIMENSION_LABELS[dimension]}</th>
                     <th className="text-right">Ingreso</th>
+                    <th className="text-right">Costo</th>
                     <th className="text-right">Gasto</th>
                     <th className="text-right">Utilidad</th>
                     <th className="text-right">Margen %</th>
@@ -198,6 +210,7 @@ export default function Rentabilidad() {
                     <tr key={i}>
                       <td style={{ fontWeight: 500 }}>{r.dimension}</td>
                       <td className="text-right" style={{ color: '#22C55E' }}>{fmt(r.ingreso)}</td>
+                      <td className="text-right" style={{ color: '#F59E0B' }}>{fmt(r.costo)}</td>
                       <td className="text-right" style={{ color: '#EF4444' }}>{fmt(r.gasto)}</td>
                       <td className="text-right" style={{ fontWeight: 700, color: r.utilidad >= 0 ? '#1B4D3E' : '#EF4444' }}>{fmt(r.utilidad)}</td>
                       <td className="text-right">

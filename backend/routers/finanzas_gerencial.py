@@ -130,6 +130,11 @@ async def rentabilidad(
             "proyecto": {"join_table": "cont_proyecto", "join_col": "proyecto_id", "name_col": "nombre"},
         }
         cfg = dim_config[dimension]
+        # Columns on line tables: linea_negocio_id, centro_costo_id
+        line_cols = {"linea_negocio_id", "centro_costo_id"}
+        # Columns on cont_gasto header: marca_id, proyecto_id, linea_negocio_id, centro_costo_id
+        gasto_header_cols = {"marca_id", "proyecto_id", "linea_negocio_id", "centro_costo_id"}
+        # cont_factura_proveedor header has NO dimensional columns
 
         ingresos_rows = await conn.fetch(f"""
             SELECT
@@ -147,48 +152,80 @@ async def rentabilidad(
             datetime.combine(fecha_desde, datetime.min.time()),
             datetime.combine(fecha_hasta, datetime.max.time()))
 
+        # Gastos: prefer line-level, else header-level
+        if cfg['join_col'] in line_cols:
+            gastos_join = f"LEFT JOIN {cfg['join_table']} m ON gl.{cfg['join_col']} = m.id"
+        elif cfg['join_col'] in gasto_header_cols:
+            gastos_join = f"LEFT JOIN {cfg['join_table']} m ON g.{cfg['join_col']} = m.id"
+        else:
+            gastos_join = f"LEFT JOIN {cfg['join_table']} m ON NULL"
         gastos_rows = await conn.fetch(f"""
             SELECT
                 COALESCE(m.{cfg['name_col']}, 'Sin Asignar') as dimension_name,
                 COALESCE(SUM(gl.importe), 0) as gasto
             FROM cont_gasto g
             JOIN cont_gasto_linea gl ON g.id = gl.gasto_id
-            LEFT JOIN {cfg['join_table']} m ON g.{cfg['join_col']} = m.id
+            {gastos_join}
             WHERE g.empresa_id = $1 AND g.fecha BETWEEN $2 AND $3
+            GROUP BY dimension_name
+        """, empresa_id, fecha_desde, fecha_hasta)
+
+        # Costos: facturas proveedor - only line-level joins available
+        if cfg['join_col'] in line_cols:
+            costos_join = f"LEFT JOIN {cfg['join_table']} m ON fpl.{cfg['join_col']} = m.id"
+        else:
+            # Dimension not on factura lines, all will be 'Sin Asignar'
+            costos_join = f"LEFT JOIN {cfg['join_table']} m ON FALSE"
+        costos_rows = await conn.fetch(f"""
+            SELECT
+                COALESCE(m.{cfg['name_col']}, 'Sin Asignar') as dimension_name,
+                COALESCE(SUM(fpl.importe), 0) as costo
+            FROM cont_factura_proveedor fp
+            JOIN cont_factura_proveedor_linea fpl ON fp.id = fpl.factura_id
+            {costos_join}
+            WHERE fp.empresa_id = $1 AND fp.fecha_factura BETWEEN $2 AND $3
             GROUP BY dimension_name
         """, empresa_id, fecha_desde, fecha_hasta)
 
         data = {}
         for r in ingresos_rows:
             name = r['dimension_name']
-            data.setdefault(name, {"ingreso": 0, "gasto": 0})
+            data.setdefault(name, {"ingreso": 0, "gasto": 0, "costo": 0})
             data[name]["ingreso"] += float(r['ingreso'])
         for r in gastos_rows:
             name = r['dimension_name']
-            data.setdefault(name, {"ingreso": 0, "gasto": 0})
+            data.setdefault(name, {"ingreso": 0, "gasto": 0, "costo": 0})
             data[name]["gasto"] += float(r['gasto'])
+        for r in costos_rows:
+            name = r['dimension_name']
+            data.setdefault(name, {"ingreso": 0, "gasto": 0, "costo": 0})
+            data[name]["costo"] += float(r['costo'])
 
         result = []
-        for name, vals in sorted(data.items(), key=lambda x: x[1]["ingreso"], reverse=True):
-            utilidad = vals["ingreso"] - vals["gasto"]
+        for name, vals in sorted(data.items(), key=lambda x: x[1]["ingreso"] + x[1]["costo"], reverse=True):
+            total_egreso = vals["gasto"] + vals["costo"]
+            utilidad = vals["ingreso"] - total_egreso
             margen = (utilidad / vals["ingreso"] * 100) if vals["ingreso"] > 0 else 0
             result.append({
                 "dimension": name,
                 "ingreso": vals["ingreso"],
+                "costo": vals["costo"],
                 "gasto": vals["gasto"],
                 "utilidad": utilidad,
                 "margen_pct": round(margen, 1),
             })
 
         total_ingreso = sum(r["ingreso"] for r in result)
+        total_costo = sum(r["costo"] for r in result)
         total_gasto = sum(r["gasto"] for r in result)
-        total_utilidad = total_ingreso - total_gasto
+        total_utilidad = total_ingreso - total_costo - total_gasto
         total_margen = round((total_utilidad / total_ingreso * 100) if total_ingreso > 0 else 0, 1)
 
         return {
             "data": result,
             "totales": {
                 "ingreso": total_ingreso,
+                "costo": total_costo,
                 "gasto": total_gasto,
                 "utilidad": total_utilidad,
                 "margen_pct": total_margen,
