@@ -260,6 +260,9 @@ export const upsertRetencionDetalle = (origen_tipo, origen_id, data) => api.put(
 // Cuentas Financieras Mapeo
 export const mapearCuentasDefault = () => api.post('/cuentas-financieras/mapear-cuentas-default');
 
+// Dashboard Financiero
+export const getDashboardFinanciero = (params) => api.get('/dashboard-financiero', { params });
+
 // Marcas
 export const getMarcas = () => api.get('/marcas');
 export const createMarca = (data) => api.post('/marcas', data);

@@ -5,7 +5,7 @@ import {
   Building2, Users, Wallet, BarChart3, FileSpreadsheet, Settings,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock, FolderOpen,
   Package, Tags, GitBranch, Target, Menu, X, ChevronLeft, BookOpen,
-  Tag, FolderKanban
+  Tag, FolderKanban, PieChart
 } from 'lucide-react';
 
 const navSections = [
@@ -13,6 +13,7 @@ const navSections = [
     title: 'Principal',
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: PieChart, label: 'Dashboard Financiero', path: '/dashboard-financiero' },
     ]
   },
   {

@@ -143,7 +143,7 @@ async def dashboard_financiero(
         cxp = await conn.fetchrow("""
             SELECT COALESCE(SUM(saldo_pendiente), 0) as total, COUNT(*) as cnt
             FROM cont_cxp
-            WHERE empresa_id = $1 AND estado NOT IN ('pagada', 'anulada')
+            WHERE empresa_id = $1 AND estado NOT IN ('pagado', 'anulada')
         """, empresa_id)
         total_cxp = float(cxp['total'] or 0)
         cnt_cxp = int(cxp['cnt'] or 0)
@@ -169,9 +169,11 @@ async def dashboard_financiero(
 
         # ── 10. Top CxC vencidas ──
         top_cxc = await conn.fetch("""
-            SELECT c.id, c.tercero_nombre, c.monto, c.saldo_pendiente, c.fecha_vencimiento,
+            SELECT c.id, COALESCE(t.nombre, 'Sin Cliente') as tercero_nombre,
+                   c.monto_original as monto, c.saldo_pendiente, c.fecha_vencimiento,
                    CURRENT_DATE - c.fecha_vencimiento as dias_atraso, c.tipo_origen
             FROM cont_cxc c
+            LEFT JOIN cont_tercero t ON t.id = c.cliente_id
             WHERE c.empresa_id = $1 AND c.estado NOT IN ('cobrada', 'anulada')
               AND c.fecha_vencimiento < CURRENT_DATE
             ORDER BY c.saldo_pendiente DESC LIMIT 5
@@ -179,10 +181,12 @@ async def dashboard_financiero(
 
         # ── 11. Top CxP por vencer ──
         top_cxp = await conn.fetch("""
-            SELECT c.id, c.tercero_nombre, c.monto, c.saldo_pendiente, c.fecha_vencimiento,
+            SELECT c.id, COALESCE(t.nombre, 'Sin Proveedor') as tercero_nombre,
+                   c.monto_original as monto, c.saldo_pendiente, c.fecha_vencimiento,
                    c.fecha_vencimiento - CURRENT_DATE as dias_por_vencer, c.tipo_origen
             FROM cont_cxp c
-            WHERE c.empresa_id = $1 AND c.estado NOT IN ('pagada', 'anulada')
+            LEFT JOIN cont_tercero t ON t.id = c.proveedor_id
+            WHERE c.empresa_id = $1 AND c.estado NOT IN ('pagado', 'anulada')
             ORDER BY c.fecha_vencimiento ASC LIMIT 5
         """, empresa_id)
 

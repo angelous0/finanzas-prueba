@@ -47,6 +47,7 @@ import ConfigContable from './pages/ConfigContable';
 import Asientos from './pages/Asientos';
 import Marcas from './pages/Marcas';
 import Proyectos from './pages/Proyectos';
+import DashboardFinanciero from './pages/DashboardFinanciero';
 
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
@@ -156,6 +157,7 @@ function App() {
           </button>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard-financiero" element={<DashboardFinanciero />} />
             
             {/* Ventas */}
             <Route path="/ventas-pos" element={<VentasPOS />} />
