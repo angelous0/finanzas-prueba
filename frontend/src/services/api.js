@@ -271,6 +271,12 @@ export const mapearCuentasDefault = () => api.post('/cuentas-financieras/mapear-
 // Dashboard Financiero
 export const getDashboardFinanciero = (params) => api.get('/dashboard-financiero', { params });
 
+// Flujo de Caja Gerencial
+export const getFlujoCajaGerencial = (params) => api.get('/flujo-caja-gerencial', { params });
+
+// Rentabilidad
+export const getRentabilidad = (params) => api.get('/rentabilidad', { params });
+
 // Marcas
 export const getMarcas = () => api.get('/marcas');
 export const createMarca = (data) => api.post('/marcas', data);

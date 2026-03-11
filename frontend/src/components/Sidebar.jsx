@@ -5,7 +5,7 @@ import {
   Building2, Users, Wallet, BarChart3, FileSpreadsheet, Settings,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock, FolderOpen,
   Package, Tags, GitBranch, Target, Menu, X, ChevronLeft, BookOpen,
-  Tag, FolderKanban, PieChart
+  Tag, FolderKanban, PieChart, TrendingUp, Activity
 } from 'lucide-react';
 
 const navSections = [
@@ -14,6 +14,13 @@ const navSections = [
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
       { icon: PieChart, label: 'Dashboard Financiero', path: '/dashboard-financiero' },
+    ]
+  },
+  {
+    title: 'Finanzas Gerenciales',
+    items: [
+      { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
+      { icon: TrendingUp, label: 'Rentabilidad', path: '/rentabilidad' },
     ]
   },
   {
@@ -79,7 +86,6 @@ const navSections = [
       { icon: BookOpen, label: 'Asientos', path: '/asientos' },
       { icon: BarChart3, label: 'Balance General', path: '/balance-general' },
       { icon: FileText, label: 'Estado de Resultados', path: '/estado-resultados' },
-      { icon: DollarSign, label: 'Flujo de Caja', path: '/flujo-caja' },
       { icon: CreditCard, label: 'Reporte de Pagos', path: '/reporte-pagos' },
     ]
   },

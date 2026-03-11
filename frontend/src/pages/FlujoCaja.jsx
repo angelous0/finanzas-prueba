@@ -1,55 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { getReporteFlujoCaja } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { getFlujoCajaGerencial } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import { toast } from 'sonner';
-import { ArrowUpCircle, ArrowDownCircle, TrendingUp } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, TrendingUp, RefreshCw } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  Legend, Line, ComposedChart
+} from 'recharts';
+
+const fmt = (n) => `S/ ${Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtShort = (v) => `S/ ${(v / 1000).toFixed(1)}k`;
+const fmtDate = (d) => {
+  if (!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+};
+
+const ChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.8rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '0.78rem' }}>
+      <div style={{ fontWeight: 600, marginBottom: '0.3rem' }}>{fmtDate(label)}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: p.color }}>
+          <span>{p.name}</span>
+          <span style={{ fontWeight: 600 }}>{fmt(p.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export default function FlujoCaja() {
   const { empresaActual } = useEmpresa();
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const hoy = new Date();
-  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  const [fechaDesde, setFechaDesde] = useState(inicioMes.toISOString().split('T')[0]);
+  const inicio3m = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1);
+  const [fechaDesde, setFechaDesde] = useState(inicio3m.toISOString().split('T')[0]);
   const [fechaHasta, setFechaHasta] = useState(hoy.toISOString().split('T')[0]);
+  const [agrupacion, setAgrupacion] = useState('diario');
 
-  const loadData = async () => {
-    if (!fechaDesde || !fechaHasta) return;
+  const loadData = useCallback(async () => {
+    if (!empresaActual || !fechaDesde || !fechaHasta) return;
     setLoading(true);
     try {
-      const res = await getReporteFlujoCaja(fechaDesde, fechaHasta);
-      setData(res.data || []);
+      const res = await getFlujoCajaGerencial({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta, agrupacion });
+      setData(res.data);
     } catch (err) {
       console.error(err);
       toast.error('Error al cargar flujo de caja');
     } finally {
       setLoading(false);
     }
-  };
+  }, [empresaActual, fechaDesde, fechaHasta, agrupacion]);
 
-  useEffect(() => {
-    loadData();
-  }, [fechaDesde, fechaHasta, empresaActual]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const totalIngresos = data.filter(d => d.tipo === 'ingreso').reduce((s, d) => s + d.monto, 0);
-  const totalEgresos = data.filter(d => d.tipo === 'egreso').reduce((s, d) => s + d.monto, 0);
-  const flujoNeto = totalIngresos - totalEgresos;
-
-  const fmt = (n) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const timeline = data?.timeline || [];
+  const totales = data?.totales || {};
 
   return (
     <div data-testid="flujo-caja-page">
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">Flujo de Caja</h1>
-          <p className="page-subtitle">Movimientos de efectivo por período</p>
+          <p className="page-subtitle">Ingresos, egresos y saldo acumulado por periodo</p>
         </div>
+        <button className="btn btn-primary" onClick={loadData} disabled={loading} data-testid="refresh-flujo-btn">
+          <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualizar
+        </button>
       </div>
 
-      {/* Filtros */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem 1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+      <div className="page-content">
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'end' }}>
           <div>
             <label className="form-label">Desde</label>
             <input type="date" className="form-input" value={fechaDesde}
@@ -60,80 +86,137 @@ export default function FlujoCaja() {
             <input type="date" className="form-input" value={fechaHasta}
               onChange={e => setFechaHasta(e.target.value)} data-testid="flujo-fecha-hasta" />
           </div>
+          <div>
+            <label className="form-label">Agrupacion</label>
+            <select className="form-input" value={agrupacion}
+              onChange={e => setAgrupacion(e.target.value)} data-testid="flujo-agrupacion">
+              <option value="diario">Diario</option>
+              <option value="semanal">Semanal</option>
+              <option value="mensual">Mensual</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em' }}>Ingresos</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }} data-testid="flujo-total-ingresos">{fmt(totalIngresos)}</div>
+        {/* KPI Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.25rem' }} data-testid="kpi-ingresos">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, letterSpacing: '0.05em' }}>Total Ingresos</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#22C55E', fontFamily: "'Manrope', sans-serif" }}>{fmt(totales.ingresos)}</div>
+              </div>
+              <ArrowUpCircle size={28} color="#22C55E" />
             </div>
-            <ArrowUpCircle size={28} style={{ color: '#10b981' }} />
+          </div>
+          <div className="card" style={{ padding: '1.25rem' }} data-testid="kpi-egresos">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, letterSpacing: '0.05em' }}>Total Egresos</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#EF4444', fontFamily: "'Manrope', sans-serif" }}>{fmt(totales.egresos)}</div>
+              </div>
+              <ArrowDownCircle size={28} color="#EF4444" />
+            </div>
+          </div>
+          <div className="card" style={{ padding: '1.25rem' }} data-testid="kpi-flujo-neto">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, letterSpacing: '0.05em' }}>Flujo Neto</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: totales.flujo_neto >= 0 ? '#22C55E' : '#EF4444', fontFamily: "'Manrope', sans-serif" }}>{fmt(totales.flujo_neto)}</div>
+              </div>
+              <TrendingUp size={28} color={totales.flujo_neto >= 0 ? '#22C55E' : '#EF4444'} />
+            </div>
           </div>
         </div>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em' }}>Egresos</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }} data-testid="flujo-total-egresos">{fmt(totalEgresos)}</div>
-            </div>
-            <ArrowDownCircle size={28} style={{ color: '#ef4444' }} />
-          </div>
-        </div>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em' }}>Flujo Neto</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: flujoNeto >= 0 ? '#10b981' : '#ef4444' }} data-testid="flujo-neto">{fmt(flujoNeto)}</div>
-            </div>
-            <TrendingUp size={28} style={{ color: flujoNeto >= 0 ? '#10b981' : '#ef4444' }} />
-          </div>
-        </div>
-      </div>
 
-      {/* Tabla */}
-      <div className="card">
-        {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>Cargando...</div>
-        ) : data.length === 0 ? (
-          <div className="empty-state" style={{ padding: '3rem' }}>
-            <TrendingUp size={48} style={{ color: '#d1d5db', marginBottom: '1rem' }} />
-            <div className="empty-state-title">Sin movimientos</div>
-            <p style={{ color: '#9ca3af' }}>No hay movimientos de caja en el período seleccionado</p>
+        {/* Chart */}
+        <div className="card" style={{ marginBottom: '1.5rem' }} data-testid="flujo-chart">
+          <div className="card-header">
+            <h3 className="card-title">Flujo de Caja - {agrupacion.charAt(0).toUpperCase() + agrupacion.slice(1)}</h3>
           </div>
-        ) : (
-          <table className="data-table" data-testid="flujo-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Concepto</th>
-                <th style={{ textAlign: 'right' }}>Ingreso</th>
-                <th style={{ textAlign: 'right' }}>Egreso</th>
-                <th style={{ textAlign: 'right' }}>Saldo Acum.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((row, i) => (
-                <tr key={i}>
-                  <td>{new Date(row.fecha + 'T00:00:00').toLocaleDateString('es-PE')}</td>
-                  <td>{row.concepto || '-'}</td>
-                  <td style={{ textAlign: 'right', color: '#10b981', fontWeight: row.tipo === 'ingreso' ? 600 : 400 }}>
-                    {row.tipo === 'ingreso' ? fmt(row.monto) : '-'}
-                  </td>
-                  <td style={{ textAlign: 'right', color: '#ef4444', fontWeight: row.tipo === 'egreso' ? 600 : 400 }}>
-                    {row.tipo === 'egreso' ? fmt(row.monto) : '-'}
-                  </td>
-                  <td style={{ textAlign: 'right', fontWeight: 600, color: row.saldo_acumulado >= 0 ? '#10b981' : '#ef4444' }}>
-                    {fmt(row.saldo_acumulado)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <div className="card-content" style={{ height: 340 }}>
+            {loading ? (
+              <div className="loading"><div className="loading-spinner"></div></div>
+            ) : timeline.length === 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--muted)' }}>
+                Sin movimientos en el periodo
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={timeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="periodo" tick={{ fontSize: 11 }} tickFormatter={fmtDate} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={fmtShort} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+                  <Bar dataKey="total_ingresos" name="Ingresos" fill="#22C55E" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total_egresos" name="Egresos" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="saldo_acumulado" name="Saldo Acum." stroke="#3B82F6" strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Detail Table */}
+        <div className="card" data-testid="flujo-table-card">
+          <div className="card-header">
+            <h3 className="card-title">Detalle por Periodo</h3>
+          </div>
+          <div className="data-table-wrapper">
+            {loading ? (
+              <div className="loading"><div className="loading-spinner"></div></div>
+            ) : timeline.length === 0 ? (
+              <div className="empty-state" style={{ padding: '2rem' }}>
+                <TrendingUp size={40} style={{ color: '#d1d5db', marginBottom: '0.5rem' }} />
+                <div className="empty-state-title">Sin movimientos</div>
+              </div>
+            ) : (
+              <table className="data-table" data-testid="flujo-table">
+                <thead>
+                  <tr>
+                    <th>Periodo</th>
+                    <th className="text-right">Ventas</th>
+                    <th className="text-right">Cobranzas</th>
+                    <th className="text-right" style={{ color: '#22C55E' }}>Total Ingresos</th>
+                    <th className="text-right">Gastos</th>
+                    <th className="text-right">Pagos CxP</th>
+                    <th className="text-right" style={{ color: '#EF4444' }}>Total Egresos</th>
+                    <th className="text-right">Flujo Neto</th>
+                    <th className="text-right">Saldo Acum.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeline.map((r, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 500 }}>{fmtDate(r.periodo)}</td>
+                      <td className="text-right">{fmt(r.ingresos_ventas)}</td>
+                      <td className="text-right">{fmt(r.cobranzas_cxc)}</td>
+                      <td className="text-right" style={{ fontWeight: 600, color: '#22C55E' }}>{fmt(r.total_ingresos)}</td>
+                      <td className="text-right">{fmt(r.egresos_gastos)}</td>
+                      <td className="text-right">{fmt(r.pagos_cxp)}</td>
+                      <td className="text-right" style={{ fontWeight: 600, color: '#EF4444' }}>{fmt(r.total_egresos)}</td>
+                      <td className="text-right" style={{ fontWeight: 600, color: r.flujo_neto >= 0 ? '#22C55E' : '#EF4444' }}>{fmt(r.flujo_neto)}</td>
+                      <td className="text-right" style={{ fontWeight: 700, color: r.saldo_acumulado >= 0 ? '#1B4D3E' : '#EF4444' }}>{fmt(r.saldo_acumulado)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ fontWeight: 700, borderTop: '2px solid var(--border)' }}>
+                    <td>TOTAL</td>
+                    <td className="text-right">{fmt(timeline.reduce((s, r) => s + r.ingresos_ventas, 0))}</td>
+                    <td className="text-right">{fmt(timeline.reduce((s, r) => s + r.cobranzas_cxc, 0))}</td>
+                    <td className="text-right" style={{ color: '#22C55E' }}>{fmt(totales.ingresos)}</td>
+                    <td className="text-right">{fmt(timeline.reduce((s, r) => s + r.egresos_gastos, 0))}</td>
+                    <td className="text-right">{fmt(timeline.reduce((s, r) => s + r.pagos_cxp, 0))}</td>
+                    <td className="text-right" style={{ color: '#EF4444' }}>{fmt(totales.egresos)}</td>
+                    <td className="text-right" style={{ color: totales.flujo_neto >= 0 ? '#22C55E' : '#EF4444' }}>{fmt(totales.flujo_neto)}</td>
+                    <td className="text-right"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
