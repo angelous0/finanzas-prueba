@@ -46,14 +46,18 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 
 ## In Progress: Finanzas Gerenciales
 
-### Fase 1 Remaining
-- [ ] Test Fase 1 CRUD with testing agent
+### Fase 1 DONE
+- [x] All foundational tables and migrations
+- [x] CRUD Marcas, Proyectos
 
 ### Fase 2: Dashboard Financiero (P0)
-- [ ] SQL view vw_ingresos_confirmados (por marca desde detalle POS)
-- [ ] Endpoint /api/dashboard-financiero with all KPIs
-- [ ] Dashboard screen: Devengado vs Flujo Caja
-- [ ] Filtros: empresa, marca, linea, CC, proyecto, periodo
+- [x] Endpoint /api/dashboard-financiero with all KPIs
+- [x] Dashboard screen: KPIs (Tesoreria, Devengado, Obligaciones), Filtros, Graficos, Tablas
+- [x] Filtros: empresa, marca, linea, CC, proyecto, periodo
+- [x] Ingresos por Marca (pie chart), CxC Aging (bar chart)
+- [x] Top 5 CxC vencidas, Top 5 CxP por vencer
+- [x] Ventas POS resumen por estado
+- [x] Fixed: CxP enum 'pagado' vs 'pagada', tercero_nombre JOIN
 
 ### Fase 3: CxC + CxP Mejoradas (P0)
 - [ ] Rewrite CxC: aging, abonos, alertas, auto-create from credito + saldo pendiente
