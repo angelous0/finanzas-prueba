@@ -79,6 +79,12 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 - [x] Rentabilidad.jsx: BarChart, KPIs, margen badges
 
 ### Fase 6: ROI + Presupuesto vs Real (P2)
+- [x] Endpoint /api/presupuesto-vs-real (by category and month, with execution bars)
+- [x] Endpoint /api/roi-proyectos (investment tracking by project)
+- [x] PresupuestoVsReal.jsx: 4 KPIs, bar chart por mes, table con progress bars
+- [x] RoiProyectos.jsx: 4 KPIs, horizontal bar chart, table con ROI % badges
+- [x] Sidebar: 4 items in Finanzas Gerenciales section
+
 ### Fase 7: Reportes Gerenciales (P2)
 
 ## Key Design Rules
