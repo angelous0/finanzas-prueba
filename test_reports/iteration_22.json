@@ -1,0 +1,83 @@
+{
+  "summary": "Complete testing of Phase 6 (Presupuesto vs Real and ROI Proyectos). Backend: 15/15 tests passed (100%). Frontend: All UI elements verified - 4 KPIs, charts, tables, year/date selectors, progress bars, status icons, sidebar navigation with all 4 Finanzas Gerenciales items.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Charts (Recharts)",
+        "issues": ["Console warnings about chart dimensions when container has no data - cosmetic only, not a functional issue"]
+      }
+    ]
+  },
+  "features_tested": {
+    "backend_api": {
+      "GET /api/presupuesto-vs-real?anio=2026": "PASS - Returns presupuesto id=2, nombre='Presupuesto Operativo 2026'",
+      "presupuesto-vs-real totales 2026": "PASS - presupuestado=16500, real=0, desviacion=16500, ejecucion_pct=0",
+      "presupuesto-vs-real por_mes 2026": "PASS - 12 months array with Ene=5000, Feb=6000, Mar=5500",
+      "presupuesto-vs-real data by category 2026": "PASS - Returns data array with categoria breakdown",
+      "GET /api/presupuesto-vs-real?anio=2025": "PASS - Returns presupuesto=null, empty data/por_mes, zero totales",
+      "presupuesto-vs-real missing anio": "PASS - Returns 422",
+      "presupuesto-vs-real missing empresa_id": "PASS - Returns 400",
+      "GET /api/roi-proyectos basic": "PASS - Returns data array and totales structure",
+      "roi-proyectos totales structure": "PASS - Has inversion, retorno, utilidad, roi_pct fields",
+      "roi-proyectos empty data (no projects)": "PASS - Returns empty data array, zero totales",
+      "roi-proyectos date filters": "PASS - Returns fecha_desde and fecha_hasta correctly",
+      "roi-proyectos missing fecha_desde": "PASS - Returns 422",
+      "roi-proyectos missing fecha_hasta": "PASS - Returns 422",
+      "roi-proyectos missing empresa_id": "PASS - Returns 400",
+      "roi-proyectos data item structure": "PASS - Items have proyecto, proyecto_id, inversion, retorno, utilidad, roi_pct"
+    },
+    "frontend_ui": {
+      "Presupuesto vs Real page title": "PASS - 'Presupuesto vs Real' with subtitle 'Presupuesto Operativo 2026'",
+      "Presupuesto vs Real 4 KPI cards": "PASS - Presupuestado (S/16,500.00), Gasto Real (S/0.00), Desviacion (S/16,500.00), Ejecucion (0%)",
+      "Presupuesto vs Real year selector": "PASS - Dropdown with 2024-2027, 2026 selected by default",
+      "Presupuesto vs Real bar chart (por mes)": "PASS - Shows 12 months with Ene/Feb/Mar having blue bars for budget",
+      "Presupuesto vs Real table columns": "PASS - 6 columns: Categoria, Presupuestado, Real, Desviacion, Ejecucion, Estado",
+      "Presupuesto vs Real table progress bars": "PASS - Ejecucion column shows progress bar (0% empty)",
+      "Presupuesto vs Real table status icons": "PASS - Estado column shows CheckCircle (green) for under-budget",
+      "Presupuesto vs Real 2025 no budget": "PASS - Shows 'Sin presupuesto definido', 'No hay presupuesto para 2025', empty state",
+      "ROI Proyectos page title": "PASS - 'ROI por Proyecto' with subtitle 'Retorno sobre la inversion por proyecto'",
+      "ROI Proyectos 4 KPI cards": "PASS - Inversion Total, Retorno Total, Utilidad Neta, ROI Global (all S/0.00 and 0%)",
+      "ROI Proyectos date filters": "PASS - Desde and Hasta date inputs visible",
+      "ROI Proyectos chart": "PASS - Shows 'No hay proyectos con datos' empty state",
+      "ROI Proyectos table": "PASS - Shows 'No hay proyectos' empty state",
+      "Sidebar 'Finanzas Gerenciales' section": "PASS - Section visible with all 4 items",
+      "Sidebar Flujo de Caja link": "PASS - nav-flujo-caja exists",
+      "Sidebar Rentabilidad link": "PASS - nav-rentabilidad exists",
+      "Sidebar Presupuesto vs Real link": "PASS - nav-presupuesto-vs-real exists",
+      "Sidebar ROI Proyectos link": "PASS - nav-roi-proyectos exists",
+      "Refresh buttons": "PASS - Both pages have working Actualizar buttons"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_presupuesto_roi_phase6.py",
+    "/app/test_reports/pytest/pytest_presupuesto_roi_iter22.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_presupuesto_roi_phase6.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% (all UI elements and interactions verified)"
+  },
+  "test_credentials": {
+    "empresa_id": "6 (Ambission Industries SAC)",
+    "api_base_url": "https://cash-flow-hub-41.preview.emergentagent.com",
+    "test_data": "Presupuesto 'Presupuesto Operativo 2026' (id=2) with S/16,500 total across Ene/Feb/Mar. No active projects exist."
+  },
+  "seed_data_creation": "None - used existing presupuesto data from previous phases",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 6 (Presupuesto vs Real + ROI Proyectos) fully tested and working. Backend endpoints in /app/backend/routers/finanzas_gerencial.py. Presupuesto vs Real compares cont_presupuesto_linea budget amounts against cont_gasto_linea real gastos by category and month. ROI Proyectos tracks cont_gasto investments by project (retorno currently returns 0 as there's no direct POS attribution to projects - this is expected behavior). Sidebar has 'Finanzas Gerenciales' section with 4 items: Flujo de Caja, Rentabilidad, Presupuesto vs Real, ROI Proyectos. Frontend pages use recharts (BarChart).",
+  "notes": {
+    "roi_retorno": "ROI retorno is currently 0 for all projects as there's no direct POS-to-project attribution mechanism. Only investment tracking (gastos by project) is implemented. This is expected behavior per the agent context.",
+    "no_projects": "No active projects exist in the system, so ROI page shows empty state. When projects are added with gastos assigned to them, they will appear."
+  }
+}

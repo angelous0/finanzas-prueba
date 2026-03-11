@@ -49,6 +49,8 @@ import Marcas from './pages/Marcas';
 import Proyectos from './pages/Proyectos';
 import DashboardFinanciero from './pages/DashboardFinanciero';
 import Rentabilidad from './pages/Rentabilidad';
+import PresupuestoVsReal from './pages/PresupuestoVsReal';
+import RoiProyectos from './pages/RoiProyectos';
 
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
@@ -160,6 +162,8 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard-financiero" element={<DashboardFinanciero />} />
             <Route path="/rentabilidad" element={<Rentabilidad />} />
+            <Route path="/presupuesto-vs-real" element={<PresupuestoVsReal />} />
+            <Route path="/roi-proyectos" element={<RoiProyectos />} />
             
             {/* Ventas */}
             <Route path="/ventas-pos" element={<VentasPOS />} />

@@ -21,6 +21,8 @@ const navSections = [
     items: [
       { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
       { icon: TrendingUp, label: 'Rentabilidad', path: '/rentabilidad' },
+      { icon: Target, label: 'Presupuesto vs Real', path: '/presupuesto-vs-real' },
+      { icon: PieChart, label: 'ROI Proyectos', path: '/roi-proyectos' },
     ]
   },
   {

@@ -277,6 +277,12 @@ export const getFlujoCajaGerencial = (params) => api.get('/flujo-caja-gerencial'
 // Rentabilidad
 export const getRentabilidad = (params) => api.get('/rentabilidad', { params });
 
+// Presupuesto vs Real
+export const getPresupuestoVsReal = (params) => api.get('/presupuesto-vs-real', { params });
+
+// ROI Proyectos
+export const getRoiProyectos = (params) => api.get('/roi-proyectos', { params });
+
 // Marcas
 export const getMarcas = () => api.get('/marcas');
 export const createMarca = (data) => api.post('/marcas', data);
