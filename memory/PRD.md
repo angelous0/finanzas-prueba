@@ -1,76 +1,75 @@
 # Finanzas 4.0 - PRD
 
 ## Problema Original
-Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreSQL) para empresas peruanas. Incluye: compras, facturas, pagos, letras, gastos, planillas, ventas POS, conciliacion bancaria, contabilidad, reportes y exportacion SUNAT.
+Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreSQL) para empresas peruanas textiles/multimarca.
 
 ## Arquitectura
-
-### Backend (Refactored - Mar 2026)
-```
-/app/backend/
-  server.py              # Orchestrator (~175 lines) - CORS, startup/shutdown, router includes
-  dependencies.py        # Shared: get_empresa_id, get_next_correlativo, safe_date_param
-  models.py              # Pydantic models
-  database.py            # PostgreSQL pool + schema init
-  contabilidad.py        # Accounting business logic
-  odoo_service.py        # (DEPRECATED) Odoo POS integration - kept temporarily for backward compat
-  routers/
-    core.py              # health, root (2 endpoints)
-    dashboard.py         # KPIs (1 endpoint)
-    empresas.py          # CRUD empresas (4 endpoints)
-    maestros.py          # monedas, categorias, centros_costo, lineas_negocio (15 endpoints)
-    cuentas_financieras.py  # CRUD + kardex + recalcular (7 endpoints)
-    terceros.py          # terceros + proveedores + clientes + empleados (10 endpoints)
-    articulos.py         # articulos + inventario + modelos (5 endpoints)
-    compras.py           # ordenes de compra + facturas proveedor (14 endpoints)
-    pagos.py             # pagos + letras (8 endpoints)
-    gastos.py            # gastos + adelantos (9 endpoints)
-    planillas.py         # planillas (5 endpoints)
-    ventas_pos.py        # ventas POS from odoo schema + pagos POS + config mapping (14 endpoints)
-    cxc_cxp.py           # cuentas por cobrar/pagar (2 endpoints)
-    presupuestos.py      # presupuestos (5 endpoints)
-    banco.py             # conciliacion bancaria (9 endpoints)
-    reportes.py          # reportes financieros (3 endpoints)
-    contabilidad.py      # cuentas contables + config + asientos + periodos (20 endpoints)
-    export.py            # export CompraAPP Excel (1 endpoint)
-```
-
-### Frontend
-- React with Tailwind CSS + Shadcn/UI
-- 31 sidebar navigation items
-- All API calls via REACT_APP_BACKEND_URL
-
-### Database
-- PostgreSQL (asyncpg) at 72.60.241.216:9090/datos
-- Schemas: finanzas2 (app data), odoo (pre-synced Odoo views)
-- Key tables: cont_empresa, cont_factura_proveedor, cont_pago, cont_gasto, cont_venta_pos, cont_asiento, cont_empresa_odoo_map, cont_venta_pos_estado
-- Key views (odoo schema): v_pos_order_enriched, v_pos_line_full
+- Backend: FastAPI con routers modulares en /app/backend/routers/
+- Frontend: React con Tailwind CSS + Shadcn/UI
+- Database: PostgreSQL (asyncpg) schemas: finanzas2, odoo
+- Odoo Integration: POST {ODOO_MODULE_BASE_URL}/api/sync/pos
 
 ## What's Been Implemented
-- [x] Full backend refactoring from monolithic 5760-line server.py to 18 domain routers (Mar 2026)
-- [x] All 132+ API endpoints preserved and working
-- [x] Frontend fully compatible with refactored backend
-- [x] Testing: 100% pass rate (33 backend tests + 8 frontend page tests)
-- [x] Shared dependencies module (get_empresa_id, get_next_correlativo, safe_date_param)
-- [x] POS Data Source Change: Backend reads from odoo schema (v_pos_order_enriched, v_pos_line_full) (Mar 2026)
-- [x] Company mapping table (cont_empresa_odoo_map) + GET/PUT /config/odoo-company-map endpoints
-- [x] Local state table (cont_venta_pos_estado) for estado_local, notas per order
-- [x] MISSING_ODOO_COMPANY_KEY error + frontend config screen
-- [x] Mandatory pagination on GET /ventas-pos (page, page_size params, ordered by date_order DESC)
-- [x] On-demand product line fetching: GET /ventas-pos/{order_id}/lineas
-- [x] Frontend VentasPOS.jsx fully adapted to new paginated API
-- [x] Sync buttons removed from frontend UI (backend sync endpoint kept read-only)
-- [x] Testing: 100% pass rate (13 backend + all frontend tests for POS module)
 
-- [x] Boton "Actualizar" en Ventas POS que re-ejecuta fetch con filtros actuales + campo max_date_order en respuesta API (Mar 2026)
-- [x] Conexion real con modulo Odoo: POST /api/ventas-pos/refresh -> POST {ODOO_MODULE_BASE_URL}/api/sync/pos funcionando (Mar 2026)
+### Backend Refactoring (Mar 2026)
+- [x] Migrated from monolithic server.py to 20 domain routers
 
-- [x] Cleanup dead code: eliminado odoo_service.py, _list_from_legacy(), POST /ventas-pos/sync, syncVentasPOS export, import List no usado (Mar 2026)
-- [x] Fix timezone: formatDateTime ya no hace doble conversion UTC-5 (Mar 2026)
+### POS Data Source (Mar 2026)
+- [x] Reads from odoo schema (v_pos_order_enriched, v_pos_line_full)
+- [x] Paginated GET /api/ventas-pos with max_date_order
+- [x] On-demand GET /api/ventas-pos/{id}/lineas
+- [x] MISSING_ODOO_COMPANY_KEY config screen
+- [x] POST /api/ventas-pos/refresh triggers Odoo sync
+- [x] Connected to real Odoo module at api.odoo.ambissionindustries.cloud
 
-## Backlog
-- P1: Configurar ODOO_MODULE_BASE_URL cuando modulo Odoo este listo
-- P2: UI/endpoints for managing company mappings (/config/odoo-company-map management page)
-- P2: Add OpenAPI tags to routers for better Swagger docs
-- P3: Add unit tests per router module
-- P3: Custom hook useFormSubmit in frontend
+### Gastos (Mar 2026)
+- [x] IGV Incluido toggle (same as Facturas)
+
+### Cleanup (Mar 2026)
+- [x] Deleted odoo_service.py, _list_from_legacy, POST /ventas-pos/sync, unused imports
+- [x] Fixed timezone double conversion in formatDateTime
+
+### Finanzas Gerenciales - Fase 1 Fundaciones (Mar 2026)
+- [x] cont_marca table + seed 9 brands from Odoo (AMBISSION, BOOSH, ELEMENT DENIM, ELEMENT PREMIUM, EP Studio, PSICOSIS, QEPO, REDDOOR, SPACE)
+- [x] cont_proyecto table (campanas, colecciones, producciones)
+- [x] cont_cxc_abono table (abonos a cuentas por cobrar)
+- [x] cont_cxp_abono table (abonos a cuentas por pagar)
+- [x] Extended cont_venta_pos_estado: monto_cobrado, saldo_pendiente, estado_cobranza
+- [x] Extended cont_cxc: tipo_origen, odoo_order_id, marca_id, proyecto_id, dias_atraso
+- [x] Extended cont_cxp: tipo_origen, marca_id, proyecto_id, dias_vencido, categoria_id
+- [x] Extended cont_gasto: marca_id, proyecto_id
+- [x] Extended cont_pago: marca_id, proyecto_id
+- [x] Extended cont_presupuesto_linea: marca_id, proyecto_id, tipo
+- [x] CRUD endpoints: /api/marcas, /api/proyectos
+- [x] Frontend pages: Marcas.jsx, Proyectos.jsx
+- [x] Sidebar entries under CATALOGOS
+
+## In Progress: Finanzas Gerenciales
+
+### Fase 1 Remaining
+- [ ] Test Fase 1 CRUD with testing agent
+
+### Fase 2: Dashboard Financiero (P0)
+- [ ] SQL view vw_ingresos_confirmados (por marca desde detalle POS)
+- [ ] Endpoint /api/dashboard-financiero with all KPIs
+- [ ] Dashboard screen: Devengado vs Flujo Caja
+- [ ] Filtros: empresa, marca, linea, CC, proyecto, periodo
+
+### Fase 3: CxC + CxP Mejoradas (P0)
+- [ ] Rewrite CxC: aging, abonos, alertas, auto-create from credito + saldo pendiente
+- [ ] Rewrite CxP: aging, pagos parciales, cronograma
+- [ ] Auto-create CxC when venta POS goes to "credito" or has saldo_pendiente
+
+### Fase 4: Flujo de Caja (P1)
+### Fase 5: Rentabilidad (P1)
+### Fase 6: ROI + Presupuesto vs Real (P2)
+### Fase 7: Reportes Gerenciales (P2)
+
+## Key Design Rules
+1. "El reconocimiento financiero se decide en la cabecera; la atribucion economica se calcula en el detalle"
+2. Separar confirmada de cobrada: estado_local + estado_cobranza
+3. CxC auto-create: credito OR saldo_pendiente > 0
+4. Marca SIEMPRE desde detalle POS, NUNCA desde cabecera
+5. Dashboard: Devengado (ingresos confirmados) vs Flujo Caja (cobranzas reales)
+6. Rentabilidad preparada para: ingreso - costo_venta - gastos (inicialmente ingreso - gastos)
+7. Jerarquia analitica: empresa > marca > linea_negocio > centro_costo > proyecto

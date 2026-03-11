@@ -4,7 +4,8 @@ import {
   LayoutDashboard, ShoppingCart, FileText, Receipt, CreditCard, 
   Building2, Users, Wallet, BarChart3, FileSpreadsheet, Settings,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock, FolderOpen,
-  Package, Tags, GitBranch, Target, Menu, X, ChevronLeft, BookOpen
+  Package, Tags, GitBranch, Target, Menu, X, ChevronLeft, BookOpen,
+  Tag, FolderKanban
 } from 'lucide-react';
 
 const navSections = [
@@ -65,6 +66,8 @@ const navSections = [
       { icon: Tags, label: 'Categorías', path: '/categorias' },
       { icon: GitBranch, label: 'Líneas de Negocio', path: '/lineas-negocio' },
       { icon: Target, label: 'Centros de Costo', path: '/centros-costo' },
+      { icon: Tag, label: 'Marcas', path: '/marcas' },
+      { icon: FolderKanban, label: 'Proyectos', path: '/proyectos' },
     ]
   },
   {

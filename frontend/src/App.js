@@ -45,6 +45,8 @@ import ReportePagos from './pages/ReportePagos';
 import CuentasContables from './pages/CuentasContables';
 import ConfigContable from './pages/ConfigContable';
 import Asientos from './pages/Asientos';
+import Marcas from './pages/Marcas';
+import Proyectos from './pages/Proyectos';
 
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
@@ -190,6 +192,8 @@ function App() {
             <Route path="/categorias" element={<Categorias />} />
             <Route path="/lineas-negocio" element={<LineasNegocio />} />
             <Route path="/centros-costo" element={<CentrosCosto />} />
+            <Route path="/marcas" element={<Marcas />} />
+            <Route path="/proyectos" element={<Proyectos />} />
             
             {/* Contabilidad */}
             <Route path="/balance-general" element={<BalanceGeneral />} />

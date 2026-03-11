@@ -260,4 +260,16 @@ export const upsertRetencionDetalle = (origen_tipo, origen_id, data) => api.put(
 // Cuentas Financieras Mapeo
 export const mapearCuentasDefault = () => api.post('/cuentas-financieras/mapear-cuentas-default');
 
+// Marcas
+export const getMarcas = () => api.get('/marcas');
+export const createMarca = (data) => api.post('/marcas', data);
+export const updateMarca = (id, data) => api.put(`/marcas/${id}`, data);
+export const deleteMarca = (id) => api.delete(`/marcas/${id}`);
+
+// Proyectos
+export const getProyectos = () => api.get('/proyectos');
+export const createProyecto = (data) => api.post('/proyectos', data);
+export const updateProyecto = (id, data) => api.put(`/proyectos/${id}`, data);
+export const deleteProyecto = (id) => api.delete(`/proyectos/${id}`);
+
 export default api;

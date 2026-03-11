@@ -935,4 +935,167 @@ async def create_schema():
             END $$;
         """)
 
+        # ══════════════════════════════════════
+        # FASE 1: FINANZAS GERENCIALES
+        # ══════════════════════════════════════
+
+        # -- cont_marca
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_marca (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                nombre VARCHAR(100) NOT NULL,
+                codigo VARCHAR(20),
+                odoo_marca_key VARCHAR(100),
+                activo BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # -- cont_proyecto
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_proyecto (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                nombre VARCHAR(200) NOT NULL,
+                codigo VARCHAR(30),
+                marca_id INT REFERENCES finanzas2.cont_marca(id),
+                linea_negocio_id INT REFERENCES finanzas2.cont_linea_negocio(id),
+                centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id),
+                fecha_inicio DATE,
+                fecha_fin DATE,
+                presupuesto NUMERIC(14,2) DEFAULT 0,
+                estado VARCHAR(20) DEFAULT 'activo',
+                notas TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # -- cont_cxc_abono
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_cxc_abono (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                cxc_id INT NOT NULL REFERENCES finanzas2.cont_cxc(id) ON DELETE CASCADE,
+                fecha DATE NOT NULL,
+                monto NUMERIC(14,2) NOT NULL,
+                cuenta_financiera_id INT REFERENCES finanzas2.cont_cuenta_financiera(id),
+                forma_pago VARCHAR(30),
+                referencia VARCHAR(200),
+                notas TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # -- cont_cxp_abono
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_cxp_abono (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                cxp_id INT NOT NULL REFERENCES finanzas2.cont_cxp(id) ON DELETE CASCADE,
+                fecha DATE NOT NULL,
+                monto NUMERIC(14,2) NOT NULL,
+                cuenta_financiera_id INT REFERENCES finanzas2.cont_cuenta_financiera(id),
+                forma_pago VARCHAR(30),
+                referencia VARCHAR(200),
+                notas TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # -- Migrations: extend cont_venta_pos_estado with cobranza fields
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_venta_pos_estado' AND column_name='monto_cobrado') THEN
+                    ALTER TABLE finanzas2.cont_venta_pos_estado ADD COLUMN monto_cobrado NUMERIC(14,2) DEFAULT 0;
+                    ALTER TABLE finanzas2.cont_venta_pos_estado ADD COLUMN saldo_pendiente NUMERIC(14,2) DEFAULT 0;
+                    ALTER TABLE finanzas2.cont_venta_pos_estado ADD COLUMN estado_cobranza VARCHAR(20) DEFAULT 'no_cobrado';
+                END IF;
+            END $$;
+        """)
+
+        # -- Migrations: extend cont_cxc with analytical fields
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_cxc' AND column_name='tipo_origen') THEN
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN tipo_origen VARCHAR(30);
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN documento_referencia VARCHAR(100);
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN odoo_order_id INT;
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN marca_id INT;
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN linea_negocio_id INT;
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN centro_costo_id INT;
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN proyecto_id INT;
+                    ALTER TABLE finanzas2.cont_cxc ADD COLUMN dias_atraso INT DEFAULT 0;
+                END IF;
+            END $$;
+        """)
+
+        # -- Migrations: extend cont_cxp with analytical fields
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_cxp' AND column_name='tipo_origen') THEN
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN tipo_origen VARCHAR(30);
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN documento_referencia VARCHAR(100);
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN marca_id INT;
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN linea_negocio_id INT;
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN centro_costo_id INT;
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN proyecto_id INT;
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN dias_vencido INT DEFAULT 0;
+                    ALTER TABLE finanzas2.cont_cxp ADD COLUMN categoria_id INT;
+                END IF;
+            END $$;
+        """)
+
+        # -- Migrations: add marca_id, proyecto_id to cont_gasto
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_gasto' AND column_name='marca_id') THEN
+                    ALTER TABLE finanzas2.cont_gasto ADD COLUMN marca_id INT;
+                    ALTER TABLE finanzas2.cont_gasto ADD COLUMN proyecto_id INT;
+                END IF;
+            END $$;
+        """)
+
+        # -- Migrations: add marca_id, proyecto_id to cont_pago
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_pago' AND column_name='marca_id') THEN
+                    ALTER TABLE finanzas2.cont_pago ADD COLUMN marca_id INT;
+                    ALTER TABLE finanzas2.cont_pago ADD COLUMN proyecto_id INT;
+                END IF;
+            END $$;
+        """)
+
+        # -- Migrations: extend cont_presupuesto_linea
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_presupuesto_linea' AND column_name='marca_id') THEN
+                    ALTER TABLE finanzas2.cont_presupuesto_linea ADD COLUMN marca_id INT;
+                    ALTER TABLE finanzas2.cont_presupuesto_linea ADD COLUMN proyecto_id INT;
+                    ALTER TABLE finanzas2.cont_presupuesto_linea ADD COLUMN tipo VARCHAR(20) DEFAULT 'gasto';
+                END IF;
+            END $$;
+        """)
+
+        # -- Migrations: add odoo_order_id to cont_venta_pos_pago (for Odoo-source orders)
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_venta_pos_pago' AND column_name='odoo_order_id') THEN
+                    ALTER TABLE finanzas2.cont_venta_pos_pago ADD COLUMN odoo_order_id INT;
+                    ALTER TABLE finanzas2.cont_venta_pos_pago ADD COLUMN cuenta_financiera_id INT REFERENCES finanzas2.cont_cuenta_financiera(id);
+                END IF;
+            END $$;
+        """)
+
+        # -- Indexes for Fase 1
+        fase1_indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_cont_marca_empresa ON finanzas2.cont_marca(empresa_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cont_proyecto_empresa ON finanzas2.cont_proyecto(empresa_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cont_cxc_abono_cxc ON finanzas2.cont_cxc_abono(cxc_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cont_cxp_abono_cxp ON finanzas2.cont_cxp_abono(cxp_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cont_cxc_odoo_order ON finanzas2.cont_cxc(odoo_order_id)",
+        ]
+        for stmt in fase1_indexes:
+            await conn.execute(stmt)
+
         logger.info("Schema finanzas2 and all tables created/verified successfully")
