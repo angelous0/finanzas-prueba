@@ -68,8 +68,16 @@ Sistema de gestion financiera empresarial full-stack (React + FastAPI + PostgreS
 - [x] Abono validation: monto>0, monto<=saldo_pendiente
 - [x] Auto-update estado on abono: parcial->cobrada/pagado
 
-### Fase 4: Flujo de Caja (P1)
+### Fase 4: Flujo de Caja Gerencial (P1)
+- [x] Endpoint /api/flujo-caja-gerencial with grouping (diario/semanal/mensual)
+- [x] Aggregation: ventas, cobranzas, gastos, pagos CxP
+- [x] FlujoCaja.jsx rewritten: ComposedChart, detail table, KPIs
+
 ### Fase 5: Rentabilidad (P1)
+- [x] Endpoint /api/rentabilidad by dimension (marca/linea/CC/proyecto)
+- [x] Income from POS line-item detail per design rule
+- [x] Rentabilidad.jsx: BarChart, KPIs, margen badges
+
 ### Fase 6: ROI + Presupuesto vs Real (P2)
 ### Fase 7: Reportes Gerenciales (P2)
 
