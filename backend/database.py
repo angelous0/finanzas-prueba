@@ -1098,4 +1098,46 @@ async def create_schema():
         for stmt in fase1_indexes:
             await conn.execute(stmt)
 
+        # ══════════════════════════════════════
+        # REFACTORING: CAPA DE TESORERIA
+        # ══════════════════════════════════════
+
+        # -- cont_movimiento_tesoreria: Fuente unica de verdad de flujo de caja
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_movimiento_tesoreria (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                fecha DATE NOT NULL,
+                tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('ingreso', 'egreso')),
+                monto NUMERIC(15,2) NOT NULL CHECK (monto > 0),
+                cuenta_financiera_id INT REFERENCES finanzas2.cont_cuenta_financiera(id),
+                forma_pago VARCHAR(50),
+                referencia VARCHAR(200),
+                concepto TEXT,
+                -- Trazabilidad de origen
+                origen_tipo VARCHAR(30) NOT NULL,
+                origen_id INT,
+                -- Dimensiones analiticas
+                marca_id INT REFERENCES finanzas2.cont_marca(id),
+                linea_negocio_id INT REFERENCES finanzas2.cont_linea_negocio(id),
+                centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id),
+                proyecto_id INT REFERENCES finanzas2.cont_proyecto(id),
+                -- Metadata
+                notas TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # -- Indexes for tesoreria
+        tesoreria_indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_mov_tesoreria_empresa ON finanzas2.cont_movimiento_tesoreria(empresa_id)",
+            "CREATE INDEX IF NOT EXISTS idx_mov_tesoreria_fecha ON finanzas2.cont_movimiento_tesoreria(empresa_id, fecha)",
+            "CREATE INDEX IF NOT EXISTS idx_mov_tesoreria_tipo ON finanzas2.cont_movimiento_tesoreria(empresa_id, tipo)",
+            "CREATE INDEX IF NOT EXISTS idx_mov_tesoreria_origen ON finanzas2.cont_movimiento_tesoreria(empresa_id, origen_tipo, origen_id)",
+        ]
+        for stmt in tesoreria_indexes:
+            await conn.execute(stmt)
+
+
         logger.info("Schema finanzas2 and all tables created/verified successfully")

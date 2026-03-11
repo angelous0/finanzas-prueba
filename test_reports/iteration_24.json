@@ -1,0 +1,111 @@
+{
+  "summary": "Complete testing of 3-Layer Financial Architecture refactoring. Backend: 27/27 tests passed (100%). Frontend: All UI elements verified including Tesoreria page, Dashboard Financiero with 3-layer labels, Reportes with treasury data, and Sidebar navigation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_tested": {
+    "backend_api": {
+      "GET /api/tesoreria": "PASS - List treasury movements with pagination and filters (tipo, fecha, origen_tipo)",
+      "GET /api/tesoreria?tipo=ingreso": "PASS - Filter by tipo works correctly",
+      "GET /api/tesoreria?tipo=egreso": "PASS - Filter by tipo works correctly",
+      "GET /api/tesoreria?fecha_desde&fecha_hasta": "PASS - Date range filter works",
+      "GET /api/tesoreria?origen_tipo=manual": "PASS - Filter by origen works",
+      "GET /api/tesoreria/resumen": "PASS - Returns complete KPIs: total_ingresos, total_egresos, flujo_neto, saldo_total, por_origen, cuentas",
+      "POST /api/tesoreria (manual ingreso)": "PASS - Creates manual treasury ingreso movement",
+      "POST /api/tesoreria (manual egreso)": "PASS - Creates manual treasury egreso movement",
+      "POST /api/tesoreria (invalid tipo)": "PASS - Returns 400 for invalid tipo",
+      "POST /api/tesoreria (negative monto)": "PASS - Returns 400 for negative monto",
+      "GET /api/dashboard-financiero": "PASS - Returns 3-layer KPIs with cobranzas_reales and egresos_reales from treasury",
+      "GET /api/finanzas-gerencial/flujo-caja-gerencial": "PASS - Returns timeline from cont_movimiento_tesoreria with source='tesoreria'",
+      "GET /api/reportes/resumen-ejecutivo": "PASS - Includes flujo_caja_mtd with ingresos_reales and egresos_reales from treasury",
+      "GET /api/reportes/exportar/tesoreria": "PASS - Returns CSV with correct headers (ID, Fecha, Tipo, Monto, Origen, etc.)",
+      "CxC abono integration": "PASS - create_cxc_abono auto-creates treasury movement (verified in code)",
+      "CxP abono integration": "PASS - create_cxp_abono auto-creates treasury movement (verified in code)"
+    },
+    "frontend_ui": {
+      "Tesoreria page /tesoreria": "PASS - Page loads with data-testid='tesoreria-page'",
+      "Tesoreria KPIs section": "PASS - Shows Saldo Total, Ingresos Periodo, Egresos Periodo, Flujo Neto",
+      "Tesoreria cuentas cards": "PASS - Shows financial accounts (Caja Chica, Cuenta BCP Soles)",
+      "Tesoreria desglose por origen": "PASS - Shows breakdown by origen_tipo (Manual ingreso/egreso)",
+      "Tesoreria filtros section": "PASS - Date filters, tipo dropdown, origen dropdown all working",
+      "Tesoreria table": "PASS - Shows movements with Fecha, Tipo, Monto, Origen, Concepto, Cuenta, Forma Pago, Marca columns",
+      "Dashboard Financiero Capa 3 label": "PASS - Shows 'CAPA 3: CAJA REAL / TESORERIA' section header",
+      "Dashboard Financiero Capa 1 label": "PASS - Shows 'CAPA 1: COMERCIAL (DEVENGADO)' section header",
+      "Dashboard Financiero Capa 2 label": "PASS - Shows 'CAPA 2: OBLIGACIONES (CXC / CXP)' section header",
+      "Dashboard Financiero Flujo Neto Periodo": "PASS - Shows 'Desde movimientos de tesoreria' subtitle",
+      "Dashboard Financiero Cobranzas Reales": "PASS - Shows 'Desde tesoreria' subtitle",
+      "Dashboard Financiero Egresos Reales": "PASS - Shows 'Desde tesoreria' subtitle",
+      "Reportes Gerenciales flujo_caja_mtd": "PASS - Shows 'Ingresos Reales MTD' and 'Egresos Reales MTD' from treasury",
+      "Reportes Gerenciales Tesoreria export": "PASS - Export button with data-testid='export-tesoreria' found",
+      "Sidebar Tesoreria link": "PASS - data-testid='nav-tesoreria' present under Finanzas Gerenciales section",
+      "Sidebar Finanzas Gerenciales section": "PASS - All 6 links present (Tesoreria, Flujo de Caja, Rentabilidad, Presupuesto vs Real, ROI Proyectos, Reportes Gerenciales)"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_tesoreria_3layer.py",
+    "/app/test_reports/pytest/pytest_tesoreria_3layer_iter24.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_tesoreria_3layer.py"
+  ],
+  "success_rate": {
+    "backend": "100% (27/27 tests passed)",
+    "frontend": "100% (all UI elements and 3-layer architecture verified)"
+  },
+  "test_credentials": {
+    "empresa_id": "6 (Ambission Industries SAC)",
+    "api_base_url": "https://three-layer-erp.preview.emergentagent.com"
+  },
+  "test_data_observed": {
+    "tesoreria_saldo_total": "S/ -5,491.40",
+    "tesoreria_ingresos_periodo": "S/ 5,100.00 (2 mov.)",
+    "tesoreria_egresos_periodo": "S/ 1,250.00 (2 mov.)",
+    "tesoreria_flujo_neto": "S/ 3,850.00",
+    "cuentas_financieras": [
+      "Cuenta BCP Soles: S/ -1,000.00",
+      "Caja Chica: S/ -4,491.40"
+    ],
+    "treasury_movements": [
+      "2026-03-11: ingreso +S/ 5,000.00 (Manual - Cobro manual test)",
+      "2026-03-11: egreso -S/ 1,200.00 (Manual - Pago proveedor test)",
+      "2026-03-11: ingreso +S/ 100.00 (Manual - TEST: Manual ingreso for testing)",
+      "2026-03-11: egreso -S/ 50.00 (Manual - TEST: Manual egreso for testing)"
+    ],
+    "dashboard_3layer": {
+      "capa_3_tesoreria": "Caja S/ -4,491.40, Bancos S/ -1,000.00, Total S/ -5,491.40, Flujo Neto S/ 3,850.00",
+      "capa_1_comercial": "Ingresos Confirmados S/ 647.48, Gastos S/ 0.00, Utilidad S/ 647.48, Ventas Pendientes 245",
+      "capa_2_obligaciones": "CxC S/ 3,700.50 (6 docs), CxP S/ 3,000.00 (2 docs), Cobranzas Reales S/ 5,100.00, Egresos Reales S/ 1,250.00"
+    },
+    "reportes_flujo_caja_mtd": {
+      "ingresos_reales": "S/ 5,100.00",
+      "egresos_reales": "S/ 1,250.00"
+    }
+  },
+  "architecture_verification": {
+    "3_layer_model": {
+      "capa_1_comercial": "What was sold/bought/expensed - tracks devengado (accrued) transactions",
+      "capa_2_obligaciones": "CxC/CxP pending - tracks receivables and payables",
+      "capa_3_tesoreria": "Actual cash movements - SINGLE SOURCE OF TRUTH for cash flow"
+    },
+    "treasury_as_source_of_truth": {
+      "dashboard_financiero": "cobranzas_reales and egresos_reales read from cont_movimiento_tesoreria",
+      "flujo_caja_gerencial": "Reads from cont_movimiento_tesoreria, returns source='tesoreria'",
+      "resumen_ejecutivo": "flujo_caja_mtd.ingresos_reales and egresos_reales from treasury",
+      "cxc_abonos": "Auto-create treasury ingreso with origen_tipo='cobranza_cxc'",
+      "cxp_abonos": "Auto-create treasury egreso with origen_tipo='pago_cxp'",
+      "venta_pos_confirmada": "Auto-creates treasury ingreso with origen_tipo='venta_pos_confirmada'"
+    }
+  },
+  "seed_data_creation": "Created 2 test treasury movements (manual ingreso S/100 and egreso S/50) via POST /api/tesoreria",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "3-Layer financial architecture fully implemented and tested. Treasury (cont_movimiento_tesoreria) is the single source of truth for cash flow. Dashboard Financiero shows 3 clearly labeled sections: Capa 3 Tesoreria, Capa 1 Comercial, Capa 2 Obligaciones. Tesoreria page at /tesoreria shows KPIs, cuentas, filters, and movements table. Reportes page shows flujo_caja_mtd with ingresos_reales/egresos_reales from treasury and has Tesoreria CSV export option. CxC abonos and CxP abonos auto-create treasury movements via treasury_service.py."
+}

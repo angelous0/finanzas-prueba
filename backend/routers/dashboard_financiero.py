@@ -103,19 +103,19 @@ async def dashboard_financiero(
                     "num_ventas": int(r['num_ventas'] or 0)
                 })
 
-        # ── 4. COBRANZAS REALES (pagos POS del periodo) ──
+        # ── 4. COBRANZAS REALES (from treasury movements - single source of truth) ──
         cobranzas = await conn.fetchrow("""
             SELECT COALESCE(SUM(monto), 0) as total, COUNT(*) as cnt
-            FROM cont_venta_pos_pago
-            WHERE empresa_id = $1
-              AND created_at >= $2 AND created_at <= $3
-        """, empresa_id, fd, fh)
+            FROM cont_movimiento_tesoreria
+            WHERE empresa_id = $1 AND tipo = 'ingreso'
+              AND fecha >= $2 AND fecha <= $3
+        """, empresa_id, fecha_desde, fecha_hasta)
         total_cobranzas = float(cobranzas['total'] or 0)
 
-        # ── 5. EGRESOS REALES (pagos realizados del periodo) ──
+        # ── 5. EGRESOS REALES (from treasury movements - single source of truth) ──
         egresos = await conn.fetchrow("""
-            SELECT COALESCE(SUM(monto_total), 0) as total, COUNT(*) as cnt
-            FROM cont_pago
+            SELECT COALESCE(SUM(monto), 0) as total, COUNT(*) as cnt
+            FROM cont_movimiento_tesoreria
             WHERE empresa_id = $1 AND tipo = 'egreso'
               AND fecha >= $2 AND fecha <= $3
         """, empresa_id, fecha_desde, fecha_hasta)

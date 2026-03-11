@@ -220,7 +220,7 @@ async def create_cxc_abono(cxc_id: int, data: AbonoCreate, empresa_id: int = Dep
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         cxc = await conn.fetchrow(
-            "SELECT id, saldo_pendiente, estado FROM cont_cxc WHERE id=$1 AND empresa_id=$2",
+            "SELECT id, saldo_pendiente, estado, marca_id, linea_negocio_id, centro_costo_id, proyecto_id FROM cont_cxc WHERE id=$1 AND empresa_id=$2",
             cxc_id, empresa_id)
         if not cxc:
             raise HTTPException(404, "CxC no encontrada")
@@ -232,10 +232,11 @@ async def create_cxc_abono(cxc_id: int, data: AbonoCreate, empresa_id: int = Dep
             raise HTTPException(400, f"El abono excede el saldo pendiente ({cxc['saldo_pendiente']})")
 
         async with conn.transaction():
-            await conn.execute("""
+            abono_row = await conn.fetchrow("""
                 INSERT INTO cont_cxc_abono
                     (empresa_id, cxc_id, fecha, monto, cuenta_financiera_id, forma_pago, referencia, notas)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
             """, empresa_id, cxc_id, data.fecha, data.monto,
                 data.cuenta_financiera_id, data.forma_pago, data.referencia, data.notas)
 
@@ -245,6 +246,22 @@ async def create_cxc_abono(cxc_id: int, data: AbonoCreate, empresa_id: int = Dep
                 UPDATE cont_cxc SET saldo_pendiente = $1, estado = $2, updated_at = NOW()
                 WHERE id = $3
             """, max(new_saldo, 0), new_estado, cxc_id)
+
+            # CAPA TESORERIA: Cobranza real -> movimiento de tesoreria
+            from services.treasury_service import create_movimiento_tesoreria
+            await create_movimiento_tesoreria(
+                conn, empresa_id, data.fecha, 'ingreso', data.monto,
+                cuenta_financiera_id=data.cuenta_financiera_id,
+                forma_pago=data.forma_pago,
+                referencia=data.referencia,
+                concepto=f"Cobranza CxC #{cxc_id}",
+                origen_tipo='cobranza_cxc',
+                origen_id=abono_row['id'],
+                marca_id=cxc['marca_id'],
+                linea_negocio_id=cxc['linea_negocio_id'],
+                centro_costo_id=cxc['centro_costo_id'],
+                proyecto_id=cxc['proyecto_id'],
+            )
 
         return {"message": "Abono registrado", "nuevo_saldo": max(new_saldo, 0), "nuevo_estado": new_estado}
 
@@ -414,7 +431,7 @@ async def create_cxp_abono(cxp_id: int, data: AbonoCreate, empresa_id: int = Dep
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         cxp = await conn.fetchrow(
-            "SELECT id, saldo_pendiente, estado::text as estado FROM cont_cxp WHERE id=$1 AND empresa_id=$2",
+            "SELECT id, saldo_pendiente, estado::text as estado, marca_id, linea_negocio_id, centro_costo_id, proyecto_id FROM cont_cxp WHERE id=$1 AND empresa_id=$2",
             cxp_id, empresa_id)
         if not cxp:
             raise HTTPException(404, "CxP no encontrada")
@@ -426,10 +443,11 @@ async def create_cxp_abono(cxp_id: int, data: AbonoCreate, empresa_id: int = Dep
             raise HTTPException(400, f"El abono excede el saldo pendiente ({cxp['saldo_pendiente']})")
 
         async with conn.transaction():
-            await conn.execute("""
+            abono_row = await conn.fetchrow("""
                 INSERT INTO cont_cxp_abono
                     (empresa_id, cxp_id, fecha, monto, cuenta_financiera_id, forma_pago, referencia, notas)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
             """, empresa_id, cxp_id, data.fecha, data.monto,
                 data.cuenta_financiera_id, data.forma_pago, data.referencia, data.notas)
 
@@ -439,5 +457,21 @@ async def create_cxp_abono(cxp_id: int, data: AbonoCreate, empresa_id: int = Dep
                 UPDATE cont_cxp SET saldo_pendiente = $1, estado = $2::finanzas2.estado_factura, updated_at = NOW()
                 WHERE id = $3
             """, max(new_saldo, 0), new_estado, cxp_id)
+
+            # CAPA TESORERIA: Pago real -> movimiento de tesoreria
+            from services.treasury_service import create_movimiento_tesoreria
+            await create_movimiento_tesoreria(
+                conn, empresa_id, data.fecha, 'egreso', data.monto,
+                cuenta_financiera_id=data.cuenta_financiera_id,
+                forma_pago=data.forma_pago,
+                referencia=data.referencia,
+                concepto=f"Pago CxP #{cxp_id}",
+                origen_tipo='pago_cxp',
+                origen_id=abono_row['id'],
+                marca_id=cxp['marca_id'],
+                linea_negocio_id=cxp['linea_negocio_id'],
+                centro_costo_id=cxp['centro_costo_id'],
+                proyecto_id=cxp['proyecto_id'],
+            )
 
         return {"message": "Abono registrado", "nuevo_saldo": max(new_saldo, 0), "nuevo_estado": new_estado}

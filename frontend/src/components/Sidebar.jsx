@@ -5,7 +5,8 @@ import {
   Building2, Users, Wallet, BarChart3, FileSpreadsheet, Settings,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock, FolderOpen,
   Package, Tags, GitBranch, Target, Menu, X, ChevronLeft, BookOpen,
-  Tag, FolderKanban, PieChart, TrendingUp, Activity, ClipboardList
+  Tag, FolderKanban, PieChart, TrendingUp, Activity, ClipboardList,
+  Vault
 } from 'lucide-react';
 
 const navSections = [
@@ -19,6 +20,7 @@ const navSections = [
   {
     title: 'Finanzas Gerenciales',
     items: [
+      { icon: Vault, label: 'Tesoreria', path: '/tesoreria' },
       { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
       { icon: TrendingUp, label: 'Rentabilidad', path: '/rentabilidad' },
       { icon: Target, label: 'Presupuesto vs Real', path: '/presupuesto-vs-real' },

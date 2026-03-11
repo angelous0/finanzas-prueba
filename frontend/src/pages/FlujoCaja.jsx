@@ -66,7 +66,7 @@ export default function FlujoCaja() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">Flujo de Caja</h1>
-          <p className="page-subtitle">Ingresos, egresos y saldo acumulado por periodo</p>
+          <p className="page-subtitle">Movimientos reales de tesoreria - Fuente unica de verdad</p>
         </div>
         <button className="btn btn-primary" onClick={loadData} disabled={loading} data-testid="refresh-flujo-btn">
           <RefreshCw size={16} className={loading ? 'spin' : ''} /> Actualizar

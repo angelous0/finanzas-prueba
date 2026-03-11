@@ -267,6 +267,59 @@ async def exportar_gastos(
         return resp
 
 
+@router.get("/exportar/tesoreria")
+async def exportar_tesoreria(
+    fecha_desde: date = Query(...),
+    fecha_hasta: date = Query(...),
+    tipo: Optional[str] = None,
+    empresa_id: int = Depends(get_empresa_id),
+):
+    """Export treasury movements to CSV."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        conditions = ["mt.empresa_id = $1", "mt.fecha BETWEEN $2 AND $3"]
+        params = [empresa_id, fecha_desde, fecha_hasta]
+        if tipo:
+            conditions.append("mt.tipo = $4")
+            params.append(tipo)
+        where = ' AND '.join(conditions)
+
+        rows = await conn.fetch(f"""
+            SELECT mt.id, mt.fecha, mt.tipo, mt.monto, mt.origen_tipo, mt.concepto,
+                   mt.forma_pago, mt.referencia, mt.notas,
+                   cf.nombre as cuenta, m.nombre as marca,
+                   ln.nombre as linea_negocio, cc.nombre as centro_costo,
+                   p.nombre as proyecto
+            FROM cont_movimiento_tesoreria mt
+            LEFT JOIN cont_cuenta_financiera cf ON mt.cuenta_financiera_id = cf.id
+            LEFT JOIN cont_marca m ON mt.marca_id = m.id
+            LEFT JOIN cont_linea_negocio ln ON mt.linea_negocio_id = ln.id
+            LEFT JOIN cont_centro_costo cc ON mt.centro_costo_id = cc.id
+            LEFT JOIN cont_proyecto p ON mt.proyecto_id = p.id
+            WHERE {where}
+            ORDER BY mt.fecha DESC
+        """, *params)
+
+        data = []
+        for r in rows:
+            d = dict(r)
+            d['fecha'] = d['fecha'].isoformat() if d.get('fecha') else ''
+            data.append(d)
+
+        cols = [
+            ('id', 'ID'), ('fecha', 'Fecha'), ('tipo', 'Tipo'), ('monto', 'Monto'),
+            ('origen_tipo', 'Origen'), ('concepto', 'Concepto'), ('cuenta', 'Cuenta'),
+            ('forma_pago', 'Forma Pago'), ('referencia', 'Referencia'),
+            ('marca', 'Marca'), ('linea_negocio', 'Linea Negocio'),
+            ('centro_costo', 'Centro Costo'), ('proyecto', 'Proyecto'), ('notas', 'Notas')
+        ]
+        resp = make_csv(data, cols)
+        resp.headers["Content-Disposition"] = f"attachment; filename=tesoreria_{fecha_desde}_{fecha_hasta}.csv"
+        return resp
+
+
+
 @router.get("/resumen-ejecutivo")
 async def resumen_ejecutivo(empresa_id: int = Depends(get_empresa_id)):
     """CFO Executive Summary - all key KPIs in one call."""
@@ -323,12 +376,26 @@ async def resumen_ejecutivo(empresa_id: int = Depends(get_empresa_id)):
             WHERE empresa_id=$1 AND COALESCE(estado_local, 'pendiente') = 'pendiente'
         """, empresa_id)
 
+        # Treasury movements MTD (real cash flow)
+        tesoreria_mtd = await conn.fetchrow("""
+            SELECT
+                COALESCE(SUM(monto) FILTER (WHERE tipo = 'ingreso'), 0) as ingresos,
+                COALESCE(SUM(monto) FILTER (WHERE tipo = 'egreso'), 0) as egresos
+            FROM cont_movimiento_tesoreria
+            WHERE empresa_id = $1 AND fecha >= $2
+        """, empresa_id, first_of_month)
+
         return {
             "fecha": today.isoformat(),
             "tesoreria": {
                 "caja": float(treasury['caja']),
                 "banco": float(treasury['banco']),
                 "total": float(treasury['total']),
+            },
+            "flujo_caja_mtd": {
+                "ingresos_reales": float(tesoreria_mtd['ingresos']),
+                "egresos_reales": float(tesoreria_mtd['egresos']),
+                "flujo_neto": float(tesoreria_mtd['ingresos']) - float(tesoreria_mtd['egresos']),
             },
             "cxc": {
                 "documentos": int(cxc['cnt']),

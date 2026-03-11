@@ -16,91 +16,80 @@ async def flujo_caja_gerencial(
     proyecto_id: Optional[int] = None,
     empresa_id: int = Depends(get_empresa_id),
 ):
+    """Cash flow report from TREASURY MOVEMENTS (single source of truth)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
 
         date_trunc = {"diario": "day", "semanal": "week", "mensual": "month"}[agrupacion]
 
-        # Ingresos: pagos oficiales de ventas confirmadas
-        ingresos_query = f"""
-            SELECT DATE_TRUNC('{date_trunc}', pa.created_at)::date as periodo,
-                   COALESCE(SUM(pa.monto_aplicado), 0) as total
-            FROM cont_pago_aplicacion pa
-            WHERE pa.empresa_id = $1
-              AND pa.created_at::date BETWEEN $2 AND $3
-              AND pa.tipo_documento = 'venta_pos_odoo'
-        """
-        params_in = [empresa_id, fecha_desde, fecha_hasta]
-        ingresos_rows = await conn.fetch(ingresos_query + " GROUP BY periodo ORDER BY periodo", *params_in)
+        # Build conditions for optional filters
+        extra_conds = ""
+        params = [empresa_id, fecha_desde, fecha_hasta]
+        idx = 4
+        if marca_id:
+            extra_conds += f" AND marca_id = ${idx}"
+            params.append(marca_id)
+            idx += 1
+        if proyecto_id:
+            extra_conds += f" AND proyecto_id = ${idx}"
+            params.append(proyecto_id)
+            idx += 1
 
-        # Egresos: pagos de gastos + abonos CxP
-        egresos_query = f"""
+        # Read all treasury movements grouped by period
+        rows = await conn.fetch(f"""
             SELECT DATE_TRUNC('{date_trunc}', fecha)::date as periodo,
-                   COALESCE(SUM(monto_total), 0) as total
-            FROM cont_pago
+                   tipo,
+                   origen_tipo,
+                   COALESCE(SUM(monto), 0) as total
+            FROM cont_movimiento_tesoreria
             WHERE empresa_id = $1
-              AND tipo = 'egreso'
               AND fecha BETWEEN $2 AND $3
-        """
-        params_eg = [empresa_id, fecha_desde, fecha_hasta]
-        egresos_rows = await conn.fetch(egresos_query + " GROUP BY periodo ORDER BY periodo", *params_eg)
+              {extra_conds}
+            GROUP BY periodo, tipo, origen_tipo
+            ORDER BY periodo
+        """, *params)
 
-        # Abonos CxP (payments on accounts payable)
-        abonos_cxp_query = f"""
-            SELECT DATE_TRUNC('{date_trunc}', a.fecha)::date as periodo,
-                   COALESCE(SUM(a.monto), 0) as total
-            FROM cont_cxp_abono a
-            WHERE a.empresa_id = $1
-              AND a.fecha BETWEEN $2 AND $3
-            GROUP BY periodo ORDER BY periodo
-        """
-        abonos_cxp_rows = await conn.fetch(abonos_cxp_query, empresa_id, fecha_desde, fecha_hasta)
-
-        # Cobranzas CxC (payments received on accounts receivable)
-        cobranzas_query = f"""
-            SELECT DATE_TRUNC('{date_trunc}', a.fecha)::date as periodo,
-                   COALESCE(SUM(a.monto), 0) as total
-            FROM cont_cxc_abono a
-            WHERE a.empresa_id = $1
-              AND a.fecha BETWEEN $2 AND $3
-            GROUP BY periodo ORDER BY periodo
-        """
-        cobranzas_rows = await conn.fetch(cobranzas_query, empresa_id, fecha_desde, fecha_hasta)
-
-        # Merge all into timeline
         periods = {}
-        for r in ingresos_rows:
+        for r in rows:
             p = r['periodo'].isoformat()
-            periods.setdefault(p, {"ingresos": 0, "egresos": 0, "cobranzas": 0, "pagos_cxp": 0})
-            periods[p]["ingresos"] += float(r['total'])
-        for r in egresos_rows:
-            p = r['periodo'].isoformat()
-            periods.setdefault(p, {"ingresos": 0, "egresos": 0, "cobranzas": 0, "pagos_cxp": 0})
-            periods[p]["egresos"] += float(r['total'])
-        for r in abonos_cxp_rows:
-            p = r['periodo'].isoformat()
-            periods.setdefault(p, {"ingresos": 0, "egresos": 0, "cobranzas": 0, "pagos_cxp": 0})
-            periods[p]["pagos_cxp"] += float(r['total'])
-        for r in cobranzas_rows:
-            p = r['periodo'].isoformat()
-            periods.setdefault(p, {"ingresos": 0, "egresos": 0, "cobranzas": 0, "pagos_cxp": 0})
-            periods[p]["cobranzas"] += float(r['total'])
+            periods.setdefault(p, {
+                "ingresos_ventas": 0, "cobranzas_cxc": 0, "otros_ingresos": 0,
+                "pagos_cxp": 0, "pagos_gastos": 0, "otros_egresos": 0
+            })
+            t = float(r['total'])
+            ot = r['origen_tipo']
+            if r['tipo'] == 'ingreso':
+                if ot == 'venta_pos_confirmada':
+                    periods[p]["ingresos_ventas"] += t
+                elif ot == 'cobranza_cxc':
+                    periods[p]["cobranzas_cxc"] += t
+                else:
+                    periods[p]["otros_ingresos"] += t
+            else:  # egreso
+                if ot == 'pago_cxp':
+                    periods[p]["pagos_cxp"] += t
+                elif ot in ('gasto_directo', 'pago_gasto'):
+                    periods[p]["pagos_gastos"] += t
+                else:
+                    periods[p]["otros_egresos"] += t
 
         timeline = []
         saldo = 0
         for p in sorted(periods.keys()):
             d = periods[p]
-            total_in = d["ingresos"] + d["cobranzas"]
-            total_out = d["egresos"] + d["pagos_cxp"]
+            total_in = d["ingresos_ventas"] + d["cobranzas_cxc"] + d["otros_ingresos"]
+            total_out = d["pagos_cxp"] + d["pagos_gastos"] + d["otros_egresos"]
             saldo += total_in - total_out
             timeline.append({
                 "periodo": p,
-                "ingresos_ventas": d["ingresos"],
-                "cobranzas_cxc": d["cobranzas"],
+                "ingresos_ventas": d["ingresos_ventas"],
+                "cobranzas_cxc": d["cobranzas_cxc"],
+                "otros_ingresos": d["otros_ingresos"],
                 "total_ingresos": total_in,
-                "egresos_gastos": d["egresos"],
                 "pagos_cxp": d["pagos_cxp"],
+                "pagos_gastos": d["pagos_gastos"],
+                "otros_egresos": d["otros_egresos"],
                 "total_egresos": total_out,
                 "flujo_neto": total_in - total_out,
                 "saldo_acumulado": saldo,
@@ -119,6 +108,7 @@ async def flujo_caja_gerencial(
             "agrupacion": agrupacion,
             "fecha_desde": fecha_desde.isoformat(),
             "fecha_hasta": fecha_hasta.isoformat(),
+            "source": "tesoreria",
         }
 
 

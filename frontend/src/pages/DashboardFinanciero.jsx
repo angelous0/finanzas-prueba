@@ -199,29 +199,29 @@ export default function DashboardFinanciero() {
       )}
 
       <div className="page-content">
-        {/* ROW 1: TESORERIA */}
+        {/* CAPA 3: CAJA REAL / TESORERIA */}
         <div style={{ marginBottom: '0.5rem' }}>
-          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
-            Tesoreria
+          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', paddingLeft: '0.25rem', borderLeft: '3px solid #059669', paddingLeft: '0.75rem' }}>
+            Capa 3: Caja Real / Tesoreria
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
             <KPICard icon={Wallet} label="Caja" value={fmt(data.saldo_caja)} color="#22C55E" />
             <KPICard icon={Landmark} label="Bancos" value={fmt(data.saldo_banco)} color="#3B82F6" />
             <KPICard icon={DollarSign} label="Total Disponible" value={fmt(data.saldo_total)} color="#1B4D3E" />
-            <KPICard icon={TrendingUp} label="Flujo Neto Periodo" value={fmt(data.flujo_neto)} color={data.flujo_neto >= 0 ? '#22C55E' : '#EF4444'} />
+            <KPICard icon={TrendingUp} label="Flujo Neto Periodo" value={fmt(data.flujo_neto)} color={data.flujo_neto >= 0 ? '#22C55E' : '#EF4444'}
+              subtitle="Desde movimientos de tesoreria" />
           </div>
         </div>
 
-        {/* ROW 2: DEVENGADO (Ingresos reconocidos) */}
+        {/* CAPA 1: COMERCIAL */}
         <div style={{ marginBottom: '0.5rem', marginTop: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
-            Devengado (Ingresos reconocidos)
+          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', paddingLeft: '0.25rem', borderLeft: '3px solid #2563EB', paddingLeft: '0.75rem' }}>
+            Capa 1: Comercial (Devengado)
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
             <KPICard icon={TrendingUp} label="Ingresos Confirmados" value={fmt(data.ingresos_confirmados)} color="#22C55E"
               subtitle={`${ventasResumen.confirmada || 0} ventas confirmadas`} />
-            <KPICard icon={TrendingDown} label="Gastos Periodo" value={fmt(data.gastos_periodo)} color="#EF4444"
-              subtitle={`${ventasResumen.monto_pendiente ? 'Pendientes: ' + fmt(ventasResumen.monto_pendiente) : ''}`} />
+            <KPICard icon={TrendingDown} label="Gastos Periodo" value={fmt(data.gastos_periodo)} color="#EF4444" />
             <KPICard icon={DollarSign} label="Utilidad Estimada" value={fmt(data.utilidad_estimada)}
               color={data.utilidad_estimada >= 0 ? '#22C55E' : '#EF4444'} />
             <KPICard icon={AlertTriangle} label="Ventas Pendientes" value={`${ventasResumen.pendiente || 0}`}
@@ -229,18 +229,20 @@ export default function DashboardFinanciero() {
           </div>
         </div>
 
-        {/* ROW 3: OBLIGACIONES */}
+        {/* CAPA 2: OBLIGACIONES */}
         <div style={{ marginBottom: '0.5rem', marginTop: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
-            Obligaciones y Flujo de Caja
+          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', paddingLeft: '0.25rem', borderLeft: '3px solid #D97706', paddingLeft: '0.75rem' }}>
+            Capa 2: Obligaciones (CxC / CxP)
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
             <KPICard icon={CreditCard} label="CxC Pendientes" value={fmt(data.cxc_total)}
               subtitle={`${data.cxc_count || 0} documentos`} color="#3B82F6" />
             <KPICard icon={CreditCard} label="CxP Pendientes" value={fmt(data.cxp_total)}
               subtitle={`${data.cxp_count || 0} documentos`} color="#EF4444" />
-            <KPICard icon={TrendingUp} label="Cobranzas Reales" value={fmt(data.cobranzas_reales)} color="#22C55E" />
-            <KPICard icon={TrendingDown} label="Egresos Reales" value={fmt(data.egresos_reales)} color="#EF4444" />
+            <KPICard icon={TrendingUp} label="Cobranzas Reales" value={fmt(data.cobranzas_reales)} color="#22C55E"
+              subtitle="Desde tesoreria" />
+            <KPICard icon={TrendingDown} label="Egresos Reales" value={fmt(data.egresos_reales)} color="#EF4444"
+              subtitle="Desde tesoreria" />
           </div>
         </div>
 

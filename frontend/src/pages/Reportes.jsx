@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getResumenEjecutivo, exportarCxC, exportarCxP, exportarFlujoCaja, exportarRentabilidad, exportarGastos } from '../services/api';
+import { getResumenEjecutivo, exportarCxC, exportarCxP, exportarFlujoCaja, exportarRentabilidad, exportarGastos, exportarTesoreria } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import { toast } from 'sonner';
 import {
@@ -110,11 +110,15 @@ export default function Reportes() {
                 <SummaryCard icon={TrendingDown} title="Gastos MTD" value={fmt(r.gastos_mtd)} color="#EF4444" />
                 <SummaryCard icon={DollarSign} title="Utilidad MTD" value={fmt(r.utilidad_mtd)}
                   color={r.utilidad_mtd >= 0 ? '#1B4D3E' : '#EF4444'} />
-                <SummaryCard icon={AlertTriangle} title="Pendientes Confirmar" value={`${r.pendientes_confirmar || 0}`}
+                <SummaryCard icon={AlertTriangle} title="Pendientes" value={`${r.pendientes_confirmar || 0}`}
                   subtitle="Ventas POS sin validar" color="#F59E0B" />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem', marginTop: '0.75rem' }}>
+                <SummaryCard icon={Wallet} title="Ingresos Reales MTD" value={fmt(r.flujo_caja_mtd?.ingresos_reales)}
+                  subtitle="Desde tesoreria" color="#059669" />
+                <SummaryCard icon={Wallet} title="Egresos Reales MTD" value={fmt(r.flujo_caja_mtd?.egresos_reales)}
+                  subtitle="Desde tesoreria" color="#DC2626" />
                 <SummaryCard icon={CreditCard} title="CxC Pendientes" value={fmt(r.cxc?.total)}
                   subtitle={`${r.cxc?.documentos || 0} docs | Vencido: ${fmt(r.cxc?.vencido)}`} color="#3B82F6" />
                 <SummaryCard icon={CreditCard} title="CxP Pendientes" value={fmt(r.cxp?.total)}
@@ -154,6 +158,8 @@ export default function Reportes() {
               color="#1B4D3E" onExport={() => download(exportarRentabilidad({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta, dimension: 'marca' }))} />
             <ReportRow icon={Clock} title="Gastos del Periodo" description="Detalle de gastos con categorias"
               color="#F59E0B" onExport={() => download(exportarGastos({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta }))} />
+            <ReportRow icon={Wallet} title="Tesoreria" description="Movimientos reales de caja y banco"
+              color="#059669" onExport={() => download(exportarTesoreria({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta }))} />
           </div>
         </div>
       </div>

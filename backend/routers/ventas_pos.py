@@ -340,22 +340,68 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
 
         if company_key:
             # Verify order exists in odoo
-            exists = await conn.fetchval(
-                "SELECT 1 FROM odoo.v_pos_order_enriched WHERE odoo_order_id=$1 AND company_key=$2",
+            order = await conn.fetchrow(
+                "SELECT amount_total FROM odoo.v_pos_order_enriched WHERE odoo_order_id=$1 AND company_key=$2",
                 order_id, company_key)
-            if not exists:
+            if not order:
                 raise HTTPException(404, "Orden no encontrada en Odoo")
             estado = await conn.fetchrow(
                 "SELECT estado_local FROM finanzas2.cont_venta_pos_estado WHERE odoo_order_id=$1 AND empresa_id=$2",
                 order_id, empresa_id)
             if estado and estado['estado_local'] in ('confirmada', 'credito', 'descartada'):
                 raise HTTPException(400, f"Venta ya tiene estado: {estado['estado_local']}")
-            await conn.execute("""
-                INSERT INTO finanzas2.cont_venta_pos_estado (empresa_id, odoo_order_id, estado_local, updated_at)
-                VALUES ($1, $2, 'confirmada', NOW())
-                ON CONFLICT (empresa_id, odoo_order_id)
-                DO UPDATE SET estado_local = 'confirmada', updated_at = NOW()
-            """, empresa_id, order_id)
+
+            async with conn.transaction():
+                await conn.execute("""
+                    INSERT INTO finanzas2.cont_venta_pos_estado (empresa_id, odoo_order_id, estado_local, updated_at)
+                    VALUES ($1, $2, 'confirmada', NOW())
+                    ON CONFLICT (empresa_id, odoo_order_id)
+                    DO UPDATE SET estado_local = 'confirmada', updated_at = NOW()
+                """, empresa_id, order_id)
+
+                # CAPA TESORERIA: Venta confirmada al contado -> movimiento de tesoreria
+                amount = float(order['amount_total'] or 0)
+                if amount > 0:
+                    # Check if there are assigned pagos with cuenta_financiera
+                    pagos = await conn.fetch(
+                        "SELECT forma_pago, monto, cuenta_financiera_id FROM finanzas2.cont_venta_pos_pago WHERE odoo_order_id=$1 AND empresa_id=$2",
+                        order_id, empresa_id)
+                    from services.treasury_service import create_movimiento_tesoreria
+                    if pagos:
+                        for pago in pagos:
+                            await create_movimiento_tesoreria(
+                                conn, empresa_id, date.today(), 'ingreso', float(pago['monto']),
+                                cuenta_financiera_id=pago['cuenta_financiera_id'],
+                                forma_pago=pago['forma_pago'],
+                                concepto=f"Venta POS #{order_id} confirmada",
+                                origen_tipo='venta_pos_confirmada',
+                                origen_id=order_id,
+                            )
+                    else:
+                        # Single treasury entry for full amount
+                        await create_movimiento_tesoreria(
+                            conn, empresa_id, date.today(), 'ingreso', amount,
+                            concepto=f"Venta POS #{order_id} confirmada",
+                            origen_tipo='venta_pos_confirmada',
+                            origen_id=order_id,
+                        )
+
+                    # Auto-create CxC if there's remaining balance (saldo_pendiente)
+                    total_pagos = sum(float(p['monto']) for p in pagos) if pagos else 0
+                    saldo_pendiente = amount - total_pagos
+                    if saldo_pendiente > 0.01:
+                        cxc = await conn.fetchrow("""
+                            INSERT INTO finanzas2.cont_cxc
+                            (empresa_id, venta_pos_id, monto_original, saldo_pendiente,
+                             fecha_vencimiento, estado, tipo_origen, odoo_order_id)
+                            VALUES ($1, $2, $3, $3, CURRENT_DATE + 30, 'pendiente', 'venta_pos_saldo', $2)
+                            RETURNING id
+                        """, empresa_id, order_id, saldo_pendiente)
+                        await conn.execute("""
+                            UPDATE finanzas2.cont_venta_pos_estado SET cxc_id = $1
+                            WHERE odoo_order_id = $2 AND empresa_id = $3
+                        """, cxc['id'], order_id, empresa_id)
+
             return {"message": "Venta confirmada"}
         else:
             # Fallback: legacy
@@ -384,25 +430,39 @@ async def marcar_credito_venta_pos(
 
         if company_key:
             order = await conn.fetchrow(
-                "SELECT amount_total FROM odoo.v_pos_order_enriched WHERE odoo_order_id=$1 AND company_key=$2",
+                "SELECT amount_total, cuenta_partner_id FROM odoo.v_pos_order_enriched WHERE odoo_order_id=$1 AND company_key=$2",
                 order_id, company_key)
             if not order:
                 raise HTTPException(404, "Orden no encontrada")
-            cxc = await conn.fetchrow("""
-                INSERT INTO finanzas2.cont_cxc
-                (venta_pos_id, monto_original, saldo_pendiente, fecha_vencimiento, estado, empresa_id)
-                VALUES ($1, $2, $2, TO_DATE($3, 'YYYY-MM-DD'), 'pendiente', $4)
-                RETURNING id
-            """, order_id, order['amount_total'],
-                safe_date_param(fecha_vencimiento or (datetime.now().date() + timedelta(days=30))),
-                empresa_id)
-            await conn.execute("""
-                INSERT INTO finanzas2.cont_venta_pos_estado
-                    (empresa_id, odoo_order_id, estado_local, cxc_id, updated_at)
-                VALUES ($1, $2, 'credito', $3, NOW())
-                ON CONFLICT (empresa_id, odoo_order_id)
-                DO UPDATE SET estado_local='credito', cxc_id=$3, updated_at=NOW()
-            """, empresa_id, order_id, cxc['id'])
+
+            # Check existing state
+            estado = await conn.fetchrow(
+                "SELECT estado_local FROM finanzas2.cont_venta_pos_estado WHERE odoo_order_id=$1 AND empresa_id=$2",
+                order_id, empresa_id)
+            if estado and estado['estado_local'] in ('confirmada', 'credito', 'descartada'):
+                raise HTTPException(400, f"Venta ya tiene estado: {estado['estado_local']}")
+
+            venc = fecha_vencimiento or (datetime.now().date() + timedelta(days=30))
+
+            async with conn.transaction():
+                # Auto-create CxC for full amount (obligation layer)
+                cxc = await conn.fetchrow("""
+                    INSERT INTO finanzas2.cont_cxc
+                    (empresa_id, venta_pos_id, monto_original, saldo_pendiente,
+                     fecha_vencimiento, estado, tipo_origen, odoo_order_id)
+                    VALUES ($1, $2, $3, $3, $4, 'pendiente', 'venta_pos_credito', $2)
+                    RETURNING id
+                """, empresa_id, order_id, order['amount_total'], venc)
+
+                await conn.execute("""
+                    INSERT INTO finanzas2.cont_venta_pos_estado
+                        (empresa_id, odoo_order_id, estado_local, cxc_id, updated_at)
+                    VALUES ($1, $2, 'credito', $3, NOW())
+                    ON CONFLICT (empresa_id, odoo_order_id)
+                    DO UPDATE SET estado_local='credito', cxc_id=$3, updated_at=NOW()
+                """, empresa_id, order_id, cxc['id'])
+
+            # NOTE: No treasury movement for credit sales - cash hasn't moved
             return {"message": "Venta marcada como credito", "cxc_id": cxc['id']}
         else:
             # Fallback
@@ -412,14 +472,13 @@ async def marcar_credito_venta_pos(
                 order_id, empresa_id)
             if not venta:
                 raise HTTPException(404, "Venta not found")
+            venc = fecha_vencimiento or (datetime.now().date() + timedelta(days=30))
             cxc = await conn.fetchrow("""
                 INSERT INTO finanzas2.cont_cxc
-                (venta_pos_id, monto_original, saldo_pendiente, fecha_vencimiento, estado, empresa_id)
-                VALUES ($1, $2, $2, TO_DATE($3, 'YYYY-MM-DD'), 'pendiente', $4)
+                (venta_pos_id, monto_original, saldo_pendiente, fecha_vencimiento, estado, empresa_id, tipo_origen)
+                VALUES ($1, $2, $2, $3, 'pendiente', $4, 'venta_pos_credito')
                 RETURNING id
-            """, order_id, venta['amount_total'],
-                safe_date_param(fecha_vencimiento or (datetime.now().date() + timedelta(days=30))),
-                empresa_id)
+            """, order_id, venta['amount_total'], venc, empresa_id)
             await conn.execute(
                 "UPDATE finanzas2.cont_venta_pos SET estado_local='credito', cxc_id=$1, is_credit=TRUE WHERE id=$2",
                 cxc['id'], order_id)
@@ -495,6 +554,11 @@ async def desconfirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_em
                 SET estado_local='pendiente', updated_at=NOW()
                 WHERE odoo_order_id=$1 AND empresa_id=$2
             """, order_id, empresa_id)
+
+            # CAPA TESORERIA: Remove treasury movements for this sale
+            from services.treasury_service import delete_movimientos_by_origen
+            await delete_movimientos_by_origen(conn, empresa_id, 'venta_pos_confirmada', order_id)
+
             return {
                 "message": "Venta desconfirmada exitosamente",
                 "pagos_restaurados": len(pagos_oficiales),

@@ -148,6 +148,36 @@ async def create_gasto(data: GastoCreate, empresa_id: int = Depends(get_empresa_
                 
                 # Link pago to gasto
                 await conn.execute("UPDATE finanzas2.cont_gasto SET pago_id = $1 WHERE id = $2", pago_id, gasto_id)
+
+                # CAPA TESORERIA: Gasto pagado -> movimiento de tesoreria (egreso)
+                from services.treasury_service import create_movimiento_tesoreria
+                centro_costo_id_mov = data.lineas[0].centro_costo_id if data.lineas else None
+                linea_negocio_id_mov = data.lineas[0].linea_negocio_id if data.lineas else None
+                await create_movimiento_tesoreria(
+                    conn, empresa_id, data.fecha, 'egreso', total,
+                    cuenta_financiera_id=data.pagos[0].cuenta_financiera_id,
+                    forma_pago=data.pagos[0].medio_pago,
+                    referencia=data.numero_documento or numero,
+                    concepto=f"Gasto {numero}",
+                    origen_tipo='gasto_directo',
+                    origen_id=gasto_id,
+                    marca_id=getattr(data, 'marca_id', None),
+                    linea_negocio_id=linea_negocio_id_mov,
+                    centro_costo_id=centro_costo_id_mov,
+                    proyecto_id=getattr(data, 'proyecto_id', None),
+                )
+            else:
+                # CAPA OBLIGACION: Gasto sin pago -> auto-crear CxP
+                await conn.execute("""
+                    INSERT INTO finanzas2.cont_cxp
+                    (empresa_id, monto_original, saldo_pendiente, fecha_vencimiento,
+                     estado, proveedor_id, tipo_origen, documento_referencia,
+                     marca_id, categoria_id)
+                    VALUES ($1, $2, $2, CURRENT_DATE + 30, 'pendiente', $3, 'gasto', $4,
+                            $5, $6)
+                """, empresa_id, total, data.proveedor_id, numero,
+                    getattr(data, 'marca_id', None),
+                    data.lineas[0].categoria_id if data.lineas else None)
             
             gasto_dict = dict(row)
             gasto_dict['pago_id'] = pago_id

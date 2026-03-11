@@ -290,6 +290,7 @@ export const exportarCxP = (params) => `${api.defaults.baseURL}/reportes/exporta
 export const exportarFlujoCaja = (params) => `${api.defaults.baseURL}/reportes/exportar/flujo-caja?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
 export const exportarRentabilidad = (params) => `${api.defaults.baseURL}/reportes/exportar/rentabilidad?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}&dimension=${params?.dimension || 'marca'}`;
 export const exportarGastos = (params) => `${api.defaults.baseURL}/reportes/exportar/gastos?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
+export const exportarTesoreria = (params) => `${api.defaults.baseURL}/reportes/exportar/tesoreria?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
 
 // Marcas
 export const getMarcas = () => api.get('/marcas');
