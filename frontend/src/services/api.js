@@ -168,9 +168,17 @@ export const setOdooCompanyMap = (data) => api.put('/config/odoo-company-map', d
 
 // CxC
 export const getCxC = (params) => api.get('/cxc', { params });
+export const getCxCResumen = () => api.get('/cxc/resumen');
+export const createCxC = (data) => api.post('/cxc', data);
+export const getCxCAbonos = (cxcId) => api.get(`/cxc/${cxcId}/abonos`);
+export const createCxCAbono = (cxcId, data) => api.post(`/cxc/${cxcId}/abonos`, data);
 
 // CxP
 export const getCxP = (params) => api.get('/cxp', { params });
+export const getCxPResumen = () => api.get('/cxp/resumen');
+export const createCxP = (data) => api.post('/cxp', data);
+export const getCxPAbonos = (cxpId) => api.get(`/cxp/${cxpId}/abonos`);
+export const createCxPAbono = (cxpId, data) => api.post(`/cxp/${cxpId}/abonos`, data);
 
 // Presupuestos
 export const getPresupuestos = (anio) => api.get('/presupuestos', { params: { anio } });
