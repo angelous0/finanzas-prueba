@@ -51,6 +51,7 @@ export const FacturasProveedor = () => {
   const [showProveedorModal, setShowProveedorModal] = useState(false);
   const [nuevoProveedorNombre, setNuevoProveedorNombre] = useState('');
   const [cuentasFinancieras, setCuentasFinancieras] = useState([]);
+  const [valorizacionMap, setValorizacionMap] = useState({});
   
   // Modal de Pago
   const [registrandoPago, setRegistrandoPago] = useState(false);
@@ -172,6 +173,15 @@ export const FacturasProveedor = () => {
       setInventario(inventarioRes.data);
       setModelosCortes(modelosRes.data);
       setCuentasFinancieras(cuentasRes.data);
+
+      // Fetch FIFO valuation for articles
+      try {
+        const valRes = await fetch(`${API}/api/valorizacion-inventario?empresa_id=${empresaActual?.id || 6}`);
+        const valData = await valRes.json();
+        const map = {};
+        (valData.data || []).forEach(item => { map[item.id] = item; });
+        setValorizacionMap(map);
+      } catch (e) { console.warn('Could not load FIFO data:', e); }
       
       // Set default moneda
       const pen = monedasRes.data.find(m => m.codigo === 'PEN');
@@ -253,7 +263,9 @@ export const FacturasProveedor = () => {
           const selectedArticulo = inventario.find(inv => inv.id === value);
           if (selectedArticulo) {
             updated.unidad = selectedArticulo.unidad_medida || 'UND';
-            updated.precio = parseFloat(selectedArticulo.precio_ref) || parseFloat(selectedArticulo.costo_compra) || 0;
+            // Prefer FIFO cost, then costo_compra, then precio_ref
+            const fifo = valorizacionMap[value];
+            updated.precio = fifo?.costo_fifo_unitario || parseFloat(selectedArticulo.costo_compra) || parseFloat(selectedArticulo.precio_ref) || 0;
           }
         }
         
@@ -1710,7 +1722,7 @@ export const FacturasProveedor = () => {
                                 <th style={{ minWidth: '180px' }}>MODELO / CORTE</th>
                                 <th style={{ width: '70px' }}>UND</th>
                                 <th style={{ width: '70px' }}>CANT.</th>
-                                <th style={{ width: '90px' }}>PRECIO</th>
+                                <th style={{ width: '90px' }}>PRECIO FIFO</th>
                                 <th style={{ minWidth: '140px' }}>LÍNEA NEGOCIO</th>
                                 <th style={{ width: '100px' }}>IMPORTE</th>
                                 <th style={{ width: '60px' }}>IGV</th>
