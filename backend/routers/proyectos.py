@@ -28,14 +28,18 @@ async def create_proyecto(data: dict, empresa_id: int = Depends(get_empresa_id))
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
+        int_or_none = lambda v: int(v) if v else None
+        str_or_none = lambda v: v if v else None
         row = await conn.fetchrow("""
             INSERT INTO cont_proyecto (empresa_id, nombre, codigo, marca_id, linea_negocio_id,
                 centro_costo_id, fecha_inicio, fecha_fin, presupuesto, estado, notas)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *
-        """, empresa_id, data['nombre'], data.get('codigo'),
-            data.get('marca_id'), data.get('linea_negocio_id'), data.get('centro_costo_id'),
-            data.get('fecha_inicio'), data.get('fecha_fin'),
-            data.get('presupuesto', 0), data.get('estado', 'activo'), data.get('notas'))
+        """, empresa_id, data['nombre'], str_or_none(data.get('codigo')),
+            int_or_none(data.get('marca_id')), int_or_none(data.get('linea_negocio_id')),
+            int_or_none(data.get('centro_costo_id')),
+            str_or_none(data.get('fecha_inicio')), str_or_none(data.get('fecha_fin')),
+            float(data.get('presupuesto') or 0), data.get('estado', 'activo'),
+            str_or_none(data.get('notas')))
         return dict(row)
 
 
@@ -44,14 +48,18 @@ async def update_proyecto(proyecto_id: int, data: dict, empresa_id: int = Depend
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
+        int_or_none = lambda v: int(v) if v else None
+        str_or_none = lambda v: v if v else None
         row = await conn.fetchrow("""
             UPDATE cont_proyecto SET nombre=$1, codigo=$2, marca_id=$3, linea_negocio_id=$4,
                 centro_costo_id=$5, fecha_inicio=$6, fecha_fin=$7, presupuesto=$8, estado=$9, notas=$10
             WHERE id=$11 AND empresa_id=$12 RETURNING *
-        """, data['nombre'], data.get('codigo'),
-            data.get('marca_id'), data.get('linea_negocio_id'), data.get('centro_costo_id'),
-            data.get('fecha_inicio'), data.get('fecha_fin'),
-            data.get('presupuesto', 0), data.get('estado', 'activo'), data.get('notas'),
+        """, data['nombre'], str_or_none(data.get('codigo')),
+            int_or_none(data.get('marca_id')), int_or_none(data.get('linea_negocio_id')),
+            int_or_none(data.get('centro_costo_id')),
+            str_or_none(data.get('fecha_inicio')), str_or_none(data.get('fecha_fin')),
+            float(data.get('presupuesto') or 0), data.get('estado', 'activo'),
+            str_or_none(data.get('notas')),
             proyecto_id, empresa_id)
         if not row:
             raise HTTPException(404, "Proyecto no encontrado")
