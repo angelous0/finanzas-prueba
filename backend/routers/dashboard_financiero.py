@@ -9,12 +9,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-async def get_company_key(conn, empresa_id):
-    row = await conn.fetchrow(
-        "SELECT company_key FROM finanzas2.cont_empresa_odoo_map WHERE empresa_id = $1", empresa_id)
-    return row['company_key'] if row else None
-
-
 @router.get("/dashboard-financiero")
 async def dashboard_financiero(
     fecha_desde: Optional[date] = None,
@@ -28,7 +22,6 @@ async def dashboard_financiero(
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
-        company_key = await get_company_key(conn, empresa_id)
 
         today = date.today()
         if not fecha_desde:
@@ -51,57 +44,64 @@ async def dashboard_financiero(
             else:
                 saldo_banco = float(c['total'] or 0)
 
-        # ── 2. VENTAS POS por estado (del periodo) ──
+        # ── 2. VENTAS POS por estado (desde tablas locales, desacoplado de Odoo) ──
         ventas_stats = {"pendiente": 0, "confirmada": 0, "credito": 0, "descartada": 0,
                         "monto_pendiente": 0, "monto_confirmada": 0, "monto_credito": 0}
 
-        if company_key:
-            rows = await conn.fetch("""
-                SELECT COALESCE(e.estado_local, 'pendiente') as estado,
-                       COUNT(*) as cnt,
-                       COALESCE(SUM(o.amount_total), 0) as monto
-                FROM odoo.v_pos_order_enriched o
-                LEFT JOIN cont_venta_pos_estado e
-                    ON e.odoo_order_id = o.odoo_order_id AND e.empresa_id = $1
-                WHERE o.company_key = $2
-                  AND o.date_order >= $3 AND o.date_order <= $4
-                GROUP BY COALESCE(e.estado_local, 'pendiente')
-            """, empresa_id, company_key, fd, fh)
-            for r in rows:
-                est = r['estado']
-                if est in ventas_stats:
-                    ventas_stats[est] = int(r['cnt'])
-                    ventas_stats[f"monto_{est}"] = float(r['monto'])
+        rows = await conn.fetch("""
+            SELECT COALESCE(e.estado_local, 'pendiente') as estado,
+                   COUNT(*) as cnt,
+                   COALESCE(SUM(v.amount_total), 0) as monto
+            FROM cont_venta_pos v
+            LEFT JOIN cont_venta_pos_estado e
+                ON e.odoo_order_id = v.odoo_id AND e.empresa_id = $1
+            WHERE v.empresa_id = $1
+              AND v.date_order >= $2 AND v.date_order <= $3
+            GROUP BY COALESCE(e.estado_local, 'pendiente')
+        """, empresa_id, fd, fh)
+        for r in rows:
+            est = r['estado']
+            if est in ventas_stats:
+                ventas_stats[est] = int(r['cnt'])
+                ventas_stats[f"monto_{est}"] = float(r['monto'])
 
-        # ── 3. INGRESOS CONFIRMADOS por marca (desde detalle POS) ──
+        # ── 3. INGRESOS CONFIRMADOS por linea de negocio (desde tablas locales) ──
         ingresos_por_marca = []
         total_ingresos_confirmados = 0
-        if company_key:
-            marca_rows = await conn.fetch("""
-                SELECT l.marca,
-                       SUM(l.price_subtotal) AS ingreso,
-                       SUM(l.qty) AS unidades,
-                       COUNT(DISTINCT e.odoo_order_id) AS num_ventas
-                FROM cont_venta_pos_estado e
-                JOIN odoo.v_pos_order_enriched o
-                    ON o.odoo_order_id = e.odoo_order_id AND o.company_key = $2
-                JOIN odoo.v_pos_line_full l
-                    ON l.order_id = e.odoo_order_id AND l.company_key = $2
-                WHERE e.empresa_id = $1
-                  AND e.estado_local = 'confirmada'
-                  AND o.date_order >= $3 AND o.date_order <= $4
-                GROUP BY l.marca
-                ORDER BY ingreso DESC
-            """, empresa_id, company_key, fd, fh)
-            for r in marca_rows:
-                ingreso = float(r['ingreso'] or 0)
-                total_ingresos_confirmados += ingreso
-                ingresos_por_marca.append({
-                    "marca": r['marca'] or 'Sin Marca',
-                    "ingreso": ingreso,
-                    "unidades": int(r['unidades'] or 0),
-                    "num_ventas": int(r['num_ventas'] or 0)
-                })
+
+        from services.linea_mapping import get_linea_negocio_map, resolve_linea
+        ln_map = await get_linea_negocio_map(conn, empresa_id)
+
+        ln_rows = await conn.fetch("""
+            SELECT l.odoo_linea_negocio_id as odoo_ln_id,
+                   l.odoo_linea_negocio_nombre as odoo_ln_nombre,
+                   l.marca,
+                   SUM(l.price_subtotal) AS ingreso,
+                   SUM(l.qty) AS unidades,
+                   COUNT(DISTINCT v.odoo_id) AS num_ventas
+            FROM cont_venta_pos_estado e
+            JOIN cont_venta_pos v
+                ON v.odoo_id = e.odoo_order_id AND v.empresa_id = $1
+            JOIN cont_venta_pos_linea l
+                ON l.venta_pos_id = v.id
+            WHERE e.empresa_id = $1
+              AND e.estado_local = 'confirmada'
+              AND v.date_order >= $2 AND v.date_order <= $3
+            GROUP BY l.odoo_linea_negocio_id, l.odoo_linea_negocio_nombre, l.marca
+            ORDER BY ingreso DESC
+        """, empresa_id, fd, fh)
+        for r in ln_rows:
+            ingreso = float(r['ingreso'] or 0)
+            total_ingresos_confirmados += ingreso
+            mapped = resolve_linea(ln_map, r['odoo_ln_id'])
+            ingresos_por_marca.append({
+                "marca": r['marca'] or 'Sin Marca',
+                "linea_negocio": mapped['nombre'],
+                "linea_negocio_id": mapped['id'],
+                "ingreso": ingreso,
+                "unidades": int(r['unidades'] or 0),
+                "num_ventas": int(r['num_ventas'] or 0)
+            })
 
         # ── 4. COBRANZAS REALES (from treasury movements - single source of truth) ──
         cobranzas = await conn.fetchrow("""

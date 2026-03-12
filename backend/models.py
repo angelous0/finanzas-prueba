@@ -134,6 +134,8 @@ class LineaNegocioBase(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     activo: bool = True
+    odoo_linea_negocio_id: Optional[int] = None
+    odoo_linea_negocio_nombre: Optional[str] = None
 
 class LineaNegocioCreate(LineaNegocioBase):
     pass

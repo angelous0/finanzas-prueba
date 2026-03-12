@@ -1,0 +1,102 @@
+{
+  "summary": "Completed backend-only testing of Finanzas Gerenciales Odoo Decoupling. Backend: 11/11 tests passed (100%). All financial modules (dashboard_financiero, finanzas_gerencial, reportes_gerenciales) work WITHOUT direct Odoo schema reads.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_tested": {
+    "odoo_decoupling_verification": {
+      "GET /api/dashboard-financiero": "PASS - Works without Odoo views, returns all expected fields (saldo_caja/banco, ingresos_confirmados, cobranzas_reales, flujo_neto, ventas stats, CxC/CxP totals, ingresos_por_marca, aging)",
+      "GET /api/rentabilidad (dimension=linea_negocio)": "PASS - Works without Odoo views, uses cont_venta_pos_linea.odoo_linea_negocio_id for mapping",
+      "GET /api/rentabilidad (dimension=marca)": "PASS - Works without Odoo views",
+      "GET /api/reportes/resumen-ejecutivo": "PASS - Works without Odoo views, flujo_caja_mtd from treasury",
+      "GET /api/reportes/exportar/rentabilidad": "PASS - Returns CSV with correct columns"
+    },
+    "linea_negocio_mapping": {
+      "GET /api/lineas-negocio": "PASS - Returns catalog with odoo_linea_negocio_id and odoo_linea_negocio_nombre columns",
+      "cont_linea_negocio catalog": "VERIFIED - Has 3 entries for empresa 6: Línea Principal (odoo_id=1), Línea Secundaria, SIN CLASIFICAR",
+      "SIN CLASIFICAR fallback": "VERIFIED - Auto-created when mapping unmapped lines (id=9)"
+    },
+    "treasury_integration": {
+      "GET /api/flujo-caja-gerencial": "PASS - Returns source='tesoreria', uses cont_movimiento_tesoreria as single source of truth"
+    },
+    "cxc_abono_prorrateo": {
+      "POST /api/cxc/{cxc_id}/abonos": "PASS - Creates treasury movement with origen_tipo='cobranza_cxc'",
+      "Prorated logic": "VERIFIED in code - When CxC has POS with multiple lineas, distributes abono proportionally by price_subtotal"
+    },
+    "cont_venta_pos_linea_columns": {
+      "odoo_linea_negocio_id": "VERIFIED - Column exists via dashboard-financiero query",
+      "odoo_linea_negocio_nombre": "VERIFIED - Column exists (added in database.py migration)"
+    },
+    "no_odoo_schema_references": {
+      "dashboard_financiero.py": "VERIFIED - No odoo.v_pos_line_full or odoo.v_pos_order_enriched references",
+      "finanzas_gerencial.py": "VERIFIED - No direct Odoo schema references",
+      "reportes_gerenciales.py": "VERIFIED - No direct Odoo schema references"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_finanzas_desacoplado_odoo.py",
+    "/app/test_reports/pytest/pytest_finanzas_desacoplado_iter26.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Code review PASS: Financial modules read from cont_venta_pos, cont_venta_pos_linea, cont_venta_pos_estado (finanzas2 schema) not Odoo views",
+    "linea_mapping.py correctly maps odoo_linea_negocio_id to cont_linea_negocio.id with SIN CLASIFICAR fallback",
+    "Prorated abono in cxc_cxp.py lines 267-294 correctly distributes payment across lineas based on price_subtotal proportion"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_finanzas_desacoplado_odoo.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "Skipped per request"
+  },
+  "test_credentials": {
+    "empresa_id": "6 (Ambission Industries SAC) - has test data",
+    "empresa_id_1": "1 (empty - no lineas_negocio or CxC)",
+    "api_base_url": "https://negocio-caja.preview.emergentagent.com"
+  },
+  "test_data_observed": {
+    "lineas_negocio_empresa_6": [
+      {"id": 7, "nombre": "Línea Principal", "odoo_linea_negocio_id": 1, "odoo_linea_negocio_nombre": "Linea Principal Odoo"},
+      {"id": 8, "nombre": "Línea Secundaria", "odoo_linea_negocio_id": null},
+      {"id": 9, "nombre": "SIN CLASIFICAR", "codigo": "SIN-CLAS"}
+    ],
+    "dashboard_financiero_sample": {
+      "saldo_total": 85000.0,
+      "ingresos_confirmados": 0,
+      "cobranzas_reales": 0.0,
+      "egresos_reales": 5000.0,
+      "flujo_neto": -5000.0,
+      "cxp_total": 10000.0
+    },
+    "rentabilidad_linea_negocio": {
+      "Línea Principal": {"ingreso": 0, "costo": 15000.0, "utilidad": -15000.0},
+      "Sin Asignar": {"ingreso": 0, "costo": 0, "utilidad": 0}
+    },
+    "treasury_movements_created": "Abono on CxC #15 created treasury movement id=6 with origen_tipo='cobranza_cxc'"
+  },
+  "architecture_verification": {
+    "odoo_decoupling_confirmed": {
+      "dashboard_financiero.py": "Reads from cont_venta_pos, cont_venta_pos_estado, cont_venta_pos_linea, cont_movimiento_tesoreria",
+      "finanzas_gerencial.py": "Reads from cont_movimiento_tesoreria (flujo_caja_gerencial), cont_venta_pos_linea (rentabilidad)",
+      "reportes_gerenciales.py": "Reads from cont_venta_pos_linea for rentabilidad export",
+      "linea_mapping.py": "Maps odoo_linea_negocio_id from cont_linea_negocio, NOT from Odoo schema"
+    },
+    "prorated_abono_logic": {
+      "location": "cxc_cxp.py lines 250-341",
+      "mechanism": "When CxC linked to POS order with multiple lineas, distributes payment proportionally to price_subtotal per linea",
+      "fallback": "If no POS detail or single linea, creates single treasury movement"
+    },
+    "data_flow": "Odoo POS data synced to cont_venta_pos/cont_venta_pos_linea with odoo_linea_negocio_id column -> Financial reports read local tables -> Treasury is single source of truth for cash flow"
+  },
+  "seed_data_creation": "Created test CxC #15 (S/1000) and 2 abonos (S/500 each) -> now cobrada. Treasury movement id=6 created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Finanzas Gerenciales Odoo Decoupling verified. Financial modules use local finanzas2 tables (cont_venta_pos, cont_venta_pos_linea with odoo_linea_negocio_id column). cont_linea_negocio is the official catalog with odoo_linea_negocio_id/nombre mapping columns. SIN CLASIFICAR fallback works. Prorated CxC abono creates multiple treasury movements when POS has multiple business lines. Note: ventas_pos.py still reads from odoo.v_pos_order_enriched for sync but this is expected - only financial/gerenciales modules needed decoupling."
+}

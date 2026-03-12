@@ -1160,6 +1160,32 @@ async def create_schema():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_capital_ln_empresa ON finanzas2.cont_capital_linea_negocio(empresa_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_capital_ln_linea ON finanzas2.cont_capital_linea_negocio(empresa_id, linea_negocio_id)")
 
+        # ══════════════════════════════════════
+        # MAPEO ODOO -> LINEA DE NEGOCIO
+        # ══════════════════════════════════════
+        for col_stmt in [
+            "ALTER TABLE finanzas2.cont_linea_negocio ADD COLUMN IF NOT EXISTS odoo_linea_negocio_id INT",
+            "ALTER TABLE finanzas2.cont_linea_negocio ADD COLUMN IF NOT EXISTS odoo_linea_negocio_nombre VARCHAR(200)",
+        ]:
+            try:
+                await conn.execute(col_stmt)
+            except Exception:
+                pass
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_ln_odoo_id ON finanzas2.cont_linea_negocio(empresa_id, odoo_linea_negocio_id)")
+
+        # ══════════════════════════════════════
+        # DESACOPLAMIENTO ODOO: campos linea_negocio en detalle POS
+        # ══════════════════════════════════════
+        for col_stmt in [
+            "ALTER TABLE finanzas2.cont_venta_pos_linea ADD COLUMN IF NOT EXISTS odoo_linea_negocio_id INT",
+            "ALTER TABLE finanzas2.cont_venta_pos_linea ADD COLUMN IF NOT EXISTS odoo_linea_negocio_nombre VARCHAR(200)",
+        ]:
+            try:
+                await conn.execute(col_stmt)
+            except Exception:
+                pass
+
+
 
 
         logger.info("Schema finanzas2 and all tables created/verified successfully")

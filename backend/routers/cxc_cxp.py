@@ -220,7 +220,7 @@ async def create_cxc_abono(cxc_id: int, data: AbonoCreate, empresa_id: int = Dep
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         cxc = await conn.fetchrow(
-            "SELECT id, saldo_pendiente, estado, marca_id, linea_negocio_id, centro_costo_id, proyecto_id FROM cont_cxc WHERE id=$1 AND empresa_id=$2",
+            "SELECT id, saldo_pendiente, estado, marca_id, linea_negocio_id, centro_costo_id, proyecto_id, odoo_order_id, venta_pos_id FROM cont_cxc WHERE id=$1 AND empresa_id=$2",
             cxc_id, empresa_id)
         if not cxc:
             raise HTTPException(404, "CxC no encontrada")
@@ -247,21 +247,98 @@ async def create_cxc_abono(cxc_id: int, data: AbonoCreate, empresa_id: int = Dep
                 WHERE id = $3
             """, max(new_saldo, 0), new_estado, cxc_id)
 
-            # CAPA TESORERIA: Cobranza real -> movimiento de tesoreria
+            # CAPA TESORERIA: Cobranza -> prorratear por linea de negocio
             from services.treasury_service import create_movimiento_tesoreria
-            await create_movimiento_tesoreria(
-                conn, empresa_id, data.fecha, 'ingreso', data.monto,
-                cuenta_financiera_id=data.cuenta_financiera_id,
-                forma_pago=data.forma_pago,
-                referencia=data.referencia,
-                concepto=f"Cobranza CxC #{cxc_id}",
-                origen_tipo='cobranza_cxc',
-                origen_id=abono_row['id'],
-                marca_id=cxc['marca_id'],
-                linea_negocio_id=cxc['linea_negocio_id'],
-                centro_costo_id=cxc['centro_costo_id'],
-                proyecto_id=cxc['proyecto_id'],
-            )
+            from services.linea_mapping import get_linea_negocio_map, resolve_linea
+
+            # Intentar obtener detalle POS para prorrateo
+            odoo_oid = cxc['odoo_order_id'] or cxc['venta_pos_id']
+            lineas_ln = []
+            if odoo_oid:
+                lineas_ln = await conn.fetch("""
+                    SELECT l.odoo_linea_negocio_id, COALESCE(SUM(l.price_subtotal), 0) as subtotal
+                    FROM cont_venta_pos_linea l
+                    JOIN cont_venta_pos v ON l.venta_pos_id = v.id
+                    WHERE v.odoo_id = $1
+                    GROUP BY l.odoo_linea_negocio_id
+                    HAVING SUM(l.price_subtotal) > 0
+                """, odoo_oid)
+
+            if lineas_ln and len(lineas_ln) > 1:
+                # Prorrateo: distribuir abono proporcionalmente entre lineas de negocio
+                ln_map = await get_linea_negocio_map(conn, empresa_id)
+                total_venta = sum(float(r['subtotal']) for r in lineas_ln)
+                if total_venta > 0:
+                    monto_restante = data.monto
+                    for i, r in enumerate(lineas_ln):
+                        mapped = resolve_linea(ln_map, r['odoo_linea_negocio_id'])
+                        if i == len(lineas_ln) - 1:
+                            monto_linea = round(monto_restante, 2)
+                        else:
+                            proporcion = float(r['subtotal']) / total_venta
+                            monto_linea = round(data.monto * proporcion, 2)
+                            monto_restante -= monto_linea
+                        if monto_linea > 0:
+                            await create_movimiento_tesoreria(
+                                conn, empresa_id, data.fecha, 'ingreso', monto_linea,
+                                cuenta_financiera_id=data.cuenta_financiera_id,
+                                forma_pago=data.forma_pago,
+                                referencia=data.referencia,
+                                concepto=f"Cobranza CxC #{cxc_id} (LN: {mapped['nombre']})",
+                                origen_tipo='cobranza_cxc',
+                                origen_id=abono_row['id'],
+                                marca_id=cxc['marca_id'],
+                                linea_negocio_id=mapped['id'],
+                                centro_costo_id=cxc['centro_costo_id'],
+                                proyecto_id=cxc['proyecto_id'],
+                            )
+                else:
+                    # Total venta es 0, fallback a movimiento unico
+                    await create_movimiento_tesoreria(
+                        conn, empresa_id, data.fecha, 'ingreso', data.monto,
+                        cuenta_financiera_id=data.cuenta_financiera_id,
+                        forma_pago=data.forma_pago,
+                        referencia=data.referencia,
+                        concepto=f"Cobranza CxC #{cxc_id}",
+                        origen_tipo='cobranza_cxc',
+                        origen_id=abono_row['id'],
+                        marca_id=cxc['marca_id'],
+                        linea_negocio_id=cxc['linea_negocio_id'],
+                        centro_costo_id=cxc['centro_costo_id'],
+                        proyecto_id=cxc['proyecto_id'],
+                    )
+            elif lineas_ln and len(lineas_ln) == 1:
+                # Una sola linea de negocio -> mapear y asignar
+                ln_map = await get_linea_negocio_map(conn, empresa_id)
+                mapped = resolve_linea(ln_map, lineas_ln[0]['odoo_linea_negocio_id'])
+                await create_movimiento_tesoreria(
+                    conn, empresa_id, data.fecha, 'ingreso', data.monto,
+                    cuenta_financiera_id=data.cuenta_financiera_id,
+                    forma_pago=data.forma_pago,
+                    referencia=data.referencia,
+                    concepto=f"Cobranza CxC #{cxc_id} (LN: {mapped['nombre']})",
+                    origen_tipo='cobranza_cxc',
+                    origen_id=abono_row['id'],
+                    marca_id=cxc['marca_id'],
+                    linea_negocio_id=mapped['id'],
+                    centro_costo_id=cxc['centro_costo_id'],
+                    proyecto_id=cxc['proyecto_id'],
+                )
+            else:
+                # Sin detalle POS: movimiento unico con linea_negocio de la CxC
+                await create_movimiento_tesoreria(
+                    conn, empresa_id, data.fecha, 'ingreso', data.monto,
+                    cuenta_financiera_id=data.cuenta_financiera_id,
+                    forma_pago=data.forma_pago,
+                    referencia=data.referencia,
+                    concepto=f"Cobranza CxC #{cxc_id}",
+                    origen_tipo='cobranza_cxc',
+                    origen_id=abono_row['id'],
+                    marca_id=cxc['marca_id'],
+                    linea_negocio_id=cxc['linea_negocio_id'],
+                    centro_costo_id=cxc['centro_costo_id'],
+                    proyecto_id=cxc['proyecto_id'],
+                )
 
         return {"message": "Abono registrado", "nuevo_saldo": max(new_saldo, 0), "nuevo_estado": new_estado}
 

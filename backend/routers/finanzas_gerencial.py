@@ -134,23 +134,47 @@ async def rentabilidad(
         line_cols = {"linea_negocio_id", "centro_costo_id"}
         # Columns on cont_gasto header: marca_id, proyecto_id, linea_negocio_id, centro_costo_id
         gasto_header_cols = {"marca_id", "proyecto_id", "linea_negocio_id", "centro_costo_id"}
-        # cont_factura_proveedor header has NO dimensional columns
 
-        ingresos_rows = await conn.fetch(f"""
-            SELECT
-                COALESCE(m.{cfg['name_col']}, 'Sin Asignar') as dimension_name,
-                COALESCE(SUM(l.price_subtotal), 0) as ingreso
-            FROM odoo.v_pos_line_full l
-            JOIN odoo.v_pos_order_enriched o ON o.odoo_order_id = l.order_id
-            JOIN finanzas2.cont_venta_pos_estado e
-                ON e.odoo_order_id = o.odoo_order_id AND e.empresa_id = $1
-            LEFT JOIN finanzas2.{cfg['join_table']} m ON m.nombre = l.marca
-            WHERE e.estado_local = 'confirmada'
-              AND o.date_order BETWEEN $2 AND $3
-            GROUP BY dimension_name
-        """, empresa_id,
-            datetime.combine(fecha_desde, datetime.min.time()),
-            datetime.combine(fecha_hasta, datetime.max.time()))
+        # INGRESOS: POS lines from LOCAL tables (desacoplado de Odoo)
+        from services.linea_mapping import get_linea_negocio_map, resolve_linea
+        ln_map = await get_linea_negocio_map(conn, empresa_id)
+
+        if dimension == 'linea_negocio':
+            raw_rows = await conn.fetch("""
+                SELECT l.odoo_linea_negocio_id as odoo_ln_id,
+                       COALESCE(SUM(l.price_subtotal), 0) as ingreso
+                FROM cont_venta_pos_linea l
+                JOIN cont_venta_pos v ON l.venta_pos_id = v.id
+                JOIN cont_venta_pos_estado e
+                    ON e.odoo_order_id = v.odoo_id AND e.empresa_id = $1
+                WHERE e.estado_local = 'confirmada'
+                  AND v.date_order BETWEEN $2 AND $3
+                GROUP BY l.odoo_linea_negocio_id
+            """, empresa_id,
+                datetime.combine(fecha_desde, datetime.min.time()),
+                datetime.combine(fecha_hasta, datetime.max.time()))
+            ing_by_name = {}
+            for r in raw_rows:
+                mapped = resolve_linea(ln_map, r['odoo_ln_id'])
+                name = mapped['nombre']
+                ing_by_name[name] = ing_by_name.get(name, 0) + float(r['ingreso'])
+            ingresos_rows = [{"dimension_name": k, "ingreso": v} for k, v in ing_by_name.items()]
+        else:
+            ingresos_rows = await conn.fetch(f"""
+                SELECT
+                    COALESCE(m.{cfg['name_col']}, 'Sin Asignar') as dimension_name,
+                    COALESCE(SUM(l.price_subtotal), 0) as ingreso
+                FROM cont_venta_pos_linea l
+                JOIN cont_venta_pos v ON l.venta_pos_id = v.id
+                JOIN cont_venta_pos_estado e
+                    ON e.odoo_order_id = v.odoo_id AND e.empresa_id = $1
+                LEFT JOIN {cfg['join_table']} m ON m.nombre = l.marca
+                WHERE e.estado_local = 'confirmada'
+                  AND v.date_order BETWEEN $2 AND $3
+                GROUP BY dimension_name
+            """, empresa_id,
+                datetime.combine(fecha_desde, datetime.min.time()),
+                datetime.combine(fecha_hasta, datetime.max.time()))
 
         # Gastos: prefer line-level, else header-level
         if cfg['join_col'] in line_cols:
@@ -360,7 +384,7 @@ async def roi_proyectos(
 
         # Returns: We track retorno from CxC abonos linked to projects (cash actually received)
         # and from confirmed POS pago_aplicacion linked to proyecto
-        retornos = await conn.fetch("""
+        await conn.fetch("""
             SELECT p.id as proyecto_id,
                    COALESCE(SUM(pa.monto_aplicado), 0) as retorno
             FROM cont_proyecto p

@@ -188,10 +188,12 @@ async def create_linea_negocio(data: LineaNegocioCreate, empresa_id: int = Depen
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         row = await conn.fetchrow("""
-            INSERT INTO finanzas2.cont_linea_negocio (empresa_id, codigo, nombre, descripcion, activo)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO finanzas2.cont_linea_negocio
+            (empresa_id, codigo, nombre, descripcion, activo, odoo_linea_negocio_id, odoo_linea_negocio_nombre)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-        """, empresa_id, data.codigo, data.nombre, data.descripcion, data.activo)
+        """, empresa_id, data.codigo, data.nombre, data.descripcion, data.activo,
+            data.odoo_linea_negocio_id, data.odoo_linea_negocio_nombre)
         return dict(row)
 
 
@@ -212,9 +214,12 @@ async def update_linea_negocio(id: int, data: LineaNegocioCreate, empresa_id: in
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         row = await conn.fetchrow("""
-            UPDATE finanzas2.cont_linea_negocio SET codigo = $1, nombre = $2, descripcion = $3
-            WHERE id = $4 AND empresa_id = $5 RETURNING *
-        """, data.codigo, data.nombre, data.descripcion, id, empresa_id)
+            UPDATE finanzas2.cont_linea_negocio
+            SET codigo = $1, nombre = $2, descripcion = $3,
+                odoo_linea_negocio_id = $4, odoo_linea_negocio_nombre = $5
+            WHERE id = $6 AND empresa_id = $7 RETURNING *
+        """, data.codigo, data.nombre, data.descripcion,
+            data.odoo_linea_negocio_id, data.odoo_linea_negocio_nombre, id, empresa_id)
         if not row:
             raise HTTPException(404, "Linea de negocio not found")
         return dict(row)
