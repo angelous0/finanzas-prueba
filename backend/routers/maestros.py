@@ -223,3 +223,18 @@ async def update_linea_negocio(id: int, data: LineaNegocioCreate, empresa_id: in
         if not row:
             raise HTTPException(404, "Linea de negocio not found")
         return dict(row)
+
+
+@router.get("/lineas-negocio/odoo-opciones")
+async def get_odoo_lineas_negocio():
+    """Lee las lineas de negocio disponibles en odoo.x_linea_negocio para el dropdown."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT odoo_id, name
+            FROM odoo.x_linea_negocio
+            WHERE name IS NOT NULL
+            ORDER BY name
+        """)
+        return [{"odoo_id": r["odoo_id"], "nombre": r["name"]} for r in rows]
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getLineasNegocio, createLineaNegocio, updateLineaNegocio, deleteLineaNegocio } from '../services/api';
+import { getLineasNegocio, createLineaNegocio, updateLineaNegocio, deleteLineaNegocio, getOdooLineasNegocioOpciones } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import { Plus, Trash2, GitBranch, X, Edit } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ export const LineasNegocio = () => {
   const { empresaActual } = useEmpresa();
 
   const [lineas, setLineas] = useState([]);
+  const [odooOpciones, setOdooOpciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -20,10 +21,14 @@ export const LineasNegocio = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const response = await getLineasNegocio();
-      setLineas(response.data);
+      const [lineasRes, odooRes] = await Promise.all([
+        getLineasNegocio(),
+        getOdooLineasNegocioOpciones().catch(() => ({ data: [] }))
+      ]);
+      setLineas(lineasRes.data);
+      setOdooOpciones(odooRes.data || []);
     } catch (error) {
-      toast.error('Error al cargar líneas de negocio');
+      toast.error('Error al cargar lineas de negocio');
     } finally {
       setLoading(false);
     }
@@ -120,11 +125,11 @@ export const LineasNegocio = () => {
                       <td>
                         {linea.odoo_linea_negocio_id ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.2rem 0.6rem', backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '9999px', fontSize: '0.75rem' }} data-testid={`odoo-mapped-${linea.id}`}>
-                            Mapeada (ID: {linea.odoo_linea_negocio_id})
+                            {linea.odoo_linea_negocio_nombre || `ID: ${linea.odoo_linea_negocio_id}`}
                           </span>
                         ) : (
                           <span style={{ padding: '0.2rem 0.6rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '9999px', fontSize: '0.75rem' }} data-testid={`odoo-unmapped-${linea.id}`}>
-                            Sin mapear
+                            Sin vincular
                           </span>
                         )}
                       </td>
@@ -172,16 +177,54 @@ export const LineasNegocio = () => {
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem', marginTop: '0.5rem' }}>
                   <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.75rem' }}>VINCULO CON ODOO</p>
                   <div className="form-group">
-                    <label className="form-label">odoo_linea_negocio_id</label>
-                    <input type="number" className="form-input" value={formData.odoo_linea_negocio_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, odoo_linea_negocio_id: e.target.value ? parseInt(e.target.value) : '' }))}
-                      placeholder="ID de la linea en Odoo" data-testid="odoo-id-input" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">odoo_linea_negocio_nombre</label>
-                    <input type="text" className="form-input" value={formData.odoo_linea_negocio_nombre}
-                      onChange={(e) => setFormData(prev => ({ ...prev, odoo_linea_negocio_nombre: e.target.value }))}
-                      placeholder="Nombre en Odoo (referencia)" data-testid="odoo-nombre-input" />
+                    <label className="form-label">Linea de Negocio en Odoo</label>
+                    {odooOpciones.length > 0 ? (
+                      <select
+                        className="form-input"
+                        value={formData.odoo_linea_negocio_id || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val) {
+                            setFormData(prev => ({ ...prev, odoo_linea_negocio_id: '', odoo_linea_negocio_nombre: '' }));
+                          } else {
+                            const opcion = odooOpciones.find(o => String(o.odoo_id) === val);
+                            setFormData(prev => ({
+                              ...prev,
+                              odoo_linea_negocio_id: parseInt(val),
+                              odoo_linea_negocio_nombre: opcion ? opcion.nombre : ''
+                            }));
+                          }
+                        }}
+                        data-testid="odoo-linea-select"
+                      >
+                        <option value="">-- Sin vincular --</option>
+                        {odooOpciones.map(op => (
+                          <option key={op.odoo_id} value={op.odoo_id}>
+                            {op.nombre} (ID: {op.odoo_id})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div style={{ padding: '0.75rem', backgroundColor: '#fefce8', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '0.8rem', color: '#92400e' }}>
+                        No hay lineas de negocio sincronizadas desde Odoo. Ejecute el sync del extractor para cargar las opciones.
+                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <span style={{ color: '#6b7280' }}>Vinculo manual:</span>
+                          <input type="number" className="form-input" style={{ width: '80px', padding: '0.25rem 0.5rem' }}
+                            value={formData.odoo_linea_negocio_id || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, odoo_linea_negocio_id: e.target.value ? parseInt(e.target.value) : '' }))}
+                            placeholder="ID" data-testid="odoo-id-input" />
+                          <input type="text" className="form-input" style={{ flex: 1, padding: '0.25rem 0.5rem' }}
+                            value={formData.odoo_linea_negocio_nombre || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, odoo_linea_negocio_nombre: e.target.value }))}
+                            placeholder="Nombre" data-testid="odoo-nombre-input" />
+                        </div>
+                      </div>
+                    )}
+                    {formData.odoo_linea_negocio_id && (
+                      <p style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#059669' }}>
+                        Vinculada: ID {formData.odoo_linea_negocio_id} - {formData.odoo_linea_negocio_nombre || '(sin nombre)'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
