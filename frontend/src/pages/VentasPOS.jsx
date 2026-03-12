@@ -3,7 +3,7 @@ import {
   getVentasPOS, refreshVentasPOS, confirmarVentaPOS, desconfirmarVentaPOS,
   marcarCreditoVentaPOS, descartarVentaPOS,
   getPagosVentaPOS, getPagosOficialesVentaPOS, addPagoVentaPOS, updatePagoVentaPOS, deletePagoVentaPOS,
-  getCuentasFinancieras, getLineasVentaPOS,
+  getCuentasFinancieras, getLineasVentaPOS, syncLocalVentasPOS,
   getOdooCompanyMap, setOdooCompanyMap
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
@@ -565,6 +565,15 @@ export const VentasPOS = () => {
                 });
                 const d = result.data;
                 toast.success(`Sync completado: ${d.inserted || 0} nuevos, ${d.updated || 0} actualizados`);
+                // Also sync lines to local tables
+                try {
+                  await syncLocalVentasPOS({
+                    fecha_desde: fechaDesde || undefined,
+                    fecha_hasta: fechaHasta || undefined
+                  });
+                } catch(syncErr) {
+                  console.warn('Local sync error:', syncErr);
+                }
                 loadVentas();
               } catch (error) {
                 const detail = error.response?.data?.detail;
@@ -946,10 +955,10 @@ export const VentasPOS = () => {
       {/* Modal Ver Lineas de Productos */}
       {showLineasModal && ventaSeleccionada && (
         <div className="modal-overlay" onClick={closeLineasModal} style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)' }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1000px', backgroundColor: '#ffffff' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '1100px', backgroundColor: '#ffffff' }}>
             <div className="modal-header" style={{ borderBottom: '2px solid #f3f4f6' }}>
               <div>
-                <h2 className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 600 }}>Detalles de Productos</h2>
+                <h2 className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 600 }}>Detalle de Venta POS</h2>
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
                   {ventaSeleccionada.name} - {ventaSeleccionada.partner_name} - Total: {formatCurrency(ventaSeleccionada.amount_total)}
                 </p>
@@ -960,32 +969,44 @@ export const VentasPOS = () => {
               {loadingLineas ? (
                 <div style={{ textAlign: 'center', padding: '2rem' }}><div className="loading loading-spinner loading-lg"></div><p style={{ marginTop: '1rem', color: '#6b7280' }}>Cargando productos...</p></div>
               ) : lineasProductos.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '12px' }}><p style={{ color: '#6b7280' }}>No hay lineas de productos para esta venta</p></div>
+                <div style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                  <p style={{ color: '#6b7280' }}>No hay lineas de productos para esta venta.</p>
+                  <p style={{ color: '#9ca3af', fontSize: '0.8rem', marginTop: '0.5rem' }}>Sincronice desde el boton "Sincronizar" para traer el detalle.</p>
+                </div>
               ) : (
                 <>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', marginBottom: '1.5rem' }}>
-                    <table className="table table-zebra" style={{ marginBottom: 0 }}>
+                    <table className="table table-zebra" style={{ marginBottom: 0 }} data-testid="pos-detail-table">
                       <thead style={{ backgroundColor: '#f9fafb' }}>
                         <tr>
                           <th>Producto</th>
-                          <th>Codigo</th>
-                          <th className="text-right">Cant.</th>
-                          <th className="text-right">P. Unit</th>
-                          <th className="text-right">Subtotal</th>
-                          <th>Marca</th>
-                          <th>Tipo</th>
+                          <th style={{ width: '90px' }}>Codigo</th>
+                          <th className="text-right" style={{ width: '55px' }}>Cant.</th>
+                          <th className="text-right" style={{ width: '85px' }}>P. Unit</th>
+                          <th className="text-right" style={{ width: '95px' }}>Subtotal</th>
+                          <th style={{ width: '120px' }}>Marca</th>
+                          <th style={{ width: '130px' }}>Linea de Negocio</th>
                         </tr>
                       </thead>
                       <tbody>
                         {lineasProductos.map((linea, index) => (
-                          <tr key={index}>
+                          <tr key={index} data-testid={`pos-line-${index}`}>
                             <td style={{ fontWeight: 500 }}>{linea.product_name}</td>
-                            <td style={{ fontSize: '0.875rem', color: '#6b7280' }}>{linea.product_code || '-'}</td>
+                            <td style={{ fontSize: '0.8rem', color: '#6b7280', fontFamily: 'monospace' }}>{linea.product_code || '-'}</td>
                             <td className="text-right">{linea.qty}</td>
                             <td className="text-right">{formatCurrency(linea.price_unit)}</td>
                             <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(linea.price_subtotal)}</td>
-                            <td>{linea.marca ? <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '0.75rem' }}>{linea.marca}</span> : '-'}</td>
-                            <td>{linea.tipo ? <span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '9999px', fontSize: '0.75rem' }}>{linea.tipo}</span> : '-'}</td>
+                            <td>{linea.marca ? <span style={{ padding: '0.2rem 0.6rem', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '0.75rem' }}>{linea.marca}</span> : '-'}</td>
+                            <td>
+                              {linea.linea_negocio_nombre ? (
+                                <span style={{
+                                  padding: '0.2rem 0.6rem',
+                                  backgroundColor: linea.linea_negocio_nombre === 'SIN CLASIFICAR' ? '#fef3c7' : '#d1fae5',
+                                  color: linea.linea_negocio_nombre === 'SIN CLASIFICAR' ? '#92400e' : '#065f46',
+                                  borderRadius: '9999px', fontSize: '0.75rem'
+                                }}>{linea.linea_negocio_nombre}</span>
+                              ) : '-'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1000,9 +1021,29 @@ export const VentasPOS = () => {
                       </tfoot>
                     </table>
                   </div>
-                  {/* Summary by marca/tipo */}
+                  {/* Resumen por Linea de Negocio (prioritario) y por Marca */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem', backgroundColor: '#f9fafb' }}>
+                    <div style={{ border: '2px solid #059669', borderRadius: '12px', padding: '1rem', backgroundColor: '#f0fdf4' }} data-testid="resumen-linea-negocio">
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginBottom: '0.75rem', color: '#065f46' }}>Total por Linea de Negocio</h4>
+                      {(() => {
+                        const porLN = {};
+                        lineasProductos.forEach(l => {
+                          const ln = l.linea_negocio_nombre || 'SIN CLASIFICAR';
+                          porLN[ln] = (porLN[ln] || 0) + parseFloat(l.price_subtotal || 0);
+                        });
+                        const total = Object.values(porLN).reduce((s, v) => s + v, 0);
+                        return Object.entries(porLN).sort((a, b) => b[1] - a[1]).map(([ln, sum]) => (
+                          <div key={ln} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #d1fae5' }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{ln}</span>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontWeight: 700, color: '#059669' }}>{formatCurrency(sum)}</span>
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>({total > 0 ? ((sum / total) * 100).toFixed(1) : 0}%)</span>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem', backgroundColor: '#f9fafb' }} data-testid="resumen-marca">
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '0.75rem' }}>Total por Marca</h4>
                       {(() => {
                         const porMarca = {};
@@ -1010,19 +1051,6 @@ export const VentasPOS = () => {
                         return Object.entries(porMarca).sort((a, b) => b[1] - a[1]).map(([marca, total]) => (
                           <div key={marca} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
                             <span style={{ fontSize: '0.875rem' }}>{marca}</span>
-                            <span style={{ fontWeight: 600, color: '#059669' }}>{formatCurrency(total)}</span>
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem', backgroundColor: '#f9fafb' }}>
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '0.75rem' }}>Total por Tipo</h4>
-                      {(() => {
-                        const porTipo = {};
-                        lineasProductos.forEach(l => { const t = l.tipo || 'Sin Tipo'; porTipo[t] = (porTipo[t] || 0) + parseFloat(l.price_subtotal || 0); });
-                        return Object.entries(porTipo).sort((a, b) => b[1] - a[1]).map(([tipo, total]) => (
-                          <div key={tipo} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                            <span style={{ fontSize: '0.875rem' }}>{tipo}</span>
                             <span style={{ fontWeight: 600, color: '#059669' }}>{formatCurrency(total)}</span>
                           </div>
                         ));

@@ -1,0 +1,112 @@
+{
+  "summary": "Completed backend and frontend testing of Linea de Negocio Reorganization in Finanzas module. Backend: 18/18 tests passed (100%). Frontend: All features working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_tested": {
+    "GET /api/ventas-pos": {
+      "status": "PASS",
+      "details": "Listing from local tables, returns estado_local, pagos_asignados, pagos_oficiales"
+    },
+    "GET /api/ventas-pos/{order_id}/lineas": {
+      "status": "PASS",
+      "details": "Returns product_name, product_code, qty, price_unit, price_subtotal, marca, linea_negocio_nombre"
+    },
+    "GET /api/ventas-pos/{order_id}/distribucion-analitica": {
+      "status": "PASS",
+      "details": "Returns vendido/cobrado/pendiente by linea de negocio"
+    },
+    "POST /api/ventas-pos/sync-local": {
+      "status": "PASS",
+      "details": "Syncs from Odoo schema to local tables with orders and lines count"
+    },
+    "POST /api/ventas-pos/{order_id}/confirmar": {
+      "status": "PASS",
+      "details": "Creates 1 real treasury movement + N analytical distributions"
+    },
+    "POST /api/ventas-pos/{order_id}/credito": {
+      "status": "PASS",
+      "details": "Creates CxC + analytical distributions, NO treasury movement"
+    },
+    "POST /api/cxc/{cxc_id}/abonos": {
+      "status": "PASS",
+      "details": "Creates 1 real treasury + prorated analytical distributions"
+    },
+    "GET /api/lineas-negocio": {
+      "status": "PASS",
+      "details": "Returns catalog with odoo_linea_negocio_id and odoo_linea_negocio_nombre mapping fields"
+    },
+    "PUT /api/lineas-negocio/{id}": {
+      "status": "PASS",
+      "details": "Can update odoo mapping fields"
+    },
+    "Frontend_POS_detail_modal": {
+      "status": "PASS",
+      "details": "Shows product_name as primary, plus codigo, qty, price, subtotal, marca, linea_negocio"
+    },
+    "Frontend_POS_summaries": {
+      "status": "PASS",
+      "details": "Shows Total por Linea de Negocio (green box) and Total por Marca"
+    },
+    "Frontend_Lineas_Negocio_mapped_unmapped": {
+      "status": "PASS",
+      "details": "Shows 'Mapeada (ID: X)' green badge and 'Sin mapear' yellow badge"
+    },
+    "No_Odoo_views_in_financial_modules": {
+      "status": "PASS",
+      "details": "dashboard_financiero, rentabilidad, flujo_caja_gerencial all work without Odoo views"
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_linea_negocio_reorganization.py",
+    "/app/test_reports/pytest/pytest_linea_negocio_iter27.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Code review PASS: ventas_pos.py get_lineas_venta_pos correctly uses linea_mapping service to resolve odoo_linea_negocio_id",
+    "POS detail modal shows product_name as primary field with correct summary sections",
+    "Lineas de Negocio catalog correctly shows mapped/unmapped status badges",
+    "distribucion_analitica.py correctly creates N records per linea de negocio for venta_pos_ingreso and cobranza_cxc",
+    "cxc_cxp.py create_cxc_abono calls crear_distribucion_cobro for prorated analytical distribution"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_linea_negocio_reorganization.py"
+  ],
+  "success_rate": {
+    "backend": "100% (18/18 tests passed)",
+    "frontend": "100% (All features verified)"
+  },
+  "test_credentials": {
+    "empresa_id": "6 (Ambission Industries SAC)",
+    "api_base_url": "https://negocio-caja.preview.emergentagent.com"
+  },
+  "test_data_observed": {
+    "order_146661_lines": [
+      {"product_name": "OROGAN-LQ", "marca": "ELEMENT PREMIUM", "linea_negocio": "SIN CLASIFICAR"},
+      {"product_name": "MACALISTER-LQ", "marca": "ELEMENT PREMIUM", "linea_negocio": "SIN CLASIFICAR"},
+      {"product_name": "KEPA-LQ", "marca": "ELEMENT PREMIUM", "linea_negocio": "SIN CLASIFICAR"}
+    ],
+    "lineas_negocio_catalog": [
+      {"codigo": "LN-001", "nombre": "Línea Principal", "vinculo_odoo": "Mapeada (ID: 1)"},
+      {"codigo": "LN-002", "nombre": "Línea Secundaria", "vinculo_odoo": "Sin mapear"},
+      {"codigo": "SIN-CLAS", "nombre": "SIN CLASIFICAR", "vinculo_odoo": "Sin mapear"}
+    ],
+    "pos_detail_modal_columns": ["Producto", "Codigo", "Cant.", "P. Unit", "Subtotal", "Marca", "Linea de Negocio"],
+    "pos_detail_summaries": ["Total por Linea de Negocio (green)", "Total por Marca"]
+  },
+  "architecture_verification": {
+    "linea_negocio_mapping_flow": "odoo_linea_negocio_id from cont_venta_pos_linea -> resolve via linea_mapping.py -> cont_linea_negocio.id",
+    "analytical_distribution_flow": "confirmar/credito creates venta_pos_ingreso entries, abonos creates cobranza_cxc entries prorated by linea",
+    "unmapped_fallback": "SIN CLASIFICAR used when odoo_linea_negocio_id is NULL or not found in mapping"
+  },
+  "seed_data_creation": "None required - used existing March 2026 synced data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Linea de Negocio Reorganization verified. POS detail modal shows: Producto (name), Codigo, Cant, P.Unit, Subtotal, Marca, Linea de Negocio. Summary sections: Total por Linea de Negocio (green) and Total por Marca. Lineas de Negocio catalog shows mapped/unmapped status. All endpoints working: ventas-pos listing, lineas, distribucion-analitica, sync-local, confirmar, credito, cxc abonos. Financial modules (dashboard, rentabilidad, flujo_caja_gerencial) work without Odoo views."
+}

@@ -56,6 +56,31 @@ async def set_odoo_company_map(data: dict, empresa_id: int = Depends(get_empresa
 
 
 # =====================
+# VENTAS POS — SYNC TO LOCAL (copy from Odoo schema to local tables)
+# =====================
+@router.post("/ventas-pos/sync-local")
+async def sync_to_local(
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    empresa_id: int = Depends(get_empresa_id),
+):
+    """Copy POS data from Odoo schema to local finanzas2 tables."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        company_key = await get_company_key(conn, empresa_id)
+        if not company_key:
+            raise HTTPException(400, "Empresa no tiene company_key configurado")
+        fd = datetime.combine(fecha_desde, datetime.min.time()) if fecha_desde else None
+        fh = datetime.combine(fecha_hasta, datetime.max.time()) if fecha_hasta else None
+        await _sync_odoo_to_local(conn, empresa_id, company_key, fd, fh)
+        local_orders = await conn.fetchval(
+            "SELECT COUNT(*) FROM finanzas2.cont_venta_pos WHERE empresa_id = $1", empresa_id)
+        local_lines = await conn.fetchval(
+            "SELECT COUNT(*) FROM finanzas2.cont_venta_pos_linea WHERE empresa_id = $1", empresa_id)
+        return {"message": "Sync completado", "orders": local_orders, "lines": local_lines}
+
+
+# =====================
 # VENTAS POS — REFRESH (proxy to Odoo module sync)
 # =====================
 @router.post("/ventas-pos/refresh")
@@ -96,6 +121,16 @@ async def refresh_ventas_pos(
             resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             result = resp.json()
+
+            # Sync from Odoo schema to local finanzas2 tables
+            try:
+                fd_sync = datetime.combine(datetime.strptime(desde, '%Y-%m-%d').date(), datetime.min.time()) if desde else None
+                fh_sync = datetime.combine(datetime.strptime(hasta, '%Y-%m-%d').date(), datetime.max.time()) if hasta else None
+                async with pool.acquire() as conn2:
+                    await _sync_odoo_to_local(conn2, empresa_id, company_key, fd_sync, fh_sync)
+            except Exception as sync_err:
+                logger.error(f"Error syncing to local tables: {sync_err}")
+
             return {
                 "ok": True,
                 "message": result.get("message", "Sync completado"),
@@ -114,6 +149,97 @@ async def refresh_ventas_pos(
     except Exception as e:
         logger.error(f"Error calling Odoo sync: {e}")
         raise HTTPException(502, f"Error inesperado al llamar al modulo Odoo: {str(e)}")
+
+
+async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_desde=None, fecha_hasta=None):
+    """Copia datos de esquema odoo a tablas locales finanzas2 (cont_venta_pos + cont_venta_pos_linea).
+    Incluye product_name desde product_template y linea_negocio_id."""
+    from datetime import timezone as tz
+
+    date_filter = ""
+    date_params = [company_key]
+    idx = 2
+    if fecha_desde:
+        if hasattr(fecha_desde, 'tzinfo') and fecha_desde.tzinfo is None:
+            fecha_desde = fecha_desde.replace(tzinfo=tz.utc)
+        date_filter += f" AND o.date_order >= ${idx}"
+        date_params.append(fecha_desde)
+        idx += 1
+    if fecha_hasta:
+        if hasattr(fecha_hasta, 'tzinfo') and fecha_hasta.tzinfo is None:
+            fecha_hasta = fecha_hasta.replace(tzinfo=tz.utc)
+        date_filter += f" AND o.date_order <= ${idx}"
+        date_params.append(fecha_hasta)
+        idx += 1
+
+    # 1. Sync orders: odoo.v_pos_order_enriched -> cont_venta_pos
+    orders = await conn.fetch(f"""
+        SELECT o.odoo_order_id, o.date_order, o.amount_total, o.state,
+               o.is_cancelled, o.reserva,
+               p.name AS partner_name, u.name AS vendedor_name
+        FROM odoo.v_pos_order_enriched o
+        LEFT JOIN odoo.res_partner p ON p.odoo_id = o.cuenta_partner_id AND p.company_key = 'GLOBAL'
+        LEFT JOIN odoo.res_users u ON u.odoo_id = o.user_id AND u.company_key = 'GLOBAL'
+        WHERE o.company_key = $1 {date_filter}
+    """, *date_params)
+
+    for o in orders:
+        date_order = o['date_order']
+        if date_order and hasattr(date_order, 'replace'):
+            date_order = date_order.replace(tzinfo=None)
+        await conn.execute("""
+            INSERT INTO finanzas2.cont_venta_pos
+                (empresa_id, odoo_id, name, date_order, amount_total, state,
+                 partner_name, vendedor_name, is_cancel, reserva)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (empresa_id, odoo_id) DO UPDATE SET
+                date_order = EXCLUDED.date_order,
+                amount_total = EXCLUDED.amount_total,
+                state = EXCLUDED.state,
+                partner_name = EXCLUDED.partner_name,
+                vendedor_name = EXCLUDED.vendedor_name,
+                is_cancel = EXCLUDED.is_cancel,
+                reserva = EXCLUDED.reserva
+        """, empresa_id, o['odoo_order_id'], f"POS-{o['odoo_order_id']}",
+            date_order, o['amount_total'], o['state'],
+            o['partner_name'] or '-', o['vendedor_name'] or '-',
+            o['is_cancelled'] or False, o['reserva'] or False)
+
+    if not orders:
+        return
+
+    # 2. Sync lines for the synced orders - batch SQL (efficient)
+    order_ids = [o['odoo_order_id'] for o in orders]
+
+    await conn.execute("""
+        INSERT INTO finanzas2.cont_venta_pos_linea
+            (empresa_id, venta_pos_id, odoo_line_id, product_id, product_name, product_code,
+             qty, price_unit, price_subtotal, price_subtotal_incl, discount, marca, tipo,
+             odoo_linea_negocio_id, odoo_linea_negocio_nombre)
+        SELECT $1, v.id, l.pos_order_line_id, l.product_id,
+               COALESCE(pt.name, l.barcode, '-'), l.barcode,
+               l.qty, l.price_unit, l.price_subtotal, l.price_subtotal,
+               l.discount, l.marca, l.tipo,
+               pt.linea_negocio_id, pt.linea_negocio
+        FROM odoo.v_pos_line_full l
+        JOIN finanzas2.cont_venta_pos v ON v.odoo_id = l.order_id AND v.empresa_id = $1
+        LEFT JOIN odoo.product_template pt ON pt.odoo_id = l.product_tmpl_id
+        WHERE l.company_key = $2 AND l.order_id = ANY($3)
+        ON CONFLICT (empresa_id, odoo_line_id) DO UPDATE SET
+            product_name = EXCLUDED.product_name,
+            product_code = EXCLUDED.product_code,
+            qty = EXCLUDED.qty,
+            price_unit = EXCLUDED.price_unit,
+            price_subtotal = EXCLUDED.price_subtotal,
+            price_subtotal_incl = EXCLUDED.price_subtotal_incl,
+            discount = EXCLUDED.discount,
+            marca = EXCLUDED.marca,
+            tipo = EXCLUDED.tipo,
+            odoo_linea_negocio_id = EXCLUDED.odoo_linea_negocio_id,
+            odoo_linea_negocio_nombre = EXCLUDED.odoo_linea_negocio_nombre
+    """, empresa_id, company_key, order_ids)
+
+    logger.info(f"Synced {len(orders)} orders and their lines to local tables")
 
 
 # =====================
@@ -158,50 +284,48 @@ async def list_ventas_pos(
 async def _list_from_odoo(conn, empresa_id, company_key,
                            estado, fecha_desde, fecha_hasta, search, include_cancelled,
                            page, page_size):
-    """Read orders from odoo.v_pos_order_enriched + local estado, with pagination."""
-    conditions = ["o.company_key = $1"]
-    params = [company_key]
-    idx = 2
+    """Read orders from LOCAL cont_venta_pos + estado (desacoplado de Odoo)."""
+
+    # Lazy sync removed - use explicit refresh/sync instead
+    conditions = [f"v.empresa_id = {empresa_id}"]
+
+    params = []
+    idx = 1
 
     if not include_cancelled:
-        conditions.append("o.is_cancelled = FALSE")
+        conditions.append("v.is_cancel = FALSE")
 
     if fecha_desde:
-        conditions.append(f"o.date_order >= ${idx}")
+        conditions.append(f"v.date_order >= ${idx}")
         params.append(datetime.combine(fecha_desde, datetime.min.time()))
         idx += 1
     if fecha_hasta:
-        conditions.append(f"o.date_order <= ${idx}")
+        conditions.append(f"v.date_order <= ${idx}")
         params.append(datetime.combine(fecha_hasta, datetime.max.time()))
         idx += 1
     if search:
-        conditions.append(f"(p.name ILIKE ${idx} OR u.name ILIKE ${idx})")
+        conditions.append(f"(v.partner_name ILIKE ${idx} OR v.vendedor_name ILIKE ${idx} OR CAST(v.odoo_id AS TEXT) LIKE ${idx})")
         params.append(f"%{search}%")
         idx += 1
 
     estado_filter = ""
     if estado:
         if estado == 'pendiente':
-            estado_filter = f" AND COALESCE(e.estado_local, 'pendiente') = 'pendiente'"
+            estado_filter = " AND COALESCE(e.estado_local, 'pendiente') = 'pendiente'"
         else:
             estado_filter = f" AND e.estado_local = ${idx}"
             params.append(estado)
             idx += 1
 
     from_clause = f"""
-        FROM odoo.v_pos_order_enriched o
-        LEFT JOIN odoo.res_partner p
-            ON p.odoo_id = o.cuenta_partner_id AND p.company_key = 'GLOBAL'
-        LEFT JOIN odoo.res_users u
-            ON u.odoo_id = o.user_id AND u.company_key = 'GLOBAL'
+        FROM finanzas2.cont_venta_pos v
         LEFT JOIN finanzas2.cont_venta_pos_estado e
-            ON e.odoo_order_id = o.odoo_order_id AND e.empresa_id = {empresa_id}
+            ON e.odoo_order_id = v.odoo_id AND e.empresa_id = {empresa_id}
         WHERE {' AND '.join(conditions)}
         {estado_filter}
     """
 
-    # Count total + max date
-    count_query = f"SELECT COUNT(*), MAX(o.date_order) {from_clause}"
+    count_query = f"SELECT COUNT(*), MAX(v.date_order) {from_clause}"
     row_agg = await conn.fetchrow(count_query, *params)
     total = row_agg[0]
     max_date_order = row_agg[1]
@@ -210,41 +334,37 @@ async def _list_from_odoo(conn, empresa_id, company_key,
 
     query = f"""
         SELECT
-            o.odoo_order_id,
-            o.date_order,
-            o.amount_total,
-            o.state,
-            o.is_cancelled,
-            o.reserva,
-            o.reserva_use_id,
-            o.cuenta_partner_id,
-            o.contacto_partner_id,
-            o.user_id,
-            p.name AS partner_name,
-            u.name AS vendedor_name,
+            v.odoo_id AS odoo_order_id,
+            v.date_order,
+            v.amount_total,
+            v.state,
+            v.is_cancel AS is_cancelled,
+            v.reserva,
+            v.partner_name,
+            v.vendedor_name,
             COALESCE(e.estado_local, 'pendiente') AS estado_local,
             e.notas AS estado_notas,
             e.cxc_id,
             COALESCE(
                 (SELECT SUM(vp.monto) FROM finanzas2.cont_venta_pos_pago vp
-                 WHERE vp.odoo_order_id = o.odoo_order_id AND vp.empresa_id = {empresa_id}), 0
+                 WHERE vp.odoo_order_id = v.odoo_id AND vp.empresa_id = {empresa_id}), 0
             ) AS pagos_asignados,
             COALESCE(
                 (SELECT COUNT(*) FROM finanzas2.cont_venta_pos_pago vp
-                 WHERE vp.odoo_order_id = o.odoo_order_id AND vp.empresa_id = {empresa_id}), 0
+                 WHERE vp.odoo_order_id = v.odoo_id AND vp.empresa_id = {empresa_id}), 0
             ) AS num_pagos,
             COALESCE(
                 (SELECT SUM(pa.monto_aplicado) FROM finanzas2.cont_pago_aplicacion pa
-                 WHERE pa.tipo_documento = 'venta_pos_odoo' AND pa.documento_id = o.odoo_order_id
+                 WHERE pa.tipo_documento = 'venta_pos_odoo' AND pa.documento_id = v.odoo_id
                    AND pa.empresa_id = {empresa_id}), 0
             ) AS pagos_oficiales,
             COALESCE(
                 (SELECT COUNT(*) FROM finanzas2.cont_pago_aplicacion pa
-                 WHERE pa.tipo_documento = 'venta_pos_odoo' AND pa.documento_id = o.odoo_order_id
+                 WHERE pa.tipo_documento = 'venta_pos_odoo' AND pa.documento_id = v.odoo_id
                    AND pa.empresa_id = {empresa_id}), 0
             ) AS num_pagos_oficiales
         {from_clause}
-        ORDER BY o.date_order DESC
+        ORDER BY v.date_order DESC
         LIMIT {page_size} OFFSET {offset}
     """
     rows = await conn.fetch(query, *params)
@@ -290,43 +410,48 @@ async def _list_from_odoo(conn, empresa_id, company_key,
 # =====================
 @router.get("/ventas-pos/{order_id}/lineas")
 async def get_lineas_venta_pos(order_id: int, empresa_id: int = Depends(get_empresa_id)):
+    """Detalle de líneas POS desde tablas locales con mapeo de línea de negocio."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        company_key = await get_company_key(conn, empresa_id)
+        await conn.execute("SET search_path TO finanzas2, public")
 
-        if company_key:
-            rows = await conn.fetch("""
-                SELECT
-                    l.pos_order_line_id AS id,
-                    l.product_id,
-                    l.qty,
-                    l.price_unit,
-                    l.discount,
-                    l.price_subtotal,
-                    l.price_subtotal AS price_subtotal_incl,
-                    l.barcode AS product_code,
-                    COALESCE(l.barcode, '') AS product_name,
-                    l.marca,
-                    l.tipo,
-                    l.talla,
-                    l.color,
-                    l.tela,
-                    l.entalle,
-                    l.list_price
-                FROM odoo.v_pos_line_full l
-                WHERE l.order_id = $1 AND l.company_key = $2
-                ORDER BY l.pos_order_line_id ASC
-            """, order_id, company_key)
-            return [dict(r) for r in rows]
-        else:
-            # Fallback: legacy table
-            await conn.execute("SET search_path TO finanzas2, public")
-            rows = await conn.fetch("""
-                SELECT id, product_name, product_code, qty, price_unit,
-                       price_subtotal, price_subtotal_incl, discount, marca, tipo
-                FROM finanzas2.cont_venta_pos_linea WHERE venta_pos_id = $1 ORDER BY id ASC
-            """, order_id)
-            return [dict(r) for r in rows]
+        rows = await conn.fetch("""
+            SELECT l.id, l.product_id, l.product_name, l.product_code,
+                   l.qty, l.price_unit, l.discount, l.price_subtotal, l.price_subtotal_incl,
+                   l.marca, l.tipo,
+                   l.odoo_linea_negocio_id, l.odoo_linea_negocio_nombre
+            FROM finanzas2.cont_venta_pos_linea l
+            JOIN finanzas2.cont_venta_pos v ON l.venta_pos_id = v.id
+            WHERE v.odoo_id = $1 AND v.empresa_id = $2
+            ORDER BY l.id ASC
+        """, order_id, empresa_id)
+
+        if not rows:
+            return []
+
+        from services.linea_mapping import get_linea_negocio_map, resolve_linea
+        ln_map = await get_linea_negocio_map(conn, empresa_id)
+
+        result = []
+        for r in rows:
+            mapped = resolve_linea(ln_map, r['odoo_linea_negocio_id'])
+            result.append({
+                "id": r['id'],
+                "product_id": r['product_id'],
+                "product_name": r['product_name'] or r['product_code'] or '-',
+                "product_code": r['product_code'] or '-',
+                "qty": float(r['qty'] or 0),
+                "price_unit": float(r['price_unit'] or 0),
+                "discount": float(r['discount'] or 0),
+                "price_subtotal": float(r['price_subtotal'] or 0),
+                "price_subtotal_incl": float(r['price_subtotal_incl'] or 0),
+                "marca": r['marca'],
+                "tipo": r['tipo'],
+                "linea_negocio_id": mapped['id'],
+                "linea_negocio_nombre": mapped['nombre'],
+                "odoo_linea_negocio_id": r['odoo_linea_negocio_id'],
+            })
+        return result
 
 
 # =====================
@@ -339,12 +464,12 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
         company_key = await get_company_key(conn, empresa_id)
 
         if company_key:
-            # Verify order exists in odoo
+            # Leer desde tablas locales (desacoplado de Odoo)
             order = await conn.fetchrow(
-                "SELECT amount_total FROM odoo.v_pos_order_enriched WHERE odoo_order_id=$1 AND company_key=$2",
-                order_id, company_key)
+                "SELECT amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id=$1 AND empresa_id=$2",
+                order_id, empresa_id)
             if not order:
-                raise HTTPException(404, "Orden no encontrada en Odoo")
+                raise HTTPException(404, "Orden no encontrada en tablas locales")
             estado = await conn.fetchrow(
                 "SELECT estado_local FROM finanzas2.cont_venta_pos_estado WHERE odoo_order_id=$1 AND empresa_id=$2",
                 order_id, empresa_id)
@@ -359,10 +484,9 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                     DO UPDATE SET estado_local = 'confirmada', updated_at = NOW()
                 """, empresa_id, order_id)
 
-                # CAPA TESORERIA: Venta confirmada al contado -> movimiento de tesoreria
+                # CAPA TESORERIA: 1 movimiento REAL por cobro total (no N ficticios)
                 amount = float(order['amount_total'] or 0)
                 if amount > 0:
-                    # Check if there are assigned pagos with cuenta_financiera
                     pagos = await conn.fetch(
                         "SELECT forma_pago, monto, cuenta_financiera_id FROM finanzas2.cont_venta_pos_pago WHERE odoo_order_id=$1 AND empresa_id=$2",
                         order_id, empresa_id)
@@ -378,7 +502,6 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                                 origen_id=order_id,
                             )
                     else:
-                        # Single treasury entry for full amount
                         await create_movimiento_tesoreria(
                             conn, empresa_id, date.today(), 'ingreso', amount,
                             concepto=f"Venta POS #{order_id} confirmada",
@@ -386,7 +509,7 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                             origen_id=order_id,
                         )
 
-                    # Auto-create CxC if there's remaining balance (saldo_pendiente)
+                    # Auto-CxC si hay saldo pendiente
                     total_pagos = sum(float(p['monto']) for p in pagos) if pagos else 0
                     saldo_pendiente = amount - total_pagos
                     if saldo_pendiente > 0.01:
@@ -401,6 +524,18 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                             UPDATE finanzas2.cont_venta_pos_estado SET cxc_id = $1
                             WHERE odoo_order_id = $2 AND empresa_id = $3
                         """, cxc['id'], order_id, empresa_id)
+
+                # DISTRIBUCION ANALITICA: N registros por linea de negocio
+                from services.distribucion_analitica import crear_distribucion_ingreso
+                await crear_distribucion_ingreso(conn, empresa_id, order_id, date.today())
+
+                # Si hubo pagos, también crear distribución de cobro
+                if amount > 0:
+                    total_cobrado = sum(float(p['monto']) for p in pagos) if pagos else amount
+                    if total_cobrado > 0:
+                        from services.distribucion_analitica import crear_distribucion_cobro
+                        await crear_distribucion_cobro(
+                            conn, empresa_id, order_id, order_id, total_cobrado, date.today())
 
             return {"message": "Venta confirmada"}
         else:
@@ -429,13 +564,13 @@ async def marcar_credito_venta_pos(
         company_key = await get_company_key(conn, empresa_id)
 
         if company_key:
+            # Leer desde tablas locales
             order = await conn.fetchrow(
-                "SELECT amount_total, cuenta_partner_id FROM odoo.v_pos_order_enriched WHERE odoo_order_id=$1 AND company_key=$2",
-                order_id, company_key)
+                "SELECT amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id=$1 AND empresa_id=$2",
+                order_id, empresa_id)
             if not order:
                 raise HTTPException(404, "Orden no encontrada")
 
-            # Check existing state
             estado = await conn.fetchrow(
                 "SELECT estado_local FROM finanzas2.cont_venta_pos_estado WHERE odoo_order_id=$1 AND empresa_id=$2",
                 order_id, empresa_id)
@@ -445,7 +580,6 @@ async def marcar_credito_venta_pos(
             venc = fecha_vencimiento or (datetime.now().date() + timedelta(days=30))
 
             async with conn.transaction():
-                # Auto-create CxC for full amount (obligation layer)
                 cxc = await conn.fetchrow("""
                     INSERT INTO finanzas2.cont_cxc
                     (empresa_id, venta_pos_id, monto_original, saldo_pendiente,
@@ -462,7 +596,10 @@ async def marcar_credito_venta_pos(
                     DO UPDATE SET estado_local='credito', cxc_id=$3, updated_at=NOW()
                 """, empresa_id, order_id, cxc['id'])
 
-            # NOTE: No treasury movement for credit sales - cash hasn't moved
+                # DISTRIBUCION ANALITICA: ingreso reconocido por linea (sin movimiento de tesoreria)
+                from services.distribucion_analitica import crear_distribucion_ingreso
+                await crear_distribucion_ingreso(conn, empresa_id, order_id, date.today())
+
             return {"message": "Venta marcada como credito", "cxc_id": cxc['id']}
         else:
             # Fallback
@@ -559,6 +696,16 @@ async def desconfirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_em
             from services.treasury_service import delete_movimientos_by_origen
             await delete_movimientos_by_origen(conn, empresa_id, 'venta_pos_confirmada', order_id)
 
+            # DISTRIBUCION ANALITICA: Remove analytical distributions
+            from services.distribucion_analitica import eliminar_distribucion_by_origen
+            await eliminar_distribucion_by_origen(conn, empresa_id, 'venta_pos_ingreso', order_id)
+            # Also remove cobro distributions linked to this order
+            await conn.execute("""
+                DELETE FROM finanzas2.cont_distribucion_analitica
+                WHERE empresa_id = $1 AND origen_tipo = 'cobranza_cxc'
+                  AND origen_id = $2
+            """, empresa_id, order_id)
+
             return {
                 "message": "Venta desconfirmada exitosamente",
                 "pagos_restaurados": len(pagos_oficiales),
@@ -601,6 +748,74 @@ async def desconfirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_em
                 await conn.execute(
                     "UPDATE finanzas2.cont_venta_pos SET estado_local='pendiente' WHERE id=$1", order_id)
                 return {"message": "Venta desconfirmada", "pagos_restaurados": len(pagos_oficiales)}
+
+
+# =====================
+# VENTAS POS — DISTRIBUCION ANALITICA POR LINEA DE NEGOCIO
+# =====================
+@router.get("/ventas-pos/{order_id}/distribucion-analitica")
+async def get_distribucion_analitica(order_id: int, empresa_id: int = Depends(get_empresa_id)):
+    """Retorna vendido/cobrado/pendiente por linea de negocio para una venta."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+
+        # Vendido por linea
+        vendido = await conn.fetch("""
+            SELECT da.linea_negocio_id, ln.nombre as linea_negocio_nombre,
+                   SUM(da.monto) as monto
+            FROM cont_distribucion_analitica da
+            LEFT JOIN cont_linea_negocio ln ON ln.id = da.linea_negocio_id
+            WHERE da.empresa_id = $1 AND da.origen_tipo = 'venta_pos_ingreso'
+              AND da.origen_id = $2
+            GROUP BY da.linea_negocio_id, ln.nombre
+        """, empresa_id, order_id)
+
+        # Cobrado por linea (puede venir de multiples abonos)
+        cobrado = await conn.fetch("""
+            SELECT da.linea_negocio_id, ln.nombre as linea_negocio_nombre,
+                   SUM(da.monto) as monto
+            FROM cont_distribucion_analitica da
+            LEFT JOIN cont_linea_negocio ln ON ln.id = da.linea_negocio_id
+            WHERE da.empresa_id = $1 AND da.origen_tipo = 'cobranza_cxc'
+              AND da.origen_id IN (
+                  SELECT a.id FROM cont_cxc_abono a
+                  JOIN cont_cxc c ON c.id = a.cxc_id
+                  WHERE c.odoo_order_id = $2 AND c.empresa_id = $1
+              )
+            GROUP BY da.linea_negocio_id, ln.nombre
+        """, empresa_id, order_id)
+
+        # Also include cobro from confirmar (origen_id = order_id for direct confirm)
+        cobrado_directo = await conn.fetch("""
+            SELECT da.linea_negocio_id, ln.nombre as linea_negocio_nombre,
+                   SUM(da.monto) as monto
+            FROM cont_distribucion_analitica da
+            LEFT JOIN cont_linea_negocio ln ON ln.id = da.linea_negocio_id
+            WHERE da.empresa_id = $1 AND da.origen_tipo = 'cobranza_cxc'
+              AND da.origen_id = $2
+            GROUP BY da.linea_negocio_id, ln.nombre
+        """, empresa_id, order_id)
+
+        # Merge
+        vendido_map = {r['linea_negocio_id']: {"linea_negocio_id": r['linea_negocio_id'],
+                       "linea_negocio_nombre": r['linea_negocio_nombre'] or 'SIN CLASIFICAR',
+                       "vendido": float(r['monto']), "cobrado": 0} for r in vendido}
+        for r in list(cobrado) + list(cobrado_directo):
+            ln_id = r['linea_negocio_id']
+            if ln_id in vendido_map:
+                vendido_map[ln_id]['cobrado'] += float(r['monto'])
+            else:
+                vendido_map[ln_id] = {
+                    "linea_negocio_id": ln_id,
+                    "linea_negocio_nombre": r['linea_negocio_nombre'] or 'SIN CLASIFICAR',
+                    "vendido": 0, "cobrado": float(r['monto'])}
+
+        result = []
+        for v in vendido_map.values():
+            v['pendiente'] = round(v['vendido'] - v['cobrado'], 2)
+            result.append(v)
+        return sorted(result, key=lambda x: x['vendido'], reverse=True)
 
 
 # =====================
@@ -658,8 +873,8 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
 
         if company_key:
             order = await conn.fetchrow(
-                "SELECT amount_total FROM odoo.v_pos_order_enriched WHERE odoo_order_id=$1 AND company_key=$2",
-                order_id, company_key)
+                "SELECT amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id=$1 AND empresa_id=$2",
+                order_id, empresa_id)
             if not order:
                 raise HTTPException(404, "Orden no encontrada")
 

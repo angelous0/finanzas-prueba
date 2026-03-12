@@ -1185,7 +1185,28 @@ async def create_schema():
             except Exception:
                 pass
 
+        # ══════════════════════════════════════
+        # DISTRIBUCION ANALITICA POR LINEA DE NEGOCIO
+        # ══════════════════════════════════════
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_distribucion_analitica (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL,
+                origen_tipo VARCHAR(30) NOT NULL,
+                origen_id INT NOT NULL,
+                linea_negocio_id INT REFERENCES finanzas2.cont_linea_negocio(id),
+                monto NUMERIC(15,2) NOT NULL,
+                fecha DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_dist_analitica_empresa ON finanzas2.cont_distribucion_analitica(empresa_id, origen_tipo)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_dist_analitica_ln ON finanzas2.cont_distribucion_analitica(empresa_id, linea_negocio_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_dist_analitica_origen ON finanzas2.cont_distribucion_analitica(empresa_id, origen_tipo, origen_id)")
 
+        # Unique indexes for sync upsert
+        await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_venta_pos_empresa_odoo ON finanzas2.cont_venta_pos(empresa_id, odoo_id)")
+        await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_venta_pos_linea_empresa_odoo ON finanzas2.cont_venta_pos_linea(empresa_id, odoo_line_id)")
 
 
         logger.info("Schema finanzas2 and all tables created/verified successfully")
