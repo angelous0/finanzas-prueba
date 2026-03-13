@@ -16,7 +16,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = 'https://negocio-caja.preview.emergentagent.com'
+    BASE_URL = 'https://erp-core-flow.preview.emergentagent.com'
 
 
 class TestVentasPOSPaginated:

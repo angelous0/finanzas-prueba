@@ -62,7 +62,7 @@
   },
   "test_credentials": {
     "empresa_id": "6 (Ambission Industries SAC)",
-    "api_base_url": "https://negocio-caja.preview.emergentagent.com"
+    "api_base_url": "https://erp-core-flow.preview.emergentagent.com"
   },
   "test_data_observed": {
     "tesoreria_saldo_total": "S/ -5,491.40",

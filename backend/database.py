@@ -1208,5 +1208,51 @@ async def create_schema():
         await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_venta_pos_empresa_odoo ON finanzas2.cont_venta_pos(empresa_id, odoo_id)")
         await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_venta_pos_linea_empresa_odoo ON finanzas2.cont_venta_pos_linea(empresa_id, odoo_line_id)")
 
+        # ══════════════════════════════════════
+        # CATEGORIA DE GASTO
+        # ══════════════════════════════════════
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_categoria_gasto (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                codigo VARCHAR(20),
+                nombre VARCHAR(200) NOT NULL,
+                activo BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # ══════════════════════════════════════
+        # TIPO ASIGNACION Y CATEGORIA EN GASTO
+        # ══════════════════════════════════════
+        for col_stmt in [
+            "ALTER TABLE finanzas2.cont_gasto ADD COLUMN IF NOT EXISTS tipo_asignacion VARCHAR(20) DEFAULT 'no_asignado'",
+            "ALTER TABLE finanzas2.cont_gasto ADD COLUMN IF NOT EXISTS categoria_gasto_id INT REFERENCES finanzas2.cont_categoria_gasto(id)",
+        ]:
+            try:
+                await conn.execute(col_stmt)
+            except Exception:
+                pass
+
+        # ══════════════════════════════════════
+        # PRORRATEO DE GASTOS COMUNES
+        # ══════════════════════════════════════
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.cont_prorrateo_gasto (
+                id SERIAL PRIMARY KEY,
+                empresa_id INT NOT NULL,
+                gasto_id INT NOT NULL REFERENCES finanzas2.cont_gasto(id),
+                linea_negocio_id INT NOT NULL REFERENCES finanzas2.cont_linea_negocio(id),
+                monto NUMERIC(15,2) NOT NULL,
+                porcentaje NUMERIC(8,4) NOT NULL,
+                metodo VARCHAR(20) NOT NULL,
+                periodo_desde DATE,
+                periodo_hasta DATE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_prorrateo_empresa ON finanzas2.cont_prorrateo_gasto(empresa_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_prorrateo_gasto ON finanzas2.cont_prorrateo_gasto(gasto_id)")
+
 
         logger.info("Schema finanzas2 and all tables created/verified successfully")

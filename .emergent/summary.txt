@@ -1,87 +1,82 @@
 <analysis>**original_problem_statement:**
-The user, acting as a Senior ERP/Finance Architect, initiated a complete architectural refactoring of the Finanzas Gerenciales module to a three-layer model (Commercial, Obligation, Treasury). Following this, the user requested several new features and bug fixes:
-1.  **Bug Fixes**:
-    *   Incorrect display of Línea de Negocio in the invoice details form.
-    *   Invoice item details (quantity, price) not being saved, resulting in incorrect totals and disappearing items upon editing.
-2.  **New Features**:
-    *   **Inventory Valuation (FIFO)**: Implement a FIFO (First-In, First-Out) inventory valuation report by reading data from a separate  database schema. This cost should also be used as the default price when adding an article to a purchase invoice.
-    *   **Line of Business ROI**: Create a module to track capital investment (initial, contributions, withdrawals) per line of business and calculate key performance indicators like total invested capital, accumulated profit, ROI, and payback period. This requires two views: economic performance and cash recovery.
-    *   **Decouple from Odoo**: Remove direct dependencies on the Odoo database for financial reporting. The finance module should maintain its own official catalog of  and map Odoo's line of business IDs to this internal catalog. Any unmapped lines should be assigned to a SIN CLASIFICAR category. This also requires that partial collections (abonos on CxC) are prorated across the different business lines within the original sale.
+The user, acting as a Senior ERP Architect, has requested a major simplification of the Finanzas Gerenciales module. The goal is to streamline the application to focus on core, usable financial operations and pause more complex, less-used features.
+
+PRODUCT REQUIREMENTS:
+1.  **Simplify Core Flow:** Focus the application on Ventas POS, Gastos, CxC, CxP, Tesorería, and key analytical dimensions (Línea de Negocio, Marca, Centro de Costo, Categoría de Gasto).
+2.  **Pause/Hide Modules:** De-emphasize or hide modules for Proyectos, Capital por Línea (ROI), and Valorización de Inventario from the main user flow and sidebar.
+3.  **POS Sales Logic:**
+    *   Sales sync from an Odoo data source and land in a pendiente (pending) state.
+    *   Users manually transition sales to confirmada, crédito, or descartada.
+    *   Revenue must be **automatically distributed** analytically by business line based on the items in the sale detail. Manual selection is forbidden.
+4.  **Treasury vs. Analytical Principle:** Enforce a strict separation between real-world transactions and analytical records.
+    *   **1 real treasury movement** per payment/collection.
+    *   **N analytical distributions** for reporting, prorating the real movement across relevant business lines.
+5.  **Expense Management:**
+    *   Introduce  (Expense Category) as a new catalog.
+    *   Add a  (Assignment Type) field to expenses with values:  (direct),  (common),  (unassigned).
+6.  **Proration Module:** Create a new dedicated module to distribute  expenses among business lines. This module must support proration based on:
+    *   Confirmed sales revenue of the same month (default).
+    *   Confirmed sales revenue within a user-defined date range.
+    *   Manual percentages.
+7.  **Simplified Reporting:** Focus on clear, useful reports for sales, collections, expenses, and profitability by business line.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application's Finanzas Gerenciales module has been completely refactored to follow the user's specified three-layer architecture (Commercial, Obligation, Treasury). This was a massive undertaking that involved rewriting most of the backend and frontend financial components.
+The application is a full-stack solution with a React frontend and FastAPI backend. A massive refactoring effort has just been completed, decoupling the financial modules from direct Odoo database dependencies. Data from Odoo is now synced into local PostgreSQL tables, and a clear architectural pattern separating real treasury movements from analytical distributions has been established.
 
-Following the refactor, several new features and bug fixes were implemented:
-*   A dedicated Treasury module () was created as the single source of truth for all cash movements.
-*   Bugs related to invoice creation and line of business display were resolved.
-*   A full-featured FIFO Inventory Valuation report was added, pulling data from an external  schema.
-*   A Line of Business Capital & ROI tracking module was implemented.
-*   The system was partially refactored to decouple it from Odoo, establishing an internal catalog for  with a mapping layer.
+The agent has already begun working on the user's new simplification request. Database migrations for new tables (, ) and modified tables () have been defined in . The empty router files for the new backend modules (, ) have also been created.
 
 **Last working item**:
-The agent was in the process of decoupling the finance module from direct Odoo dependencies, as per the user's request. The agent successfully implemented the database changes, a mapping service, and updated several backend endpoints (, , ) to use the new mapping layer. A SIN CLASIFICAR fallback was also created. The frontend for managing the  catalog was updated to include the Odoo mapping fields.
+The agent was in the initial phase of implementing the backend changes for the user's simplification request. This involved laying the groundwork for the new expense categories and proration modules.
 
-- **Last item agent was working:** Implementing the decoupling from Odoo by creating a mapping layer for .
+- **Last item agent was working:** Creating the backend router files for Categorías de Gasto and Prorrateo after defining the necessary database schema changes.
 - **Status:** IN PROGRESS
-- **Agent Testing Done:** Y (for the backend API parts of the mapping)
+- **Agent Testing Done:** N
 - **Which testing method agent to use?** both
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Finish Odoo Decoupling - Prorate Partial Collections (P0)**
-  - **Description:** The user's request to decouple from Odoo included a critical requirement: when a partial payment (abono) is made on an Account Receivable (CxC), the collected amount must be prorated across the different business lines of the original sale based on their respective value. The current implementation of the mapping is incomplete without this logic.
-  - **Status:** NOT STARTED
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** backend
-  - **Next debug checklist:**
-    1.  Modify the  endpoint in .
-    2.  When an abono is created, fetch the line items () for the corresponding sale ().
-    3.  Group the line items by  and calculate the total value for each.
-    4.  Prorate the  of the abono across the  groups.
-    5.  When creating the treasury movement () for the collection, the  dimension should reflect this prorated allocation logic, potentially by creating multiple treasury movement lines if a single payment covers multiple business lines.
-  - **Why fix this issue and what will be achieved with the fix?** This will complete the Odoo decoupling task and enable accurate cash-based profitability reporting per business line, even with partial payments.
+- There are no pending issues. The current work is a new feature implementation based on the user's latest request.
 
 **In progress Task List**:
-- **Task 1: Complete Odoo Decoupling Logic (P0)**
-  - **Description:** The agent has built the foundation for mapping Odoo business lines but has not yet implemented the prorated allocation of partial payments for CxC.
-  - **Where to resume:** , specifically the  function.
-  - **What will be achieved with this?** Full compliance with the user's decoupling request, enabling accurate financial analysis by business line.
+- **Task 1: Complete Backend for Simplification (P0)**
+  - **Description:** This task involves building out the full backend logic for the new, simplified expense and proration flow.
+  - **Where to resume:**
+    1.  Implement the full CRUD (Create, Read, Update, Delete) endpoints in .
+    2.  Implement the expense proration logic in . This requires an endpoint to list common expenses pending proration and another to execute the distribution.
+    3.  Refactor  to incorporate  and the  logic.
+  - **What will be achieved with this?** The backend will fully support the creation of expense categories, the classification of expenses as direct or common, and the analytical proration of common expenses.
   - **Status:** IN PROGRESS
   - **Should Test frontend/backend/both after fix?** backend
   - **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
-- None. The priority is to complete the in-progress task.
+- **Upcoming Tasks:**
+  - **P1: Implement Frontend for Simplification:**
+    - Simplify the main menu in  to hide the paused modules.
+    - Create a new page () for the expense proration module.
+    - Create a new page () for managing expense categories.
+    - Update the existing  page to include form fields for the new  and  properties.
+  - **P2: Implement Simplified Reports:**
+    - Create the necessary backend endpoints and frontend components for the 12 simplified reports requested by the user, such as Utilidad por línea después de prorrateo.
+
+- **Future Tasks:**
+  - The following modules are currently paused but may be revisited in the future based on user feedback:
+    - Proyectos
+    - Capital & ROI
+    - Valorización de Inventario
 
 **Completed work in this session**
-- **Architectural Refactoring (DONE):**
-  - Fully implemented the 3-layer financial architecture (Commercial, Obligation, Treasury).
-  - Created a new  module (backend and frontend) as the single source of truth for cash flow.
-  - Refactored , , and  to use the new architecture.
-- **Bug Fix: Invoice Line of Business (DONE):**
-  - Corrected the  in  from  to  for , fixing the dropdown display issue.
-- **Bug Fix: Invoice Item Details (DONE):**
-  - Modified  to correctly merge article and category lines into a single  array for the backend.
-  - Updated backend models and logic in  to save and retrieve item details (, ).
-- **Feature: FIFO Inventory Valuation (DONE):**
-  - Created a new backend endpoint  in  that reads from the  schema and calculates FIFO cost.
-  - Built a new frontend page  to display the report.
-  - Integrated FIFO cost as the default price when adding an article to a purchase invoice in .
-- **Feature: Line of Business Capital & ROI (DONE):**
-  - Created a new table .
-  - Built backend CRUD and calculation endpoints in .
-  - Developed a new frontend page  with two views for Rendimiento Económico and Recuperación de Caja.
-- **Data Integrity Fixes (DONE):**
-  - Migrated historical payments to the new  table so they appear in the Cash Flow report.
-  - Fixed the  report to include costs from purchase invoices () in addition to operational expenses ().
-  - Cleared all test and legacy data (CxC, CxP, confirmed sales) at the user's request to provide a clean slate.
-- **Odoo Decoupling (In Progress):**
-  - Added Odoo mapping columns to .
-  - Created a SIN CLASIFICAR fallback record.
-  - Updated backend reports to use the mapping layer.
-  - Updated the  frontend to manage the mapping.
+- **Odoo Decoupling & Analytical Architecture (DONE):**
+  - Completely refactored all core financial endpoints (, , , ) to read from local tables instead of direct Odoo views.
+  - Implemented a robust local data sync mechanism ().
+  - Established the  table and associated services, successfully separating real treasury movements from analytical reporting entries for sales and collections.
+- **UX Overhaul (DONE):**
+  - Redesigned the  detail modal to be more user-friendly, showing product names, line-item details, and dynamic summaries grouped by business line and brand.
+  - Enhanced the  management page to use a dropdown populated from the backend for mapping to Odoo entities, improving data integrity.
+- **Testing (DONE):**
+  - All the above work was thoroughly validated using the testing agent, achieving a 100% pass rate on 18 backend tests and all associated frontend flows.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -95,74 +90,73 @@ The agent was in the process of decoupling the finance module from direct Odoo d
 **Key Technical Concepts**
 - **Backend:** FastAPI, Python, Pydantic.
 - **Frontend:** React, Shadcn UI, Recharts.
-- **Database:** PostgreSQL, with read-only access to a second  schema.
-- **Architecture:** A three-layer financial model (Commercial, Obligation, Cash) is the core of the application logic. All cash movements flow through the  table.
-- **Business Logic:** FIFO inventory valuation, ROI calculation per business line, prorated payment allocation (pending).
+- **Database:** PostgreSQL.
+- **Architecture:** A key principle is the separation of concerns between real transactions () and analytical records (, ). This allows for accurate financial reporting without creating fictitious entries in cash/bank accounts.
 
 **key DB schema**
-- **cont_movimiento_tesoreria:** {id, fecha, tipo_movimiento, monto, cuenta_financiera_id, ...} - The new single source of truth for cash flow.
-- **cont_capital_linea_negocio:** {id, linea_negocio_id, fecha, tipo_movimiento, monto, ...} - Tracks capital investments for ROI calculation.
-- **cont_linea_negocio:** (Modified) Added  and  for mapping.
-- **produccion.v_articulos, produccion.v_lotes_fifo:** Read-only views used for FIFO inventory valuation.
+- **cont_gasto:** (Modified) Added  ENUM('directo', 'comun', 'no_asignado'), and foreign keys , .
+- **cont_categoria_gasto:** (New) Catalog for expense categories .
+- **cont_centro_costo:** (Exists) Catalog for cost centers .
+- **cont_gasto_prorrateo:** (New) Header table for a proration event .
+- **cont_gasto_prorrateo_detalle:** (New) Stores the analytical distribution of a prorated expense .
+- **cont_distribucion_analitica_ingreso:** (New) Tracks analytical revenue from sales and collections.
 
 **changes in tech stack**
 - None.
 
 **All files of reference**
-- **Pending Task Logic:**  (for prorated payment allocation).
-- **New Modules:** , ,  and their corresponding frontend pages.
-- **Refactored Core:** , .
-- **Bug Fixes:** , .
-- **Odoo Mapping:** , .
+- **In-Progress/Upcoming work:**
+  - : Contains the new schema definitions for the simplification task.
+  - : To be implemented.
+  - : To be implemented.
+  - : To be refactored.
+  - : To be simplified.
+- **Recently Completed (and stable):**
+  - 
+  - 
+  - 
+  - 
 
 **Areas that need refactoring**:
-- The  function in  needs to be refactored to implement the prorated allocation of partial payments across business lines.
+- The  router and corresponding  frontend page will need to be refactored to support the new  and  fields.
 
 **key api endpoints**
-- : CRUD for Treasury.
-- : GET endpoint for FIFO report.
-- : CRUD for capital movements.
-- : GET endpoint for ROI calculations.
-- : Needs refactoring for prorated allocation.
+- **To Be Implemented:**
+  - : Full CRUD for expense categories.
+  - : Lists common expenses needing proration.
+  - : Executes the proration for a given expense.
 
 **Critical Info for New Agent**
-- **Priority Task:** Your immediate focus must be on completing the Odoo Decoupling task. Specifically, you need to implement the logic to prorate partial collections (abonos) on Accounts Receivable (CxC) across the different business lines of the original sale. This is a crucial, user-requested feature that is currently half-done.
-- **Location:** The logic needs to be added to the  function within .
-- **User Context:** The user has a deep understanding of finance and ERP systems. They provide precise architectural requirements. Treat their requests as the primary source of truth. After implementing the pending feature, propose a plan for comprehensive testing.
+- **New Direction:** The project has pivoted towards simplification. Your immediate priority is to implement the user's latest request (messages 370 & 373), focusing on the streamlined expense and proration flow.
+- **Implementation Order:** You must follow the user's specified priority: 1.  backend, 2.  backend update, 3.  verification, 4.  module backend, 5. Frontend simplification, 6. Simplified reports.
+- **Proration Logic:** When implementing the proration module, remember the base for calculation is **confirmed sales revenue**, not total sales. You must provide all three user-requested methods: same-month sales, custom-range sales, and manual percentages.
+- **Core Principle:** Adhere strictly to the architectural rule of 1 real treasury movement, N analytical distributions. This is fundamental to the application's design.
 
 **documents and test reports created in this job**
--  (Updated).
--  (Multiple test reports generated with 100% pass rates for the completed features).
+-  (Updated with latest simplification requirements)
+-  (Successful test run for the previous Odoo-decoupling feature)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Requested to see the profitability of raw material purchases (FIFO).
-2.  **User:** Clarified requirements for FIFO valuation, confirming a read-only connection to the  schema.
-3.  **User:** Requested a module to measure profitability and capital recovery per business line, providing a detailed table structure and required calculations.
-4.  **Agent:** Implemented the Capital & ROI module.
-5.  **User:** Asked why the Cash Flow report was empty after a payment was made.
-6.  **Agent:** Explained the issue was due to pre-refactor payments not having treasury movements and migrated the old data.
-7.  **User:** Asked why the Profitability report was empty.
-8.  **Agent:** Explained it was due to sales being reset to pending and no expenses being registered. Fixed the report to also include costs from purchase invoices.
-9.  **User:** **(CRITICAL PENDING REQUEST)** Stated they want no direct connection to Odoo for financial logic. Provided detailed instructions to create an internal  catalog, map Odoo IDs to it, handle unmapped lines as SIN CLASIFICAR, and, crucially, **prorate partial collections across business lines.**
-10. **Agent:** Began implementing the Odoo decoupling, creating the mapping layer and updating reports, but has not yet implemented the prorated collection logic.
+- The user provided a comprehensive new problem statement (message 370) detailing a major simplification of the application.
+- The user requested to pause complex modules (ROI, Projects) and focus on a core workflow: POS Sales -> Expenses -> Treasury -> AR/AP.
+- Key new features requested include Expense Categories, a  field for expenses, and a full-featured Proration module.
+- The user then approved the agent's proposed plan and clarified the implementation priorities in the final message (373), giving a clear green light to proceed.
 
 **Project Health Check:**
 - **Broken:** None.
 - **Mocked:** None.
-- **Note:** The application is stable and the major refactoring is complete. The current task is an in-progress enhancement.
+- **Note:** The project is in a very stable state following a successful major refactoring. The current task is to build a well-defined set of new features on this solid foundation.
 
 **3rd Party Integrations**
-- **Odoo Sync Module:** A custom API integration with the user's self-hosted Odoo helper module. The goal of the current task is to reduce the logical dependency on this, using it only as a raw data source for sales.
-  - **URL:** 
-  - **Authentication:** Header .
+- **Odoo Data Source:** The application reads data from a user-provided PostgreSQL database containing synced Odoo information. This is a read-only dependency.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. Used multiple times with 100% pass rates after the main refactor and new feature implementations.
+- **Testing agent used after significant changes:** YES. The last major feature was successfully validated. The next agent should use the testing agent after completing the backend and frontend for the simplification task.
 - **Test files created:** None.
 - **Known regressions:** None.
 
 **Credentials to test flow:**
-- Credentials for the Odoo module are in .
+- Credentials for the Odoo data source connection are available in .
 
 **What agent forgot to execute**
-- The agent did not complete the full set of requirements for the Odoo decoupling task. The prorated allocation of partial payments for Accounts Receivable (CxC) across business lines is a key part of the user's request that is still pending implementation.</analysis>
+- The agent was in the process of implementing the new simplification feature set. It correctly started by defining database changes and creating empty router files. The next logical step is to populate these files with the required business logic.</analysis>

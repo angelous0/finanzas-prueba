@@ -63,7 +63,7 @@
   "test_credentials": {
     "empresa_id_1": "Mi Empresa S.A.C. - Empty data (seed company)",
     "empresa_id_6": "Ambission Industries SAC - Real Odoo data (245 pending sales, 1 confirmed)",
-    "api_base_url": "https://negocio-caja.preview.emergentagent.com"
+    "api_base_url": "https://erp-core-flow.preview.emergentagent.com"
   },
   "seed_data_creation": "None - used existing empresas and real Odoo data",
   "retest_needed": false,
