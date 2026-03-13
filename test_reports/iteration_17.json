@@ -102,7 +102,7 @@
   "test_credentials": {
     "empresa_id": 6,
     "empresa_name": "Ambission Industries SAC",
-    "api_base_url": "https://treasury-debug.preview.emergentagent.com",
+    "api_base_url": "https://ventas-pos-refactor.preview.emergentagent.com",
     "pos_date_range": "2025-12-01 to 2026-03-10"
   },
   "seed_data_creation": "None - using existing production data",

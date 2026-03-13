@@ -13,7 +13,7 @@ import json
 from datetime import date, timedelta
 
 # API Configuration
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://treasury-debug.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://ventas-pos-refactor.preview.emergentagent.com')
 BASE_URL = BASE_URL.rstrip('/')
 
 # Reference IDs from catalog data
