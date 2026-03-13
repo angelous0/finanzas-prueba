@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Receipt, CreditCard, 
-  Building2, Users, Wallet, Settings,
+  Building2, Users, Wallet,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock,
   Tags, GitBranch, Target, X, ChevronLeft,
   Tag, PieChart, Activity, ClipboardList,
-  Vault, Layers
+  Vault, Layers, Package
 } from 'lucide-react';
 
 const navSections = [
@@ -14,7 +14,6 @@ const navSections = [
     title: 'Principal',
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-      { icon: PieChart, label: 'Dashboard Financiero', path: '/dashboard-financiero' },
     ]
   },
   {
@@ -45,8 +44,8 @@ const navSections = [
   {
     title: 'Reportes',
     items: [
-      { icon: ClipboardList, label: 'Reportes', path: '/reportes-gerenciales' },
-      { icon: PieChart, label: 'Reportes Simplificados', path: '/reportes-simplificados' },
+      { icon: ClipboardList, label: 'Reportes', path: '/reportes-simplificados' },
+      { icon: Package, label: 'Valorización Inventario', path: '/valorizacion-inventario' },
     ]
   },
   {
@@ -74,7 +73,6 @@ export const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) 
   };
 
   const handleNavClick = () => {
-    // Close mobile menu when a nav item is clicked
     if (setMobileOpen) {
       setMobileOpen(false);
     }
@@ -95,7 +93,6 @@ export const Sidebar = ({ collapsed, setCollapsed, mobileOpen, setMobileOpen }) 
           >
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
-          {/* Close button for mobile */}
           <button 
             className="mobile-close-btn"
             onClick={() => setMobileOpen && setMobileOpen(false)}

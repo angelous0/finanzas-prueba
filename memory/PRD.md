@@ -10,44 +10,43 @@ Ventas POS, Gastos, CxC, CxP, Tesoreria y dimensiones analiticas clave.
 3. **Gastos**: directo / comun / no_asignado con prorrateo de comunes
 4. **Dimensiones**: Linea de Negocio (eje principal), Marca, Centro de Costo, Categoria de Gasto
 
-## Modulos Activos
-- Dashboard Ejecutivo / Dashboard Financiero
-- Ventas POS + CxC
-- Gastos + Prorrateo + Factura Proveedor + CxP
-- Tesoreria + Cuentas Bancarias + Movimientos + Flujo de Caja
-- Reportes Gerenciales + Reportes Simplificados
-- Catalogos: Lineas de Negocio, Marcas, Centros de Costo, Categorias Gasto, Proveedores, Clientes, Empresas
+## Modulos CORE Activos (20 items en Sidebar)
+| Seccion | Items |
+|---------|-------|
+| Principal | Dashboard |
+| Ventas | Ventas POS, CxC |
+| Egresos | Gastos, Prorrateo, Factura Proveedor, CxP |
+| Tesoreria | Tesoreria, Cuentas Bancarias, Movimientos/Pagos, Flujo de Caja |
+| Reportes | Reportes Simplificados, Valorizacion Inventario |
+| Catalogos | Lineas de Negocio, Marcas, Centros de Costo, Categorias Gasto, Proveedores, Clientes, Empresas |
 
-## Modulos Pausados
+## Modulos Pausados/Legacy
 - Proyectos, Capital & ROI, Valorizacion Inventario, Presupuesto vs Real
+- Contabilidad completa (Asientos, Balance, EERR, Cuentas, Config)
+- Planilla (Empleados, Adelantos, Planilla)
+
+## Modulos REVISAR (pendiente decision usuario)
+- Ordenes de Compra, Letras, PagarFacturas, Conciliacion Bancaria
 
 ## Lo Implementado
 
-### Fase 0 - Desacoplamiento Odoo (COMPLETADO - Feb 2026)
-- Refactorizacion completa de endpoints financieros para leer tablas locales
-- Sincronizacion local de datos Odoo
+### Fase 0 - Desacoplamiento Odoo (COMPLETADO)
+### Fase 1-2 - Simplificacion Backend+Frontend (COMPLETADO)
+### Dashboard + Ventas POS + Reportes (COMPLETADO)
+### Bug Fixes Criticos (COMPLETADO)
+- P0 Tesoreria/Pagos invisibles → ambas rutas crean cont_movimiento_tesoreria + cont_pago
+- Error al marcar Credito → venta_pos_id usa id interno
+- Abono CxC no visible → cont_pago creado en abono
+- Campos Odoo faltantes → tipo_comp, num_comp, x_pagos, company_name sincronizados
+- Cantidad faltante → quantity_total calculada desde lineas
 
-### Fase 1-2 - Simplificacion Backend+Frontend (COMPLETADO - Mar 2026)
-- CRUD categorias de gasto, prorrateo, gastos actualizado
-- Sidebar simplificado, CategoriasGasto, ProrrateoGastos, Gastos
-
-### Dashboard + Ventas POS + Reportes (COMPLETADO - Mar 2026)
-- Dashboard ejecutivo con KPIs
-- Ventas POS mejorado (columnas, timezone, sync, moneda)
-- 8 reportes simplificados
-
-### Bug Fixes Sesion Actual (COMPLETADO - Mar 2026)
-
-**P0 - Tesoreria/Pagos invisibles tras confirmar venta:**
-- confirmar_venta_pos ahora crea AMBOS: cont_movimiento_tesoreria + cont_pago
-- add_pago_venta_pos (auto-confirm) ahora crea AMBOS: cont_movimiento_tesoreria + cont_pago
-
-**Error al marcar Credito:**
-- cont_cxc.venta_pos_id ahora usa id interno de cont_venta_pos, no odoo_order_id
-
-**Abono CxC no visible en Movimientos/Pagos:**
-- create_cxc_abono ahora crea cont_pago ademas de cont_movimiento_tesoreria
-- Flujo completo: abono -> tesoreria + pago + distribucion analitica
+### Fase 1 Cleanup (COMPLETADO - Mar 2026)
+- 19 rutas legacy eliminadas de App.js
+- ~50 funciones muertas eliminadas de api.js
+- PlaceholderPages limpiado (solo Clientes)
+- Sidebar simplificado: 6 secciones, 20 items, sin duplicados
+- Valorizacion Inventario agregada al Sidebar
+- Dashboard Financiero y Reportes Gerenciales removidos de navegacion
 
 ## Arquitectura
 - Backend: FastAPI + PostgreSQL (schema finanzas2)
@@ -56,6 +55,15 @@ Ventas POS, Gastos, CxC, CxP, Tesoreria y dimensiones analiticas clave.
 
 ## Backlog
 
+### P0 - Fase 2 Cleanup (Backend)
+- Desregistrar 8 routers legacy de server.py
+- Decidir sobre modulos REVISAR (OC, Letras, Conciliacion)
+
+### P1 - Fase 3 Refactoring
+- Split ventas_pos.py (1190 lineas)
+- Split FacturasProveedor.jsx (2575 lineas)
+- Mover archivos legacy a carpetas /legacy/
+
 ### P1 - Reportes Faltantes
 - Ventas por cruce linea x marca
 - Gastos directos por linea
@@ -63,4 +71,4 @@ Ventas POS, Gastos, CxC, CxP, Tesoreria y dimensiones analiticas clave.
 - Utilidad por linea standalone
 
 ### P2 - Modulos Futuros
-- Proyectos, Capital & ROI, Valorizacion Inventario, Presupuesto vs Real
+- Proyectos, Capital & ROI, Presupuesto vs Real

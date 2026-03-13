@@ -11,53 +11,34 @@ import { EmpresaProvider, useEmpresa } from './context/EmpresaContext';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 
-// Pages
+// === CORE Pages ===
 import Dashboard from './pages/Dashboard';
 import VentasPOS from './pages/VentasPOS';
-import FacturasProveedor from './pages/FacturasProveedor';
-import OrdenesCompra from './pages/OrdenesCompra';
-import Gastos from './pages/Gastos';
-import Letras from './pages/Letras';
-import PagarFacturas from './pages/PagarFacturas';
-import CxP from './pages/CxP';
 import CxC from './pages/CxC';
+import Gastos from './pages/Gastos';
+import ProrrateoGastos from './pages/ProrrateoGastos';
+import FacturasProveedor from './pages/FacturasProveedor';
+import CxP from './pages/CxP';
+import Tesoreria from './pages/Tesoreria';
 import CuentasBancarias from './pages/CuentasBancarias';
 import Pagos from './pages/Pagos';
-import Proveedores from './pages/Proveedores';
-import Empleados from './pages/Empleados';
-import Categorias from './pages/Categorias';
-import BalanceGeneral from './pages/BalanceGeneral';
+import FlujoCaja from './pages/FlujoCaja';
+import ReportesSimplificados from './pages/ReportesSimplificados';
+import ValorizacionInventario from './pages/ValorizacionInventario';
+import CategoriasGasto from './pages/CategoriasGasto';
 import LineasNegocio from './pages/LineasNegocio';
 import CentrosCosto from './pages/CentrosCosto';
+import Marcas from './pages/Marcas';
+import Proveedores from './pages/Proveedores';
 import Empresas from './pages/Empresas';
-import Planilla from './pages/Planilla';
-import Adelantos from './pages/Adelantos';
+import { Clientes } from './pages/PlaceholderPages';
+
+// === REVISAR Pages (pendiente decisión Fase 2) ===
+import OrdenesCompra from './pages/OrdenesCompra';
+import Letras from './pages/Letras';
+import PagarFacturas from './pages/PagarFacturas';
 import ConciliacionBancaria from './pages/ConciliacionBancaria';
 import { HistorialConciliaciones } from './pages/HistorialConciliaciones';
-import { 
-  Clientes,
-} from './pages/PlaceholderPages';
-import Presupuestos from './pages/Presupuestos';
-import FlujoCaja from './pages/FlujoCaja';
-import EstadoResultados from './pages/EstadoResultados';
-import Articulos from './pages/Articulos';
-import ReportePagos from './pages/ReportePagos';
-import CuentasContables from './pages/CuentasContables';
-import ConfigContable from './pages/ConfigContable';
-import Asientos from './pages/Asientos';
-import Marcas from './pages/Marcas';
-import Proyectos from './pages/Proyectos';
-import DashboardFinanciero from './pages/DashboardFinanciero';
-import Rentabilidad from './pages/Rentabilidad';
-import PresupuestoVsReal from './pages/PresupuestoVsReal';
-import RoiProyectos from './pages/RoiProyectos';
-import Reportes from './pages/Reportes';
-import Tesoreria from './pages/Tesoreria';
-import ValorizacionInventario from './pages/ValorizacionInventario';
-import RentabilidadLinea from './pages/RentabilidadLinea';
-import CategoriasGasto from './pages/CategoriasGasto';
-import ProrrateoGastos from './pages/ProrrateoGastos';
-import ReportesSimplificados from './pages/ReportesSimplificados';
 
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
@@ -121,7 +102,6 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Close mobile menu when clicking outside or on navigation
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth > 768) {
@@ -137,7 +117,6 @@ function App() {
       <EmpresaProvider>
         <EmpresaGuard>
         <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
-          {/* Mobile menu overlay */}
           {mobileMenuOpen && (
             <div 
               className="mobile-overlay" 
@@ -154,10 +133,8 @@ function App() {
         />
         
         <main className="main-content">
-          {/* Top Bar with empresa selector */}
           <TopBar />
           
-          {/* Mobile hamburger button */}
           <button 
             className="mobile-menu-btn"
             onClick={() => setMobileMenuOpen(true)}
@@ -166,65 +143,34 @@ function App() {
             <Menu size={24} />
           </button>
           <Routes>
+            {/* === CORE === */}
             <Route path="/" element={<Dashboard />} />
-            <Route path="/dashboard-financiero" element={<DashboardFinanciero />} />
-            <Route path="/rentabilidad" element={<Rentabilidad />} />
-            <Route path="/presupuesto-vs-real" element={<PresupuestoVsReal />} />
-            <Route path="/roi-proyectos" element={<RoiProyectos />} />
-            <Route path="/reportes-gerenciales" element={<Reportes />} />
-            <Route path="/tesoreria" element={<Tesoreria />} />
-            <Route path="/valorizacion-inventario" element={<ValorizacionInventario />} />
-            <Route path="/rentabilidad-linea" element={<RentabilidadLinea />} />
-            
-            {/* Ventas */}
             <Route path="/ventas-pos" element={<VentasPOS />} />
             <Route path="/cxc" element={<CxC />} />
-            
-            {/* Proveedores y Egresos */}
-            <Route path="/ordenes-compra" element={<OrdenesCompra />} />
-            <Route path="/facturas-proveedor" element={<FacturasProveedor />} />
             <Route path="/gastos" element={<Gastos />} />
-            <Route path="/pagar-facturas" element={<PagarFacturas />} />
+            <Route path="/prorrateo" element={<ProrrateoGastos />} />
+            <Route path="/facturas-proveedor" element={<FacturasProveedor />} />
             <Route path="/cxp" element={<CxP />} />
-            <Route path="/letras" element={<Letras />} />
-            
-            {/* Bancos y Pagos */}
+            <Route path="/tesoreria" element={<Tesoreria />} />
             <Route path="/cuentas-bancarias" element={<CuentasBancarias />} />
             <Route path="/pagos" element={<Pagos />} />
-            <Route path="/conciliacion" element={<ConciliacionBancaria />} />
-            <Route path="/historial-conciliaciones" element={<HistorialConciliaciones />} />
-            
-            {/* Planilla */}
-            <Route path="/empleados" element={<Empleados />} />
-            <Route path="/adelantos" element={<Adelantos />} />
-            <Route path="/planillas" element={<Planilla />} />
-            <Route path="/planilla" element={<Planilla />} />
-            
-            {/* Presupuestos */}
-            <Route path="/presupuestos" element={<Presupuestos />} />
-            
-            {/* Catálogos */}
-            <Route path="/empresas" element={<Empresas />} />
+            <Route path="/flujo-caja" element={<FlujoCaja />} />
+            <Route path="/reportes-simplificados" element={<ReportesSimplificados />} />
+            <Route path="/valorizacion-inventario" element={<ValorizacionInventario />} />
+            <Route path="/lineas-negocio" element={<LineasNegocio />} />
+            <Route path="/marcas" element={<Marcas />} />
+            <Route path="/centros-costo" element={<CentrosCosto />} />
+            <Route path="/categorias-gasto" element={<CategoriasGasto />} />
             <Route path="/proveedores" element={<Proveedores />} />
             <Route path="/clientes" element={<Clientes />} />
-            <Route path="/articulos" element={<Articulos />} />
-            <Route path="/categorias" element={<Categorias />} />
-            <Route path="/lineas-negocio" element={<LineasNegocio />} />
-            <Route path="/centros-costo" element={<CentrosCosto />} />
-            <Route path="/marcas" element={<Marcas />} />
-            <Route path="/proyectos" element={<Proyectos />} />
-            <Route path="/categorias-gasto" element={<CategoriasGasto />} />
-            <Route path="/prorrateo" element={<ProrrateoGastos />} />
-            <Route path="/reportes-simplificados" element={<ReportesSimplificados />} />
-            
-            {/* Contabilidad */}
-            <Route path="/balance-general" element={<BalanceGeneral />} />
-            <Route path="/estado-resultados" element={<EstadoResultados />} />
-            <Route path="/flujo-caja" element={<FlujoCaja />} />
-            <Route path="/reporte-pagos" element={<ReportePagos />} />
-            <Route path="/cuentas-contables" element={<CuentasContables />} />
-            <Route path="/config-contable" element={<ConfigContable />} />
-            <Route path="/asientos" element={<Asientos />} />
+            <Route path="/empresas" element={<Empresas />} />
+
+            {/* === REVISAR — pendiente decisión Fase 2 === */}
+            <Route path="/ordenes-compra" element={<OrdenesCompra />} />
+            <Route path="/pagar-facturas" element={<PagarFacturas />} />
+            <Route path="/letras" element={<Letras />} />
+            <Route path="/conciliacion" element={<ConciliacionBancaria />} />
+            <Route path="/historial-conciliaciones" element={<HistorialConciliaciones />} />
           </Routes>
         </main>
         </div>

@@ -26,7 +26,6 @@ api.interceptors.request.use((config) => {
 });
 
 // Dashboard
-export const getDashboardKPIs = () => api.get('/dashboard/kpis');
 export const getDashboardResumen = () => api.get('/dashboard/resumen-ejecutivo');
 
 // Empresas
@@ -37,8 +36,6 @@ export const deleteEmpresa = (id) => api.delete(`/empresas/${id}`);
 
 // Monedas
 export const getMonedas = () => api.get('/monedas');
-export const createMoneda = (data) => api.post('/monedas', data);
-export const deleteMoneda = (id) => api.delete(`/monedas/${id}`);
 
 // Categorias
 export const getCategorias = (tipo) => api.get('/categorias', { params: { tipo } });
@@ -73,16 +70,8 @@ export const getTercero = (id) => api.get(`/terceros/${id}`);
 export const createTercero = (data) => api.post('/terceros', data);
 export const updateTercero = (id, data) => api.put(`/terceros/${id}`, data);
 export const deleteTercero = (id) => api.delete(`/terceros/${id}`);
-
 export const getProveedores = (search) => api.get('/proveedores', { params: { search } });
-export const getClientes = (search) => api.get('/clientes', { params: { search } });
 export const getEmpleados = (search) => api.get('/empleados', { params: { search } });
-export const getEmpleadoDetalle = (terceroId) => api.get(`/empleados/${terceroId}/detalle`);
-export const saveEmpleadoDetalle = (terceroId, data) => api.post(`/empleados/${terceroId}/detalle`, data);
-
-// Articulos
-export const getArticulos = (search) => api.get('/articulos', { params: { search } });
-export const createArticulo = (data) => api.post('/articulos', data);
 
 // Inventario (public.prod_inventario)
 export const getInventario = (search) => api.get('/inventario', { params: { search } });
@@ -91,7 +80,7 @@ export const getInventario = (search) => api.get('/inventario', { params: { sear
 export const getModelosCortes = (search) => api.get('/modelos-cortes', { params: { search } });
 export const getModelos = (search) => api.get('/modelos', { params: { search } });
 
-// Ordenes de Compra
+// Ordenes de Compra (REVISAR Fase 2)
 export const getOrdenesCompra = (params) => api.get('/ordenes-compra', { params });
 export const getOrdenCompra = (id) => api.get(`/ordenes-compra/${id}`);
 export const createOrdenCompra = (data) => api.post('/ordenes-compra', data);
@@ -114,7 +103,7 @@ export const updatePago = (id, data) => api.put(`/pagos/${id}`, data);
 export const deletePago = (id) => api.delete(`/pagos/${id}`);
 export const getPagosDeFactura = (facturaId) => api.get(`/facturas-proveedor/${facturaId}/pagos`);
 
-// Letras
+// Letras (REVISAR Fase 2)
 export const getLetras = (params) => api.get('/letras', { params });
 export const getLetra = (id) => api.get(`/letras/${id}`);
 export const generarLetras = (data) => api.post('/letras/generar', data);
@@ -141,22 +130,6 @@ export const ejecutarProrrateo = (data) => api.post('/prorrateo/ejecutar', data)
 export const getProrrateHistorial = (params) => api.get('/prorrateo/historial', { params });
 export const eliminarProrrateo = (gastoId) => api.delete(`/prorrateo/${gastoId}`);
 
-// Adelantos
-export const getAdelantos = (params) => api.get('/adelantos', { params });
-export const createAdelanto = (data) => api.post('/adelantos', data);
-export const updateAdelanto = (id, data) => api.put(`/adelantos/${id}`, data);
-export const deleteAdelanto = (id) => api.delete(`/adelantos/${id}`);
-export const pagarAdelanto = (id, cuentaFinancieraId, medioPago = 'efectivo') => 
-  api.post(`/adelantos/${id}/pagar?cuenta_financiera_id=${cuentaFinancieraId}&medio_pago=${medioPago}`);
-
-// Planillas
-export const getPlanillas = (params) => api.get('/planillas', { params });
-export const getPlanilla = (id) => api.get(`/planillas/${id}`);
-export const createPlanilla = (data) => api.post('/planillas', data);
-export const deletePlanilla = (id) => api.delete(`/planillas/${id}`);
-export const pagarPlanilla = (id, cuentaFinancieraId) => 
-  api.post(`/planillas/${id}/pagar?cuenta_financiera_id=${cuentaFinancieraId}`);
-
 // Ventas POS
 export const getVentasPOS = (params) => api.get('/ventas-pos', { params });
 export const refreshVentasPOS = (data) => api.post('/ventas-pos/refresh', data);
@@ -165,7 +138,6 @@ export const desconfirmarVentaPOS = (id) => api.post(`/ventas-pos/${id}/desconfi
 export const marcarCreditoVentaPOS = (id, fechaVencimiento) => 
   api.post(`/ventas-pos/${id}/credito`, null, { params: { fecha_vencimiento: fechaVencimiento } });
 export const descartarVentaPOS = (id) => api.post(`/ventas-pos/${id}/descartar`);
-
 
 // Ventas POS - Pagos
 export const getPagosVentaPOS = (ventaId) => api.get(`/ventas-pos/${ventaId}/pagos`);
@@ -197,14 +169,7 @@ export const createCxP = (data) => api.post('/cxp', data);
 export const getCxPAbonos = (cxpId) => api.get(`/cxp/${cxpId}/abonos`);
 export const createCxPAbono = (cxpId, data) => api.post(`/cxp/${cxpId}/abonos`, data);
 
-// Presupuestos
-export const getPresupuestos = (anio) => api.get('/presupuestos', { params: { anio } });
-export const getPresupuesto = (id) => api.get(`/presupuestos/${id}`);
-export const createPresupuesto = (data) => api.post('/presupuestos', data);
-export const updatePresupuesto = (id, data) => api.put(`/presupuestos/${id}`, data);
-export const deletePresupuesto = (id) => api.delete(`/presupuestos/${id}`);
-
-// Conciliacion
+// Conciliacion (REVISAR Fase 2)
 export const getConciliaciones = (cuentaFinancieraId) => 
   api.get('/conciliaciones', { params: { cuenta_financiera_id: cuentaFinancieraId } });
 export const createConciliacion = (data) => api.post('/conciliaciones', data);
@@ -241,85 +206,33 @@ export const getConciliacionesDetalladas = () => api.get('/conciliacion/historia
 export const desconciliarMovimientos = (bancoId, pagoId) => 
   api.post('/conciliacion/desconciliar', { banco_id: bancoId, pago_id: pagoId });
 
-// Reportes
-export const getReporteFlujoCaja = (fechaDesde, fechaHasta) => 
-  api.get('/reportes/flujo-caja', { params: { fecha_desde: fechaDesde, fecha_hasta: fechaHasta } });
-export const getReporteEstadoResultados = (fechaDesde, fechaHasta) => 
-  api.get('/reportes/estado-resultados', { params: { fecha_desde: fechaDesde, fecha_hasta: fechaHasta } });
-export const getReporteBalanceGeneral = () => api.get('/reportes/balance-general');
+// Tesoreria
+export const getTesoreriaResumen = (params) => api.get('/tesoreria/resumen', { params });
 
+// Export
 export const exportCompraAPP = (params) => api.get('/export/compraapp', { params, responseType: 'blob' });
 
-// Cuentas Contables
-export const getCuentasContables = () => api.get('/cuentas-contables');
-export const createCuentaContable = (data) => api.post('/cuentas-contables', data);
-export const updateCuentaContable = (id, data) => api.put(`/cuentas-contables/${id}`, data);
-export const deleteCuentaContable = (id) => api.delete(`/cuentas-contables/${id}`);
-export const seedCuentasPeru = () => api.post('/cuentas-contables/seed-peru');
-
-// Config Contable
-export const getConfigContable = () => api.get('/config-contable');
-export const updateConfigContable = (data) => api.put('/config-contable', data);
-
-// Asientos Contables
-export const generarAsiento = (data) => api.post('/asientos/generar', data);
-export const postearAsiento = (id) => api.post(`/asientos/${id}/postear`);
-export const anularAsiento = (id) => api.post(`/asientos/${id}/anular`);
-export const getAsientos = (params) => api.get('/asientos', { params });
-export const getAsiento = (id) => api.get(`/asientos/${id}`);
-
-// Reportes Contables
-export const getReporteMayor = (params) => api.get('/reportes/mayor', { params });
-export const getReporteBalanceContable = (params) => api.get('/reportes/balance', { params });
-export const getReportePnl = (params) => api.get('/reportes/pnl', { params });
-
-// Periodos Contables
-export const getPeriodos = () => api.get('/periodos-contables');
-export const cerrarPeriodo = (anio, mes) => api.post(`/periodos-contables/cerrar?anio=${anio}&mes=${mes}`);
-export const abrirPeriodo = (anio, mes) => api.post(`/periodos-contables/abrir?anio=${anio}&mes=${mes}`);
-
-// Retencion/Detraccion
+// Retencion/Detraccion (REVISAR Fase 2 — usado en FacturasProveedor)
 export const getRetencionDetalle = (origen_tipo, origen_id) => api.get('/retencion-detalle', { params: { origen_tipo, origen_id } });
 export const upsertRetencionDetalle = (origen_tipo, origen_id, data) => api.put('/retencion-detalle', data, { params: { origen_tipo, origen_id } });
 
 // Cuentas Financieras Mapeo
 export const mapearCuentasDefault = () => api.post('/cuentas-financieras/mapear-cuentas-default');
 
-// Dashboard Financiero
-export const getDashboardFinanciero = (params) => api.get('/dashboard-financiero', { params });
+// Cuentas Contables (usado por CuentasBancarias para mapeo)
+export const getCuentasContables = () => api.get('/cuentas-contables');
+
+// Asientos Contables (usado por Gastos y FacturasProveedor CORE)
+export const generarAsiento = (data) => api.post('/asientos/generar', data);
 
 // Flujo de Caja Gerencial
 export const getFlujoCajaGerencial = (params) => api.get('/flujo-caja-gerencial', { params });
-
-// Rentabilidad
-export const getRentabilidad = (params) => api.get('/rentabilidad', { params });
-
-// Presupuesto vs Real
-export const getPresupuestoVsReal = (params) => api.get('/presupuesto-vs-real', { params });
-
-// ROI Proyectos
-export const getRoiProyectos = (params) => api.get('/roi-proyectos', { params });
-
-// Reportes Gerenciales
-export const getResumenEjecutivo = () => api.get('/reportes/resumen-ejecutivo');
-export const exportarCxC = (params) => `${api.defaults.baseURL}/reportes/exportar/cxc?empresa_id=${params?.empresa_id || 6}${params?.estado ? '&estado=' + params.estado : ''}`;
-export const exportarCxP = (params) => `${api.defaults.baseURL}/reportes/exportar/cxp?empresa_id=${params?.empresa_id || 6}${params?.estado ? '&estado=' + params.estado : ''}`;
-export const exportarFlujoCaja = (params) => `${api.defaults.baseURL}/reportes/exportar/flujo-caja?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
-export const exportarRentabilidad = (params) => `${api.defaults.baseURL}/reportes/exportar/rentabilidad?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}&dimension=${params?.dimension || 'marca'}`;
-export const exportarGastos = (params) => `${api.defaults.baseURL}/reportes/exportar/gastos?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
-export const exportarTesoreria = (params) => `${api.defaults.baseURL}/reportes/exportar/tesoreria?empresa_id=${params?.empresa_id || 6}&fecha_desde=${params?.fecha_desde}&fecha_hasta=${params?.fecha_hasta}`;
 
 // Marcas
 export const getMarcas = () => api.get('/marcas');
 export const createMarca = (data) => api.post('/marcas', data);
 export const updateMarca = (id, data) => api.put(`/marcas/${id}`, data);
 export const deleteMarca = (id) => api.delete(`/marcas/${id}`);
-
-// Proyectos
-export const getProyectos = () => api.get('/proyectos');
-export const createProyecto = (data) => api.post('/proyectos', data);
-export const updateProyecto = (id, data) => api.put(`/proyectos/${id}`, data);
-export const deleteProyecto = (id) => api.delete(`/proyectos/${id}`);
 
 // Reportes Simplificados
 export const getReporteVentasPendientes = () => api.get('/reportes/ventas-pendientes');
