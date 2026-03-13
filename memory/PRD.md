@@ -19,46 +19,33 @@ Simplificar el modulo de Finanzas Gerenciales para enfocarse en operaciones fina
 | Reportes | Reportes Simplificados, Valorizacion Inventario |
 | Catalogos | Lineas de Negocio, Marcas, Centros de Costo, Categorias Gasto, Proveedores, Clientes, Empresas |
 
-## Backend: 22 routers activos
-- 17 CORE puros
-- 3 CORE con legacy residual (contabilidad, articulos, finanzas_gerencial)
-- 2 REVISAR (compras, banco)
+## Backend: 22 routers activos (100% CORE)
+core, dashboard, empresas, maestros, cuentas_financieras, terceros,
+inventario_core, compras, pagos, gastos, ventas_pos, cxc_cxp,
+banco, reportes, core_contabilidad, export, marcas, flujo_caja,
+tesoreria, valorizacion, categorias_gasto, prorrateo, reportes_simplificados
++ 2 REVISAR: compras, banco
 
 ## Completado
 
-### Fase 0 - Desacoplamiento Odoo
-### Fase 1-2 - Simplificacion Backend+Frontend
-### Dashboard + Ventas POS + Reportes
-### Bug Fixes Criticos
-- P0 Tesoreria/Pagos invisibles
-- Error al marcar Credito
-- Abono CxC no visible en Pagos
-- Campos Odoo faltantes (tipo_comp, num_comp, x_pagos, company_name)
-- Cantidad faltante (quantity_total)
-
+### Fases 0-2 - Simplificacion + Bug Fixes (COMPLETADO)
 ### Fase 1 Cleanup Frontend (Mar 2026)
-- 19 rutas legacy eliminadas de App.js
-- ~50 funciones muertas eliminadas de api.js
-- PlaceholderPages limpiado
-- Sidebar simplificado: 6 secciones, 20 items
-- Valorizacion Inventario agregada al Sidebar
-
+- 19 rutas legacy eliminadas, ~50 funciones muertas eliminadas, sidebar simplificado
 ### Fase 2 Cleanup Backend (Mar 2026)
-- 6 routers legacy desregistrados de server.py (27 endpoints)
-- Desregistrados: planillas, presupuestos, proyectos, capital_linea, dashboard_financiero, reportes_gerenciales
-- 3 routers bloqueados por dependencias CORE (contabilidad, articulos, finanzas_gerencial)
-- 2 routers REVISAR conservados (compras, banco)
-- Documentacion completa en PHASE2_CLEANUP.md
+- 6 routers legacy desregistrados (27 endpoints)
+### Fase 3 Desacople CORE/LEGACY (Mar 2026)
+- 3 routers hibridos reemplazados por 3 CORE puros
+- core_contabilidad.py: getCuentasContables + generarAsiento
+- inventario_core.py: /inventario + /modelos-cortes + /modelos
+- flujo_caja.py: /flujo-caja-gerencial
+- 23 endpoints legacy adicionales removidos
+- Total endpoints legacy removidos: 50 (Fase 2 + Fase 3)
 
 ## Backlog
 
-### P0 - Fase 3 Refactoring
-- Extraer endpoints CORE de contabilidad.py (getCuentasContables, generarAsiento) a micro-router
-- Extraer /flujo-caja-gerencial de finanzas_gerencial.py a su propio router
-- Renombrar articulos.py a inventario.py, limpiar endpoints muertos
-- Split ventas_pos.py (1190 lineas)
-- Split FacturasProveedor.jsx (2575 lineas)
-- Mover archivos legacy a carpetas /legacy/
+### P0 - Fase 4 (mover archivos a /legacy/)
+- Crear carpetas legacy/ en backend y frontend
+- Mover 9 archivos backend + 19 archivos frontend
 
 ### P1 - Decisiones pendientes usuario
 - Ordenes de Compra, Letras, PagarFacturas → CORE o LEGACY?
@@ -68,5 +55,9 @@ Simplificar el modulo de Finanzas Gerenciales para enfocarse en operaciones fina
 - Ventas por cruce linea x marca
 - Gastos directos por linea
 
-### P2 - Modulos Futuros
+### P2 - Refactoring archivos grandes
+- Split ventas_pos.py (1190 lineas)
+- Split FacturasProveedor.jsx (2575 lineas)
+
+### P3 - Modulos Futuros
 - Proyectos, Capital & ROI, Presupuesto vs Real
