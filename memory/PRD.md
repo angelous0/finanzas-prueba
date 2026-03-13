@@ -14,8 +14,8 @@ Simplificar el modulo de Finanzas Gerenciales para enfocarse en operaciones fina
 |---------|-------|
 | Principal | Dashboard |
 | Ventas | Ventas POS, CxC |
-| Egresos | Gastos, Prorrateo, Factura Proveedor, CxP |
-| Tesoreria | Tesoreria, Cuentas Bancarias, Movimientos/Pagos, Flujo de Caja |
+| Egresos | Gastos, Prorrateo, Factura Proveedor, CxP, Letras |
+| Tesoreria | Tesoreria, Cuentas Bancarias, Movimientos/Pagos, Flujo de Caja, Conciliacion Bancaria, Historial Conciliaciones |
 | Reportes | Reportes Simplificados, Valorizacion Inventario |
 | Catalogos | Lineas Negocio, Marcas, Centros Costo, Categorias Gasto, Proveedores, Clientes, Empresas |
 
@@ -69,8 +69,9 @@ Archivo original: 2576 lineas -> Orquestador de 256 lineas + 9 componentes
 - Split gastos.py (backend)
 
 ### P0 - Decisiones pendientes usuario
-- Ordenes de Compra, Letras, PagarFacturas -> CORE o LEGACY?
-- Conciliacion Bancaria -> CORE o LEGACY?
+- Ordenes de Compra, PagarFacturas -> CORE o LEGACY?
+- RESUELTO: Letras -> CORE (reactivado 2026-03-13)
+- RESUELTO: Conciliacion Bancaria -> CORE (reactivado 2026-03-13)
 
 ### P1 - Reportes Faltantes
 - Ventas por cruce linea x marca

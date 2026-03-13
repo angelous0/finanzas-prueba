@@ -5,8 +5,8 @@ import {
   Building2, Users, Wallet,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock,
   Tags, GitBranch, Target, X, ChevronLeft,
-  Tag, PieChart, Activity, ClipboardList,
-  Vault, Layers, Package
+  Tag, Activity, ClipboardList,
+  Vault, Layers, Package, FileSpreadsheet, Link2, History
 } from 'lucide-react';
 
 const navSections = [
@@ -30,6 +30,7 @@ const navSections = [
       { icon: Layers, label: 'Prorrateo', path: '/prorrateo' },
       { icon: Receipt, label: 'Factura Proveedor', path: '/facturas-proveedor' },
       { icon: Clock, label: 'CxP', path: '/cxp' },
+      { icon: FileSpreadsheet, label: 'Letras', path: '/letras' },
     ]
   },
   {
@@ -39,6 +40,8 @@ const navSections = [
       { icon: Landmark, label: 'Cuentas Bancarias', path: '/cuentas-bancarias' },
       { icon: DollarSign, label: 'Movimientos/Pagos', path: '/pagos' },
       { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
+      { icon: Link2, label: 'Conciliación Bancaria', path: '/conciliacion' },
+      { icon: History, label: 'Historial Conciliaciones', path: '/historial-conciliaciones' },
     ]
   },
   {
