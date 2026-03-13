@@ -110,6 +110,15 @@ Al confirmar y cobrar una venta, el dashboard sumaba AMBAS distribuciones (venta
 - Frontend UI: Modal edit + Guardar -> PASSED
 - Dashboard: Costos por linea de negocio ahora muestran Element Premium S/3000 + Confeccion S/5900 -> PASSED
 
+## Libro Analitico - COMPLETADO (2026-03-13)
+Nuevo modulo que permite ver el historial completo de entradas y salidas por:
+- Linea de Negocio, Marca, Centro de Costo, Categoria
+- Filtro por rango de fechas
+- Tabla con: Fecha, Tipo, Descripcion, Entrada, Salida, Saldo Acumulado
+- Boton link para abrir el documento fuente (venta, pago, letra, gasto)
+- Exportacion a CSV
+- Archivos: backend/routers/libro_analitico.py, frontend/src/pages/LibroAnalitico.jsx
+
 ## Backlog
 
 ### P1 - Pendiente de split (Fase 5)
