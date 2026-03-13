@@ -17,47 +17,34 @@ Simplificar el modulo de Finanzas Gerenciales para enfocarse en operaciones fina
 | Egresos | Gastos, Prorrateo, Factura Proveedor, CxP |
 | Tesoreria | Tesoreria, Cuentas Bancarias, Movimientos/Pagos, Flujo de Caja |
 | Reportes | Reportes Simplificados, Valorizacion Inventario |
-| Catalogos | Lineas de Negocio, Marcas, Centros de Costo, Categorias Gasto, Proveedores, Clientes, Empresas |
+| Catalogos | Lineas Negocio, Marcas, Centros Costo, Categorias Gasto, Proveedores, Clientes, Empresas |
 
-## Backend: 22 routers activos (100% CORE)
+## Backend: 22 routers CORE activos
 core, dashboard, empresas, maestros, cuentas_financieras, terceros,
 inventario_core, compras, pagos, gastos, ventas_pos, cxc_cxp,
 banco, reportes, core_contabilidad, export, marcas, flujo_caja,
 tesoreria, valorizacion, categorias_gasto, prorrateo, reportes_simplificados
-+ 2 REVISAR: compras, banco
 
-## Completado
-
-### Fases 0-2 - Simplificacion + Bug Fixes (COMPLETADO)
-### Fase 1 Cleanup Frontend (Mar 2026)
-- 19 rutas legacy eliminadas, ~50 funciones muertas eliminadas, sidebar simplificado
-### Fase 2 Cleanup Backend (Mar 2026)
-- 6 routers legacy desregistrados (27 endpoints)
-### Fase 3 Desacople CORE/LEGACY (Mar 2026)
-- 3 routers hibridos reemplazados por 3 CORE puros
-- core_contabilidad.py: getCuentasContables + generarAsiento
-- inventario_core.py: /inventario + /modelos-cortes + /modelos
-- flujo_caja.py: /flujo-caja-gerencial
-- 23 endpoints legacy adicionales removidos
-- Total endpoints legacy removidos: 50 (Fase 2 + Fase 3)
+## Cleanup Completado (Fases 1-4)
+- Fase 1: 19 rutas frontend + ~50 funciones api.js eliminadas
+- Fase 2: 6 routers backend desregistrados (27 endpoints)
+- Fase 3: 3 routers hibridos → 3 CORE puros (23 endpoints legacy adicionales)
+- Fase 4: 28 archivos movidos a /legacy/ (9 backend + 19 frontend)
+- Total: 50 endpoints legacy removidos, 0 dependencias CORE rotas
 
 ## Backlog
 
-### P0 - Fase 4 (mover archivos a /legacy/)
-- Crear carpetas legacy/ en backend y frontend
-- Mover 9 archivos backend + 19 archivos frontend
-
-### P1 - Decisiones pendientes usuario
+### P0 - Decisiones pendientes usuario
 - Ordenes de Compra, Letras, PagarFacturas → CORE o LEGACY?
 - Conciliacion Bancaria → CORE o LEGACY?
+
+### P1 - Refactoring archivos grandes
+- Split ventas_pos.py (1190 lineas)
+- Split FacturasProveedor.jsx (2575 lineas)
 
 ### P1 - Reportes Faltantes
 - Ventas por cruce linea x marca
 - Gastos directos por linea
 
-### P2 - Refactoring archivos grandes
-- Split ventas_pos.py (1190 lineas)
-- Split FacturasProveedor.jsx (2575 lineas)
-
-### P3 - Modulos Futuros
+### P2 - Modulos Futuros
 - Proyectos, Capital & ROI, Presupuesto vs Real
