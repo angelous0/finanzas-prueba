@@ -258,6 +258,19 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
             odoo_linea_negocio_nombre = EXCLUDED.odoo_linea_negocio_nombre
     """, empresa_id, company_key, order_ids)
 
+    # 3. Update quantity_total from lines
+    await conn.execute("""
+        UPDATE finanzas2.cont_venta_pos v
+        SET quantity_total = sub.total_qty
+        FROM (
+            SELECT venta_pos_id, SUM(qty) AS total_qty
+            FROM finanzas2.cont_venta_pos_linea
+            WHERE empresa_id = $1
+            GROUP BY venta_pos_id
+        ) sub
+        WHERE v.id = sub.venta_pos_id AND v.empresa_id = $1
+    """, empresa_id)
+
     logger.info(f"Synced {len(orders)} orders and their lines to local tables")
 
 
