@@ -108,6 +108,7 @@ export const Letras = () => {
   const handlePagarLetra = async (e) => {
     e.preventDefault();
     if (!letraAPagar || submitting) return;
+    const montoExacto = parseFloat(letraAPagar.saldo_pendiente);
 
     setSubmitting(true);
     try {
@@ -115,19 +116,19 @@ export const Letras = () => {
         tipo: 'egreso',
         fecha: new Date().toISOString().split('T')[0],
         cuenta_financiera_id: parseInt(pagarForm.cuenta_financiera_id),
-        monto_total: parseFloat(pagarForm.monto),
+        monto_total: montoExacto,
         referencia: pagarForm.referencia,
         notas: `Pago letra ${letraAPagar.numero}`,
         detalles: [{
           cuenta_financiera_id: parseInt(pagarForm.cuenta_financiera_id),
           medio_pago: pagarForm.medio_pago,
-          monto: parseFloat(pagarForm.monto),
+          monto: montoExacto,
           referencia: pagarForm.referencia
         }],
         aplicaciones: [{
           tipo_documento: 'letra',
           documento_id: letraAPagar.id,
-          monto_aplicado: parseFloat(pagarForm.monto)
+          monto_aplicado: montoExacto
         }]
       });
       toast.success('Letra pagada exitosamente');
@@ -397,11 +398,14 @@ export const Letras = () => {
                       type="number"
                       step="0.01"
                       className="form-input"
-                      value={pagarForm.monto}
-                      onChange={(e) => setPagarForm(prev => ({ ...prev, monto: e.target.value }))}
-                      max={letraAPagar.saldo_pendiente}
-                      required
+                      value={letraAPagar.saldo_pendiente}
+                      readOnly
+                      style={{ background: '#f1f5f9', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}
+                      data-testid="letra-monto-pago"
                     />
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
+                      Las letras se pagan por el monto exacto
+                    </span>
                   </div>
                   
                   <div className="form-group">

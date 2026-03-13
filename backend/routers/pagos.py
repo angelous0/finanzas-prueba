@@ -4,6 +4,10 @@ from datetime import date, datetime
 from database import get_pool
 from models import Pago, PagoCreate, Letra, GenerarLetrasRequest
 from dependencies import get_empresa_id, get_next_correlativo, safe_date_param
+from services.treasury_service import create_movimiento_tesoreria
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -118,8 +122,11 @@ async def create_pago(data: PagoCreate, empresa_id: int = Depends(get_empresa_id
                     doc = await conn.fetchrow("SELECT saldo_pendiente, monto, estado FROM finanzas2.cont_letra WHERE id = $1", aplicacion.documento_id)
                     if not doc:
                         raise HTTPException(404, f"Letra {aplicacion.documento_id} not found")
-                    if aplicacion.monto_aplicado > float(doc['saldo_pendiente']):
-                        raise HTTPException(400, f"El monto ({aplicacion.monto_aplicado:.2f}) excede el saldo pendiente ({doc['saldo_pendiente']:.2f})")
+                    if doc['estado'] == 'pagada':
+                        raise HTTPException(400, f"La letra ya esta pagada")
+                    saldo = float(doc['saldo_pendiente'])
+                    if abs(aplicacion.monto_aplicado - saldo) > 0.01:
+                        raise HTTPException(400, f"El pago de una letra debe ser por el monto exacto ({saldo:.2f}). No se permiten pagos parciales.")
             numero = await generate_pago_number(conn, data.tipo, empresa_id)
             pago = await conn.fetchrow("""
                 INSERT INTO finanzas2.cont_pago
@@ -140,6 +147,17 @@ async def create_pago(data: PagoCreate, empresa_id: int = Depends(get_empresa_id
                     await conn.execute("UPDATE finanzas2.cont_cuenta_financiera SET saldo_actual = saldo_actual - $1 WHERE id = $2", detalle.monto, detalle.cuenta_financiera_id)
                 else:
                     await conn.execute("UPDATE finanzas2.cont_cuenta_financiera SET saldo_actual = saldo_actual + $1 WHERE id = $2", detalle.monto, detalle.cuenta_financiera_id)
+                # Crear movimiento de tesorería real
+                origen_tipo = 'pago_egreso' if data.tipo == 'egreso' else 'pago_ingreso'
+                await create_movimiento_tesoreria(
+                    conn, empresa_id, date.today(), data.tipo,
+                    float(detalle.monto),
+                    cuenta_financiera_id=detalle.cuenta_financiera_id,
+                    forma_pago=detalle.medio_pago,
+                    concepto=data.notas or data.referencia or f"Pago {numero}",
+                    origen_tipo=origen_tipo,
+                    origen_id=pago_id,
+                )
             for aplicacion in data.aplicaciones:
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_pago_aplicacion
@@ -168,6 +186,25 @@ async def create_pago(data: PagoCreate, empresa_id: int = Depends(get_empresa_id
                         nuevo_estado = 'pagado' if nuevo_saldo <= 0 else 'parcial'
                         await conn.execute("UPDATE finanzas2.cont_cxp SET saldo_pendiente = $2, estado = $3 WHERE factura_id = $1", letra['factura_id'], nuevo_saldo, nuevo_estado)
                         await conn.execute("UPDATE finanzas2.cont_factura_proveedor SET saldo_pendiente = $2 WHERE id = $1", letra['factura_id'], nuevo_saldo)
+                        # Distribución analítica: gasto por línea de negocio desde líneas de la factura
+                        try:
+                            lineas_fp = await conn.fetch("""
+                                SELECT linea_negocio_id, importe FROM finanzas2.cont_factura_proveedor_linea
+                                WHERE factura_id = $1 AND linea_negocio_id IS NOT NULL
+                            """, letra['factura_id'])
+                            if lineas_fp:
+                                total_fp = sum(float(l['importe']) for l in lineas_fp)
+                                if total_fp > 0:
+                                    for linea in lineas_fp:
+                                        proporcion = float(linea['importe']) / total_fp
+                                        monto_dist = round(aplicacion.monto_aplicado * proporcion, 2)
+                                        await conn.execute("""
+                                            INSERT INTO finanzas2.cont_distribucion_analitica
+                                            (empresa_id, fecha, monto, linea_negocio_id, origen_tipo, origen_id)
+                                            VALUES ($1, $2, $3, $4, 'pago_letra', $5)
+                                        """, empresa_id, date.today(), monto_dist, linea['linea_negocio_id'], pago_id)
+                        except Exception as e:
+                            logger.warning(f"Error creating analytical distribution for letra payment: {e}")
             row = await conn.fetchrow("""
                 SELECT p.*, cf.nombre as cuenta_nombre, m.codigo as moneda_codigo
                 FROM finanzas2.cont_pago p
