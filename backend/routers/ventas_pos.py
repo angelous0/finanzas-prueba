@@ -508,7 +508,7 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                 amount = float(order['amount_total'] or 0)
                 if amount > 0:
                     pagos = await conn.fetch(
-                        "SELECT forma_pago, monto, cuenta_financiera_id FROM finanzas2.cont_venta_pos_pago WHERE odoo_order_id=$1 AND empresa_id=$2",
+                        "SELECT forma_pago, monto, cuenta_financiera_id, referencia, fecha_pago, observaciones FROM finanzas2.cont_venta_pos_pago WHERE odoo_order_id=$1 AND empresa_id=$2",
                         order_id, empresa_id)
                     from services.treasury_service import create_movimiento_tesoreria
                     if pagos:
@@ -528,6 +528,48 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                             origen_tipo='venta_pos_confirmada',
                             origen_id=order_id,
                         )
+
+                    # CAPA PAGOS: Crear cont_pago para cada pago registrado
+                    moneda_id = await conn.fetchval(
+                        "SELECT id FROM finanzas2.cont_moneda WHERE codigo='PEN'")
+                    if not moneda_id:
+                        moneda_id = await conn.fetchval(
+                            "SELECT id FROM finanzas2.cont_moneda ORDER BY id LIMIT 1")
+
+                    if pagos:
+                        for pago_item in pagos:
+                            last_pago = await conn.fetchval(
+                                "SELECT numero FROM finanzas2.cont_pago WHERE tipo='ingreso' AND empresa_id=$1 ORDER BY id DESC LIMIT 1",
+                                empresa_id)
+                            if last_pago and '-' in last_pago:
+                                parts = last_pago.split('-')
+                                num = int(parts[-1]) + 1 if len(parts) >= 3 else 1
+                            else:
+                                num = 1
+                            numero_pago = f"PAG-I-{datetime.now().year}-{num:05d}"
+                            pago_result = await conn.fetchrow("""
+                                INSERT INTO finanzas2.cont_pago
+                                (numero, tipo, fecha, cuenta_financiera_id, moneda_id, monto_total,
+                                 referencia, notas, empresa_id)
+                                VALUES ($1, 'ingreso', $2::date, $3, $4, $5, $6, $7, $8)
+                                RETURNING id
+                            """, numero_pago, pago_item['fecha_pago'] or date.today(),
+                                pago_item['cuenta_financiera_id'],
+                                moneda_id, pago_item['monto'], pago_item['referencia'],
+                                f"Venta POS #{order_id} confirmada - {pago_item['observaciones'] or ''}",
+                                empresa_id)
+                            pago_id = pago_result['id']
+                            await conn.execute("""
+                                INSERT INTO finanzas2.cont_pago_detalle
+                                (pago_id, cuenta_financiera_id, medio_pago, monto, referencia, empresa_id)
+                                VALUES ($1, $2, $3, $4, $5, $6)
+                            """, pago_id, pago_item['cuenta_financiera_id'], pago_item['forma_pago'],
+                                pago_item['monto'], pago_item['referencia'], empresa_id)
+                            await conn.execute("""
+                                INSERT INTO finanzas2.cont_pago_aplicacion
+                                (pago_id, tipo_documento, documento_id, monto_aplicado, empresa_id)
+                                VALUES ($1, 'venta_pos_odoo', $2, $3, $4)
+                            """, pago_id, order_id, pago_item['monto'], empresa_id)
 
                     # Auto-CxC si hay saldo pendiente
                     total_pagos = sum(float(p['monto']) for p in pagos) if pagos else 0
@@ -937,12 +979,23 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
 
                 # Create analytical distribution for the confirmed sale
                 from services.distribucion_analitica import crear_distribucion_ingreso, crear_distribucion_cobro
+                from services.treasury_service import create_movimiento_tesoreria
                 await crear_distribucion_ingreso(conn, empresa_id, order_id, date.today())
 
                 pagos_venta = await conn.fetch(
                     "SELECT * FROM finanzas2.cont_venta_pos_pago WHERE odoo_order_id=$1 AND empresa_id=$2",
                     order_id, empresa_id)
                 for pago_item in pagos_venta:
+                    # 1. CAPA TESORERIA: movimiento real
+                    await create_movimiento_tesoreria(
+                        conn, empresa_id, date.today(), 'ingreso', float(pago_item['monto']),
+                        cuenta_financiera_id=pago_item['cuenta_financiera_id'],
+                        forma_pago=pago_item['forma_pago'],
+                        concepto=f"Venta POS #{order_id} confirmada",
+                        origen_tipo='venta_pos_confirmada',
+                        origen_id=order_id,
+                    )
+                    # 2. CAPA PAGOS: cont_pago + detalle + aplicacion
                     last_pago = await conn.fetchval(
                         "SELECT numero FROM finanzas2.cont_pago WHERE tipo='ingreso' AND empresa_id=$1 ORDER BY id DESC LIMIT 1",
                         empresa_id)
@@ -974,7 +1027,7 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                         (pago_id, tipo_documento, documento_id, monto_aplicado, empresa_id)
                         VALUES ($1, 'venta_pos_odoo', $2, $3, $4)
                     """, pago_id, order_id, pago_item['monto'], empresa_id)
-                    # Create analytical distribution for this cobro
+                    # 3. DISTRIBUCION ANALITICA: cobro por linea
                     await crear_distribucion_cobro(conn, empresa_id, order_id, pago_id, pago_item['monto'], date.today())
 
                 return {
