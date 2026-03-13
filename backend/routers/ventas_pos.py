@@ -918,8 +918,8 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                 order_id, empresa_id)
             amount_total = float(order['amount_total'])
 
-            if abs(float(total_pagos) - amount_total) < 0.01:
-                # Auto-confirm and create official pagos
+            if abs(float(total_pagos) - amount_total) < 0.01 or float(total_pagos) >= amount_total:
+                # Auto-confirm ONLY when fully paid
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_venta_pos_estado
                         (empresa_id, odoo_order_id, estado_local, updated_at)
@@ -927,6 +927,13 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                     ON CONFLICT (empresa_id, odoo_order_id)
                     DO UPDATE SET estado_local='confirmada', updated_at=NOW()
                 """, empresa_id, order_id)
+
+                # Get default moneda (PEN)
+                moneda_id = await conn.fetchval(
+                    "SELECT id FROM finanzas2.cont_moneda WHERE codigo='PEN'")
+                if not moneda_id:
+                    moneda_id = await conn.fetchval(
+                        "SELECT id FROM finanzas2.cont_moneda ORDER BY id LIMIT 1")
 
                 pagos_venta = await conn.fetch(
                     "SELECT * FROM finanzas2.cont_venta_pos_pago WHERE odoo_order_id=$1 AND empresa_id=$2",
@@ -945,10 +952,10 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                         INSERT INTO finanzas2.cont_pago
                         (numero, tipo, fecha, cuenta_financiera_id, moneda_id, monto_total,
                          referencia, notas, empresa_id)
-                        VALUES ($1, 'ingreso', $2::date, $3, 1, $4, $5, $6, $7)
+                        VALUES ($1, 'ingreso', $2::date, $3, $4, $5, $6, $7, $8)
                         RETURNING id
                     """, numero_pago, pago_item['fecha_pago'], pago_item['cuenta_financiera_id'],
-                        pago_item['monto'], pago_item['referencia'],
+                        moneda_id, pago_item['monto'], pago_item['referencia'],
                         f"Pago venta POS Odoo #{order_id} - {pago_item['observaciones'] or ''}",
                         empresa_id)
                     pago_id = pago_result['id']
@@ -1000,9 +1007,14 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                     "SELECT COALESCE(SUM(monto), 0) FROM finanzas2.cont_venta_pos_pago WHERE venta_pos_id=$1",
                     order_id)
                 amount_total = float(venta['amount_total'])
-                if abs(float(total_pagos) - amount_total) < 0.01:
+                if abs(float(total_pagos) - amount_total) < 0.01 or float(total_pagos) >= amount_total:
                     await conn.execute(
                         "UPDATE finanzas2.cont_venta_pos SET estado_local='confirmada' WHERE id=$1", order_id)
+                    moneda_id = await conn.fetchval(
+                        "SELECT id FROM finanzas2.cont_moneda WHERE codigo='PEN'")
+                    if not moneda_id:
+                        moneda_id = await conn.fetchval(
+                            "SELECT id FROM finanzas2.cont_moneda ORDER BY id LIMIT 1")
                     pagos_venta = await conn.fetch(
                         "SELECT * FROM finanzas2.cont_venta_pos_pago WHERE venta_pos_id=$1", order_id)
                     for pago_item in pagos_venta:
@@ -1018,11 +1030,11 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                             INSERT INTO finanzas2.cont_pago
                             (numero, tipo, fecha, cuenta_financiera_id, moneda_id, monto_total,
                              referencia, notas, empresa_id)
-                            VALUES ($1, 'ingreso', $2::date, $3, 1, $4, $5, $6, $7)
+                            VALUES ($1, 'ingreso', $2::date, $3, $4, $5, $6, $7, $8)
                             RETURNING id
                         """, numero_pago, pago_item['fecha_pago'],
                             pago_item['cuenta_financiera_id'],
-                            pago_item['monto'], pago_item['referencia'],
+                            moneda_id, pago_item['monto'], pago_item['referencia'],
                             f"Pago venta POS {venta['name']} - {pago_item['observaciones'] or ''}",
                             empresa_id)
                         pago_id = pago_result['id']
