@@ -14,7 +14,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://erp-core-flow.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://treasury-debug.preview.emergentagent.com')
 EMPRESA_ID = 6
 MONEDA_ID = 7  # PEN
 

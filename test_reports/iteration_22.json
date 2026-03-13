@@ -69,7 +69,7 @@
   },
   "test_credentials": {
     "empresa_id": "6 (Ambission Industries SAC)",
-    "api_base_url": "https://erp-core-flow.preview.emergentagent.com",
+    "api_base_url": "https://treasury-debug.preview.emergentagent.com",
     "test_data": "Presupuesto 'Presupuesto Operativo 2026' (id=2) with S/16,500 total across Ene/Feb/Mar. No active projects exist."
   },
   "seed_data_creation": "None - used existing presupuesto data from previous phases",

@@ -73,7 +73,7 @@
   },
   "test_credentials": {
     "empresa_id": "6 (Ambission Industries SAC)",
-    "api_base_url": "https://erp-core-flow.preview.emergentagent.com",
+    "api_base_url": "https://treasury-debug.preview.emergentagent.com",
     "test_data": "1 confirmed POS sale for ELEMENT PREMIUM (S/ 647.48), CxC/CxP test records, pago records"
   },
   "seed_data_creation": "None - used existing data from previous iterations",

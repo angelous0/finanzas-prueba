@@ -84,7 +84,7 @@
   },
   "test_credentials": {
     "empresa_id": "6 (Ambission Industries SAC)",
-    "api_base_url": "https://erp-core-flow.preview.emergentagent.com"
+    "api_base_url": "https://treasury-debug.preview.emergentagent.com"
   },
   "test_data_observed": {
     "order_146661_lines": [
