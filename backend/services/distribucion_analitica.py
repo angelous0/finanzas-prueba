@@ -12,7 +12,15 @@ logger = logging.getLogger(__name__)
 
 async def crear_distribucion_ingreso(conn, empresa_id: int, odoo_order_id: int, fecha):
     """Crea distribución analítica de ingreso desde el detalle POS.
-    Se usa al confirmar o marcar crédito una venta."""
+    Se usa al confirmar o marcar crédito una venta.
+    Distribuye amount_total proporcionalmente por línea de negocio."""
+    # Get sale total (IGV included)
+    amount_total = await conn.fetchval("""
+        SELECT amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id = $1
+    """, odoo_order_id)
+    if not amount_total or float(amount_total) <= 0:
+        return 0
+
     lineas = await conn.fetch("""
         SELECT l.odoo_linea_negocio_id, COALESCE(SUM(l.price_subtotal), 0) as subtotal
         FROM finanzas2.cont_venta_pos_linea l
@@ -26,15 +34,27 @@ async def crear_distribucion_ingreso(conn, empresa_id: int, odoo_order_id: int, 
         return 0
 
     ln_map = await get_linea_negocio_map(conn, empresa_id)
+    total_subtotal = sum(float(r['subtotal']) for r in lineas)
+    if total_subtotal <= 0:
+        return 0
+
     count = 0
-    for r in lineas:
+    restante = float(amount_total)
+    for i, r in enumerate(lineas):
         mapped = resolve_linea(ln_map, r['odoo_linea_negocio_id'])
-        await conn.execute("""
-            INSERT INTO finanzas2.cont_distribucion_analitica
-                (empresa_id, origen_tipo, origen_id, linea_negocio_id, monto, fecha)
-            VALUES ($1, 'venta_pos_ingreso', $2, $3, $4, $5)
-        """, empresa_id, odoo_order_id, mapped['id'], float(r['subtotal']), fecha)
-        count += 1
+        if i == len(lineas) - 1:
+            monto = round(restante, 2)
+        else:
+            proporcion = float(r['subtotal']) / total_subtotal
+            monto = round(float(amount_total) * proporcion, 2)
+            restante -= monto
+        if monto > 0:
+            await conn.execute("""
+                INSERT INTO finanzas2.cont_distribucion_analitica
+                    (empresa_id, origen_tipo, origen_id, linea_negocio_id, monto, fecha)
+                VALUES ($1, 'venta_pos_ingreso', $2, $3, $4, $5)
+            """, empresa_id, odoo_order_id, mapped['id'], monto, fecha)
+            count += 1
     return count
 
 

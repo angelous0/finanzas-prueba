@@ -166,7 +166,7 @@ async def reporte_utilidad_por_linea(
             SELECT d.linea_negocio_id, COALESCE(SUM(d.monto), 0) as ingresos
             FROM cont_distribucion_analitica d
             WHERE d.empresa_id = $1 AND d.fecha BETWEEN $2 AND $3
-              AND d.origen_tipo IN ('venta_pos_ingreso', 'cobranza_cxc')
+              AND d.origen_tipo = 'venta_pos_ingreso'
             GROUP BY d.linea_negocio_id
         """, empresa_id, fd, fh)
 
