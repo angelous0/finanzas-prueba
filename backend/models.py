@@ -500,6 +500,7 @@ class Letra(LetraBase):
     id: int
     empresa_id: Optional[int] = None
     numero: str
+    numero_unico: Optional[str] = None
     estado: str = "pendiente"
     saldo_pendiente: float
     proveedor_nombre: Optional[str] = None

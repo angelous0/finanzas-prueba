@@ -108,6 +108,7 @@ export const getLetras = (params) => api.get('/letras', { params });
 export const getLetra = (id) => api.get(`/letras/${id}`);
 export const generarLetras = (data) => api.post('/letras/generar', data);
 export const deleteLetra = (id) => api.delete(`/letras/${id}`);
+export const updateLetraNumeroUnico = (id, data) => api.put(`/letras/${id}/numero-unico`, data);
 export const getLetrasDeFactura = (facturaId) => api.get(`/facturas-proveedor/${facturaId}/letras`);
 export const deshacerCanjeLetras = (facturaId) => api.post(`/facturas-proveedor/${facturaId}/deshacer-canje`);
 

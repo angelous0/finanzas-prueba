@@ -427,6 +427,9 @@ async def list_letras(
     estado: Optional[str] = None,
     proveedor_id: Optional[int] = None,
     factura_id: Optional[int] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    q: Optional[str] = None,
     empresa_id: int = Depends(get_empresa_id),
 ):
     pool = await get_pool()
@@ -441,6 +444,13 @@ async def list_letras(
             conditions.append(f"l.proveedor_id = ${idx}"); params.append(proveedor_id); idx += 1
         if factura_id:
             conditions.append(f"l.factura_id = ${idx}"); params.append(factura_id); idx += 1
+        if fecha_desde:
+            conditions.append(f"l.fecha_vencimiento >= ${idx}"); params.append(fecha_desde); idx += 1
+        if fecha_hasta:
+            conditions.append(f"l.fecha_vencimiento <= ${idx}"); params.append(fecha_hasta); idx += 1
+        if q:
+            conditions.append(f"(l.numero ILIKE ${idx} OR l.numero_unico ILIKE ${idx} OR t.nombre ILIKE ${idx} OR fp.numero ILIKE ${idx})")
+            params.append(f"%{q}%"); idx += 1
         query = f"""
             SELECT l.*, t.nombre as proveedor_nombre, fp.numero as factura_numero
             FROM finanzas2.cont_letra l
@@ -451,6 +461,21 @@ async def list_letras(
         """
         rows = await conn.fetch(query, *params)
         return [dict(r) for r in rows]
+
+
+@router.put("/letras/{id}/numero-unico")
+async def update_letra_numero_unico(id: int, data: dict, empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        letra = await conn.fetchrow(
+            "SELECT id FROM finanzas2.cont_letra WHERE id = $1 AND empresa_id = $2", id, empresa_id)
+        if not letra:
+            raise HTTPException(404, "Letra no encontrada")
+        await conn.execute(
+            "UPDATE finanzas2.cont_letra SET numero_unico = $1, updated_at = NOW() WHERE id = $2",
+            data.get('numero_unico', ''), id)
+        return {"message": "Numero unico actualizado"}
 
 
 @router.post("/letras/generar", response_model=List[Letra])

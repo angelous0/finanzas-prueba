@@ -375,6 +375,7 @@ async def create_schema():
                 id SERIAL PRIMARY KEY,
                 empresa_id INTEGER NOT NULL REFERENCES finanzas2.cont_empresa(id),
                 numero VARCHAR(30) NOT NULL,
+                numero_unico VARCHAR(50),
                 factura_id INTEGER REFERENCES finanzas2.cont_factura_proveedor(id),
                 proveedor_id INTEGER REFERENCES finanzas2.cont_tercero(id),
                 monto DECIMAL(15, 2) NOT NULL,
@@ -387,6 +388,13 @@ async def create_schema():
                 updated_at TIMESTAMP DEFAULT NOW(),
                 UNIQUE(empresa_id, numero)
             )
+        """)
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_letra' AND column_name='numero_unico') THEN
+                    ALTER TABLE finanzas2.cont_letra ADD COLUMN numero_unico VARCHAR(50);
+                END IF;
+            END $$;
         """)
 
         await conn.execute("""
