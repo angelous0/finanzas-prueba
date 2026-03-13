@@ -19,25 +19,27 @@ from routers.articulos import router as articulos_router
 from routers.compras import router as compras_router
 from routers.pagos import router as pagos_router
 from routers.gastos import router as gastos_router
-from routers.planillas import router as planillas_router
 from routers.ventas_pos import router as ventas_pos_router
 from routers.cxc_cxp import router as cxc_cxp_router
-from routers.presupuestos import router as presupuestos_router
 from routers.banco import router as banco_router
 from routers.reportes import router as reportes_router
 from routers.contabilidad import router as contabilidad_router
 from routers.export import router as export_router
 from routers.marcas import router as marcas_router
-from routers.proyectos import router as proyectos_router
-from routers.dashboard_financiero import router as dashboard_financiero_router
 from routers.finanzas_gerencial import router as finanzas_gerencial_router
-from routers.reportes_gerenciales import router as reportes_gerenciales_router
 from routers.tesoreria import router as tesoreria_router
 from routers.valorizacion import router as valorizacion_router
-from routers.capital_linea import router as capital_linea_router
 from routers.categorias_gasto import router as categorias_gasto_router
 from routers.prorrateo import router as prorrateo_router
 from routers.reportes_simplificados import router as reportes_simplificados_router
+
+# LEGACY routers — desregistrados en Fase 2 (archivos conservados para /legacy/ futuro):
+# from routers.planillas import router as planillas_router
+# from routers.presupuestos import router as presupuestos_router
+# from routers.proyectos import router as proyectos_router
+# from routers.capital_linea import router as capital_linea_router
+# from routers.dashboard_financiero import router as dashboard_financiero_router
+# from routers.reportes_gerenciales import router as reportes_gerenciales_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -55,7 +57,7 @@ app = FastAPI(title="Finanzas 4.0 API", version="1.0.0")
 # Main API router with /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Include all domain routers
+# Include CORE domain routers
 api_router.include_router(core_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(empresas_router)
@@ -66,25 +68,27 @@ api_router.include_router(articulos_router)
 api_router.include_router(compras_router)
 api_router.include_router(pagos_router)
 api_router.include_router(gastos_router)
-api_router.include_router(planillas_router)
 api_router.include_router(ventas_pos_router)
 api_router.include_router(cxc_cxp_router)
-api_router.include_router(presupuestos_router)
 api_router.include_router(banco_router)
 api_router.include_router(reportes_router)
 api_router.include_router(contabilidad_router)
 api_router.include_router(export_router)
 api_router.include_router(marcas_router)
-api_router.include_router(proyectos_router)
-api_router.include_router(dashboard_financiero_router)
 api_router.include_router(finanzas_gerencial_router)
-api_router.include_router(reportes_gerenciales_router)
 api_router.include_router(tesoreria_router)
 api_router.include_router(valorizacion_router)
-api_router.include_router(capital_linea_router)
 api_router.include_router(categorias_gasto_router)
 api_router.include_router(prorrateo_router)
 api_router.include_router(reportes_simplificados_router)
+
+# LEGACY routers — desregistrados en Fase 2:
+# api_router.include_router(planillas_router)
+# api_router.include_router(presupuestos_router)
+# api_router.include_router(proyectos_router)
+# api_router.include_router(capital_linea_router)
+# api_router.include_router(dashboard_financiero_router)
+# api_router.include_router(reportes_gerenciales_router)
 
 # Include main router in app
 app.include_router(api_router)
