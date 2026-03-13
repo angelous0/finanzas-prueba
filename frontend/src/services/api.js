@@ -27,6 +27,7 @@ api.interceptors.request.use((config) => {
 
 // Dashboard
 export const getDashboardKPIs = () => api.get('/dashboard/kpis');
+export const getDashboardResumen = () => api.get('/dashboard/resumen-ejecutivo');
 
 // Empresas
 export const getEmpresas = () => api.get('/empresas');
