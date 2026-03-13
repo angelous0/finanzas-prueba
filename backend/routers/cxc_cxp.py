@@ -264,6 +264,32 @@ async def create_cxc_abono(cxc_id: int, data: AbonoCreate, empresa_id: int = Dep
                 proyecto_id=cxc['proyecto_id'],
             )
 
+            # CAPA PAGOS: cont_pago para que aparezca en Movimientos/Pagos
+            moneda_id = await conn.fetchval(
+                "SELECT id FROM cont_moneda WHERE codigo='PEN'")
+            if not moneda_id:
+                moneda_id = await conn.fetchval(
+                    "SELECT id FROM cont_moneda ORDER BY id LIMIT 1")
+
+            from dependencies import get_next_correlativo
+            numero_pago = await get_next_correlativo(conn, empresa_id, 'pago_ingreso', f"PAG-I-{data.fecha.year}-")
+            pago_result = await conn.fetchrow("""
+                INSERT INTO cont_pago
+                (numero, tipo, fecha, cuenta_financiera_id, moneda_id, monto_total,
+                 referencia, notas, empresa_id)
+                VALUES ($1, 'ingreso', $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
+            """, numero_pago, data.fecha, data.cuenta_financiera_id,
+                moneda_id, data.monto, data.referencia,
+                f"Cobranza CxC #{cxc_id} - {data.notas or ''}", empresa_id)
+            pago_id = pago_result['id']
+            await conn.execute("""
+                INSERT INTO cont_pago_detalle
+                (pago_id, cuenta_financiera_id, medio_pago, monto, referencia, empresa_id)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            """, pago_id, data.cuenta_financiera_id, data.forma_pago,
+                data.monto, data.referencia, empresa_id)
+
             # DISTRIBUCION ANALITICA: prorrateo por linea de negocio
             odoo_oid = cxc['odoo_order_id'] or cxc['venta_pos_id']
             if odoo_oid:
