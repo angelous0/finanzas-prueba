@@ -52,12 +52,14 @@ async def get_gastos_pendientes_prorrateo(
 
         rows = await conn.fetch(f"""
             SELECT g.id, g.numero, g.fecha, g.total, g.beneficiario_nombre,
-                   g.tipo_asignacion, g.notas,
+                   g.tipo_asignacion, g.notas, g.centro_costo_id, g.marca_id,
                    cg.nombre as categoria_gasto_nombre,
-                   cc.nombre as centro_costo_nombre
+                   cc.nombre as centro_costo_nombre,
+                   ma.nombre as marca_nombre
             FROM cont_gasto g
             LEFT JOIN cont_categoria_gasto cg ON g.categoria_gasto_id = cg.id
             LEFT JOIN cont_centro_costo cc ON g.centro_costo_id = cc.id
+            LEFT JOIN cont_marca ma ON g.marca_id = ma.id
             WHERE {' AND '.join(conditions)}
             ORDER BY g.fecha DESC
         """, *params)
@@ -160,8 +162,10 @@ async def ejecutar_prorrateo(data: ProrrateoRequest, empresa_id: int = Depends(g
             if not preview.get('lineas'):
                 raise HTTPException(400, "No hay ingresos para calcular prorrateo")
             lineas = [ProrrateoLinea(**{k: v for k, v in l.items() if k in ('linea_negocio_id', 'porcentaje', 'monto')}) for l in preview['lineas']]
-            fd = preview.get('periodo_desde')
-            fh = preview.get('periodo_hasta')
+            fd_raw = preview.get('periodo_desde')
+            fh_raw = preview.get('periodo_hasta')
+            fd = date.fromisoformat(fd_raw) if isinstance(fd_raw, str) else fd_raw
+            fh = date.fromisoformat(fh_raw) if isinstance(fh_raw, str) else fh_raw
 
         async with conn.transaction():
             for linea in lineas:

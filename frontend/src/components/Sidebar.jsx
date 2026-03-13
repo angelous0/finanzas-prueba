@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, ShoppingCart, FileText, Receipt, CreditCard, 
-  Building2, Users, Wallet, BarChart3, FileSpreadsheet, Settings,
-  ChevronDown, ChevronRight, DollarSign, Landmark, Clock, FolderOpen,
-  Package, Tags, GitBranch, Target, Menu, X, ChevronLeft, BookOpen,
-  Tag, FolderKanban, PieChart, TrendingUp, Activity, ClipboardList,
-  Vault
+  LayoutDashboard, ShoppingCart, Receipt, CreditCard, 
+  Building2, Users, Wallet, Settings,
+  ChevronDown, ChevronRight, DollarSign, Landmark, Clock,
+  Tags, GitBranch, Target, X, ChevronLeft,
+  Tag, PieChart, Activity, ClipboardList,
+  Vault, Layers
 } from 'lucide-react';
 
 const navSections = [
@@ -18,82 +18,46 @@ const navSections = [
     ]
   },
   {
-    title: 'Finanzas Gerenciales',
-    items: [
-      { icon: Vault, label: 'Tesoreria', path: '/tesoreria' },
-      { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
-      { icon: TrendingUp, label: 'Rentabilidad', path: '/rentabilidad' },
-      { icon: Target, label: 'Rentabilidad x Linea', path: '/rentabilidad-linea' },
-      { icon: Target, label: 'Presupuesto vs Real', path: '/presupuesto-vs-real' },
-      { icon: PieChart, label: 'ROI Proyectos', path: '/roi-proyectos' },
-      { icon: ClipboardList, label: 'Reportes Gerenciales', path: '/reportes-gerenciales' },
-    ]
-  },
-  {
     title: 'Ventas',
     items: [
       { icon: ShoppingCart, label: 'Ventas POS', path: '/ventas-pos' },
-      { icon: CreditCard, label: 'Créditos por Cobrar', path: '/cxc' },
+      { icon: CreditCard, label: 'CxC', path: '/cxc' },
     ]
   },
   {
-    title: 'Proveedores y Egresos',
+    title: 'Egresos',
     items: [
-      { icon: FileText, label: 'Órdenes de Compra', path: '/ordenes-compra' },
-      { icon: Receipt, label: 'Factura Proveedor', path: '/facturas-proveedor' },
       { icon: Wallet, label: 'Gastos', path: '/gastos' },
-      { icon: DollarSign, label: 'Pagar Facturas', path: '/pagar-facturas' },
-      { icon: Clock, label: 'CxP Pendientes', path: '/cxp' },
-      { icon: FileSpreadsheet, label: 'Letras', path: '/letras' },
+      { icon: Layers, label: 'Prorrateo', path: '/prorrateo' },
+      { icon: Receipt, label: 'Factura Proveedor', path: '/facturas-proveedor' },
+      { icon: Clock, label: 'CxP', path: '/cxp' },
     ]
   },
   {
-    title: 'Bancos y Pagos',
+    title: 'Tesorería',
     items: [
+      { icon: Vault, label: 'Tesorería', path: '/tesoreria' },
       { icon: Landmark, label: 'Cuentas Bancarias', path: '/cuentas-bancarias' },
       { icon: DollarSign, label: 'Movimientos/Pagos', path: '/pagos' },
-      { icon: FileSpreadsheet, label: 'Conciliación Bancaria', path: '/conciliacion' },
-      { icon: Clock, label: 'Historial Conciliación', path: '/historial-conciliaciones' },
+      { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
     ]
   },
   {
-    title: 'Planilla',
+    title: 'Reportes',
     items: [
-      { icon: Users, label: 'Empleados', path: '/empleados' },
-      { icon: Wallet, label: 'Adelantos', path: '/adelantos' },
-      { icon: FileText, label: 'Generar Planilla', path: '/planillas' },
-    ]
-  },
-  {
-    title: 'Presupuestos',
-    items: [
-      { icon: BarChart3, label: 'Presupuestos', path: '/presupuestos' },
+      { icon: ClipboardList, label: 'Reportes', path: '/reportes-gerenciales' },
     ]
   },
   {
     title: 'Catálogos',
     items: [
-      { icon: Building2, label: 'Empresas', path: '/empresas' },
+      { icon: GitBranch, label: 'Líneas de Negocio', path: '/lineas-negocio' },
+      { icon: Tag, label: 'Marcas', path: '/marcas' },
+      { icon: Target, label: 'Centros de Costo', path: '/centros-costo' },
+      { icon: Tags, label: 'Categorías Gasto', path: '/categorias-gasto' },
       { icon: Users, label: 'Proveedores', path: '/proveedores' },
       { icon: Users, label: 'Clientes', path: '/clientes' },
-      { icon: Package, label: 'Articulos', path: '/articulos' },
-      { icon: BarChart3, label: 'Valorizacion Inventario', path: '/valorizacion-inventario' },
-      { icon: Tags, label: 'Categorías', path: '/categorias' },
-      { icon: GitBranch, label: 'Líneas de Negocio', path: '/lineas-negocio' },
-      { icon: Target, label: 'Centros de Costo', path: '/centros-costo' },
-      { icon: Tag, label: 'Marcas', path: '/marcas' },
-      { icon: FolderKanban, label: 'Proyectos', path: '/proyectos' },
-    ]
-  },
-  {
-    title: 'Contabilidad',
-    items: [
-      { icon: BookOpen, label: 'Plan de Cuentas', path: '/cuentas-contables' },
-      { icon: Settings, label: 'Config. Contable', path: '/config-contable' },
-      { icon: BookOpen, label: 'Asientos', path: '/asientos' },
-      { icon: BarChart3, label: 'Balance General', path: '/balance-general' },
-      { icon: FileText, label: 'Estado de Resultados', path: '/estado-resultados' },
-      { icon: CreditCard, label: 'Reporte de Pagos', path: '/reporte-pagos' },
+      { icon: Building2, label: 'Empresas', path: '/empresas' },
     ]
   },
 ];

@@ -11,7 +11,9 @@ import {
   getLineasNegocio,
   getCentrosCosto,
   getCuentasFinancieras,
-  generarAsiento
+  generarAsiento,
+  getCategoriasGasto,
+  getMarcas
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import SearchableSelect from '../components/SearchableSelect';
@@ -52,6 +54,8 @@ export default function Gastos() {
   const [lineas, setLineas] = useState([]);
   const [centros, setCentros] = useState([]);
   const [cuentas, setCuentas] = useState([]);
+  const [categoriasGasto, setCategoriasGasto] = useState([]);
+  const [marcas, setMarcas] = useState([]);
   
   // Filters
   const [filtroFecha, setFiltroFecha] = useState('');
@@ -72,7 +76,12 @@ export default function Gastos() {
     base_no_gravada: 0,
     isc: 0,
     notas: '',
-    impuestos_incluidos: true
+    impuestos_incluidos: true,
+    categoria_gasto_id: '',
+    tipo_asignacion: 'directo',
+    centro_costo_id: '',
+    marca_id: '',
+    linea_negocio_id: ''
   });
   const [fechaContableManual, setFechaContableManual] = useState(false);
   
@@ -104,14 +113,16 @@ export default function Gastos() {
       const params = {};
       if (filtroFecha) params.fecha_desde = filtroFecha;
       
-      const [gastosRes, provRes, monRes, catRes, linRes, cenRes, cueRes] = await Promise.all([
+      const [gastosRes, provRes, monRes, catRes, linRes, cenRes, cueRes, catGastoRes, marcasRes] = await Promise.all([
         getGastos(params),
         getProveedores(),
         getMonedas(),
         getCategorias('egreso'),
         getLineasNegocio(),
         getCentrosCosto(),
-        getCuentasFinancieras()
+        getCuentasFinancieras(),
+        getCategoriasGasto(),
+        getMarcas()
       ]);
       
       setGastos(gastosRes.data);
@@ -121,6 +132,8 @@ export default function Gastos() {
       setLineas(linRes.data);
       setCentros(cenRes.data);
       setCuentas(cueRes.data);
+      setCategoriasGasto(catGastoRes.data);
+      setMarcas(marcasRes.data);
       
       // Set default moneda
       if (monRes.data.length > 0 && !formData.moneda_id) {
@@ -199,7 +212,12 @@ export default function Gastos() {
       base_no_gravada: 0,
       isc: 0,
       notas: '',
-      impuestos_incluidos: true
+      impuestos_incluidos: true,
+      categoria_gasto_id: '',
+      tipo_asignacion: 'directo',
+      centro_costo_id: '',
+      marca_id: '',
+      linea_negocio_id: ''
     });
     setFechaContableManual(false);
     setLineasGasto([{
@@ -298,6 +316,12 @@ export default function Gastos() {
         ...formData,
         proveedor_id: formData.proveedor_id || null,
         tipo_cambio: formData.tipo_cambio ? parseFloat(formData.tipo_cambio) : null,
+        categoria_gasto_id: formData.categoria_gasto_id ? parseInt(formData.categoria_gasto_id) : null,
+        tipo_asignacion: formData.tipo_asignacion || 'directo',
+        centro_costo_id: formData.centro_costo_id ? parseInt(formData.centro_costo_id) : null,
+        marca_id: formData.marca_id ? parseInt(formData.marca_id) : null,
+        linea_negocio_id: formData.tipo_asignacion === 'directo' && formData.linea_negocio_id 
+          ? parseInt(formData.linea_negocio_id) : null,
         base_gravada: totales.base_gravada,
         igv_sunat: totales.igv_sunat,
         base_no_gravada: totales.base_no_gravada,
@@ -538,7 +562,9 @@ export default function Gastos() {
                     <th>Fecha</th>
                     <th>Número</th>
                     <th>Proveedor / Beneficiario</th>
-                    <th>Documento</th>
+                    <th>Categoría</th>
+                    <th>Tipo</th>
+                    <th>Centro Costo</th>
                     <th className="text-right">Total</th>
                     <th className="text-center">Acciones</th>
                   </tr>
@@ -553,11 +579,23 @@ export default function Gastos() {
                       <td>
                         {gasto.proveedor_nombre || gasto.beneficiario_nombre || '-'}
                       </td>
+                      <td>{gasto.categoria_gasto_nombre || '-'}</td>
                       <td>
-                        {gasto.tipo_documento && gasto.numero_documento 
-                          ? `${gasto.tipo_documento.toUpperCase()} ${gasto.numero_documento}`
-                          : '-'}
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          background: gasto.tipo_asignacion === 'directo' ? '#dbeafe' 
+                            : gasto.tipo_asignacion === 'comun' ? '#fef9c3' : '#f1f5f9',
+                          color: gasto.tipo_asignacion === 'directo' ? '#1e40af' 
+                            : gasto.tipo_asignacion === 'comun' ? '#854d0e' : '#64748b'
+                        }}>
+                          {gasto.tipo_asignacion || 'no_asignado'}
+                        </span>
                       </td>
+                      <td>{gasto.centro_costo_nombre || '-'}</td>
                       <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
                         {formatCurrency(gasto.total, gasto.moneda_codigo === 'USD' ? '$' : 'S/')}
                       </td>
@@ -741,6 +779,91 @@ export default function Gastos() {
                 </div>
 
                 {/* SUNAT Doc Type and Tax Breakdown (auto-calculated) */}
+                <div className="form-grid form-grid-4" style={{ marginTop: '0.75rem' }}>
+                  <div className="form-group">
+                    <label className="form-label required">Categoría de Gasto</label>
+                    <select
+                      className="form-input form-select"
+                      value={formData.categoria_gasto_id}
+                      onChange={(e) => setFormData({ ...formData, categoria_gasto_id: e.target.value })}
+                      required
+                      data-testid="gasto-categoria-gasto"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {categoriasGasto.map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label required">Tipo Asignación</label>
+                    <select
+                      className="form-input form-select"
+                      value={formData.tipo_asignacion}
+                      onChange={(e) => setFormData({ ...formData, tipo_asignacion: e.target.value })}
+                      data-testid="gasto-tipo-asignacion"
+                    >
+                      <option value="directo">Directo</option>
+                      <option value="comun">Común</option>
+                      <option value="no_asignado">No asignado</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Centro de Costo</label>
+                    <select
+                      className="form-input form-select"
+                      value={formData.centro_costo_id}
+                      onChange={(e) => setFormData({ ...formData, centro_costo_id: e.target.value })}
+                      data-testid="gasto-centro-costo"
+                    >
+                      <option value="">Seleccionar...</option>
+                      {centros.map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Marca</label>
+                    <select
+                      className="form-input form-select"
+                      value={formData.marca_id}
+                      onChange={(e) => setFormData({ ...formData, marca_id: e.target.value })}
+                      data-testid="gasto-marca"
+                    >
+                      <option value="">-</option>
+                      {marcas.map(m => (
+                        <option key={m.id} value={m.id}>{m.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {formData.tipo_asignacion === 'directo' && (
+                  <div className="form-grid form-grid-4" style={{ marginTop: '0.75rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Línea de Negocio</label>
+                      <select
+                        className="form-input form-select"
+                        value={formData.linea_negocio_id}
+                        onChange={(e) => setFormData({ ...formData, linea_negocio_id: e.target.value })}
+                        data-testid="gasto-linea-negocio"
+                      >
+                        <option value="">-</option>
+                        {lineas.map(l => (
+                          <option key={l.id} value={l.id}>{l.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {formData.tipo_asignacion === 'comun' && (
+                  <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#fef9c3', borderRadius: '6px', fontSize: '0.8125rem', color: '#854d0e' }}>
+                    Este gasto se marcará como <strong>común</strong> y pasará al módulo de prorrateo para distribuirse entre líneas de negocio.
+                  </div>
+                )}
+
+                {/* SUNAT Doc Type and Tax Breakdown */}
                 <div className="form-grid form-grid-4" style={{ marginTop: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Doc SUNAT</label>
@@ -1118,6 +1241,38 @@ export default function Gastos() {
                     {selectedGasto.tipo_documento && selectedGasto.numero_documento 
                       ? `${selectedGasto.tipo_documento.toUpperCase()} ${selectedGasto.numero_documento}`
                       : '-'}
+                  </p>
+                </div>
+              </div>
+              <div className="form-grid form-grid-4" style={{ marginBottom: '1rem' }}>
+                <div>
+                  <label className="form-label">Categoría Gasto</label>
+                  <p style={{ fontWeight: 500 }}>{selectedGasto.categoria_gasto_nombre || '-'}</p>
+                </div>
+                <div>
+                  <label className="form-label">Tipo Asignación</label>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '2px 10px',
+                    borderRadius: '12px',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    background: selectedGasto.tipo_asignacion === 'directo' ? '#dbeafe' 
+                      : selectedGasto.tipo_asignacion === 'comun' ? '#fef9c3' : '#f1f5f9',
+                    color: selectedGasto.tipo_asignacion === 'directo' ? '#1e40af' 
+                      : selectedGasto.tipo_asignacion === 'comun' ? '#854d0e' : '#64748b'
+                  }}>
+                    {selectedGasto.tipo_asignacion || 'no_asignado'}
+                  </span>
+                </div>
+                <div>
+                  <label className="form-label">Centro de Costo</label>
+                  <p style={{ fontWeight: 500 }}>{selectedGasto.centro_costo_nombre || '-'}</p>
+                </div>
+                <div>
+                  <label className="form-label">Línea / Marca</label>
+                  <p style={{ fontWeight: 500 }}>
+                    {selectedGasto.linea_negocio_nombre || '-'} / {selectedGasto.marca_nombre || '-'}
                   </p>
                 </div>
               </div>

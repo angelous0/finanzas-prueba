@@ -1228,6 +1228,8 @@ async def create_schema():
         for col_stmt in [
             "ALTER TABLE finanzas2.cont_gasto ADD COLUMN IF NOT EXISTS tipo_asignacion VARCHAR(20) DEFAULT 'no_asignado'",
             "ALTER TABLE finanzas2.cont_gasto ADD COLUMN IF NOT EXISTS categoria_gasto_id INT REFERENCES finanzas2.cont_categoria_gasto(id)",
+            "ALTER TABLE finanzas2.cont_gasto ADD COLUMN IF NOT EXISTS centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id)",
+            "ALTER TABLE finanzas2.cont_gasto ADD COLUMN IF NOT EXISTS linea_negocio_id INT REFERENCES finanzas2.cont_linea_negocio(id)",
         ]:
             try:
                 await conn.execute(col_stmt)

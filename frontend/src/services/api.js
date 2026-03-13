@@ -127,6 +127,19 @@ export const getGasto = (id) => api.get(`/gastos/${id}`);
 export const createGasto = (data) => api.post('/gastos', data);
 export const deleteGasto = (id) => api.delete(`/gastos/${id}`);
 
+// Categorias de Gasto
+export const getCategoriasGasto = () => api.get('/categorias-gasto');
+export const createCategoriaGasto = (data) => api.post('/categorias-gasto', data);
+export const updateCategoriaGasto = (id, data) => api.put(`/categorias-gasto/${id}`, data);
+export const deleteCategoriaGasto = (id) => api.delete(`/categorias-gasto/${id}`);
+
+// Prorrateo
+export const getProrratePendientes = (params) => api.get('/prorrateo/pendientes', { params });
+export const getProrratePreview = (data) => api.post('/prorrateo/preview', data);
+export const ejecutarProrrateo = (data) => api.post('/prorrateo/ejecutar', data);
+export const getProrrateHistorial = (params) => api.get('/prorrateo/historial', { params });
+export const eliminarProrrateo = (gastoId) => api.delete(`/prorrateo/${gastoId}`);
+
 // Adelantos
 export const getAdelantos = (params) => api.get('/adelantos', { params });
 export const createAdelanto = (data) => api.post('/adelantos', data);

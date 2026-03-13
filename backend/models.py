@@ -552,6 +552,11 @@ class GastoBase(BaseModel):
     base_no_gravada: float = 0
     isc: float = 0
     notas: Optional[str] = None
+    categoria_gasto_id: Optional[int] = None
+    tipo_asignacion: str = "directo"
+    centro_costo_id: Optional[int] = None
+    marca_id: Optional[int] = None
+    linea_negocio_id: Optional[int] = None
 
 class GastoPagoDetalle(BaseModel):
     cuenta_financiera_id: int
@@ -573,6 +578,11 @@ class Gasto(GastoBase):
     total: float = 0
     proveedor_nombre: Optional[str] = None
     moneda_codigo: Optional[str] = None
+    moneda_simbolo: Optional[str] = None
+    categoria_gasto_nombre: Optional[str] = None
+    centro_costo_nombre: Optional[str] = None
+    marca_nombre: Optional[str] = None
+    linea_negocio_nombre: Optional[str] = None
     lineas: List[GastoLinea] = []
     pago_id: Optional[int] = None
     created_at: Optional[datetime] = None

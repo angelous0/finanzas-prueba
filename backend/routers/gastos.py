@@ -41,11 +41,19 @@ async def list_gastos(
         query = f"""
             SELECT DISTINCT ON (g.id)
                    g.*, m.codigo as moneda_codigo, m.simbolo as moneda_simbolo,
-                   t.nombre as proveedor_nombre
+                   t.nombre as proveedor_nombre,
+                   cg.nombre as categoria_gasto_nombre,
+                   cc.nombre as centro_costo_nombre,
+                   ma.nombre as marca_nombre,
+                   ln.nombre as linea_negocio_nombre
             FROM finanzas2.cont_gasto g
             LEFT JOIN finanzas2.cont_gasto_linea gl ON g.id = gl.gasto_id
             LEFT JOIN finanzas2.cont_moneda m ON g.moneda_id = m.id
             LEFT JOIN finanzas2.cont_tercero t ON g.proveedor_id = t.id
+            LEFT JOIN finanzas2.cont_categoria_gasto cg ON g.categoria_gasto_id = cg.id
+            LEFT JOIN finanzas2.cont_centro_costo cc ON g.centro_costo_id = cc.id
+            LEFT JOIN finanzas2.cont_marca ma ON g.marca_id = ma.id
+            LEFT JOIN finanzas2.cont_linea_negocio ln ON g.linea_negocio_id = ln.id
             WHERE {' AND '.join(conditions)}
             ORDER BY g.id, g.fecha DESC
         """
@@ -89,16 +97,26 @@ async def create_gasto(data: GastoCreate, empresa_id: int = Depends(get_empresa_
             total = subtotal + igv + isc_val
             
             fecha_contable = data.fecha_contable or data.fecha
+            # Resolve header-level dimensions
+            tipo_asignacion = data.tipo_asignacion or 'directo'
+            categoria_gasto_id = data.categoria_gasto_id
+            centro_costo_id_header = data.centro_costo_id
+            marca_id_header = data.marca_id
+            linea_negocio_id_header = data.linea_negocio_id if tipo_asignacion == 'directo' else None
+
             row = await conn.fetchrow("""
                 INSERT INTO finanzas2.cont_gasto
                 (empresa_id, numero, fecha, fecha_contable, beneficiario_nombre, proveedor_id, moneda_id, subtotal, igv, total,
-                 tipo_documento, numero_documento, notas, tipo_comprobante_sunat, base_gravada, igv_sunat, base_no_gravada, isc, tipo_cambio)
-                VALUES ($1, $2, TO_DATE($3, 'YYYY-MM-DD'), TO_DATE($4, 'YYYY-MM-DD'), $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                 tipo_documento, numero_documento, notas, tipo_comprobante_sunat, base_gravada, igv_sunat, base_no_gravada, isc, tipo_cambio,
+                 categoria_gasto_id, tipo_asignacion, centro_costo_id, marca_id, linea_negocio_id)
+                VALUES ($1, $2, TO_DATE($3, 'YYYY-MM-DD'), TO_DATE($4, 'YYYY-MM-DD'), $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+                        $20, $21, $22, $23, $24)
                 RETURNING *
             """, empresa_id, numero, safe_date_param(data.fecha), safe_date_param(fecha_contable), data.beneficiario_nombre,
                 data.proveedor_id, data.moneda_id, subtotal, igv, total,
                 data.tipo_documento, data.numero_documento, data.notas,
-                data.tipo_comprobante_sunat, base_gravada, igv_sunat, base_no_gravada, isc_val, data.tipo_cambio)
+                data.tipo_comprobante_sunat, base_gravada, igv_sunat, base_no_gravada, isc_val, data.tipo_cambio,
+                categoria_gasto_id, tipo_asignacion, centro_costo_id_header, marca_id_header, linea_negocio_id_header)
             gasto_id = row['id']
             
             # Insert line items
@@ -181,6 +199,21 @@ async def create_gasto(data: GastoCreate, empresa_id: int = Depends(get_empresa_
             
             gasto_dict = dict(row)
             gasto_dict['pago_id'] = pago_id
+            # Enrich with joined names
+            enriched = await conn.fetchrow("""
+                SELECT cg.nombre as categoria_gasto_nombre,
+                       cc.nombre as centro_costo_nombre,
+                       ma.nombre as marca_nombre,
+                       ln.nombre as linea_negocio_nombre
+                FROM finanzas2.cont_gasto g
+                LEFT JOIN finanzas2.cont_categoria_gasto cg ON g.categoria_gasto_id = cg.id
+                LEFT JOIN finanzas2.cont_centro_costo cc ON g.centro_costo_id = cc.id
+                LEFT JOIN finanzas2.cont_marca ma ON g.marca_id = ma.id
+                LEFT JOIN finanzas2.cont_linea_negocio ln ON g.linea_negocio_id = ln.id
+                WHERE g.id = $1
+            """, gasto_id)
+            if enriched:
+                gasto_dict.update(dict(enriched))
             lineas = await conn.fetch("""
                 SELECT gl.*, c.nombre as categoria_nombre,
                        ln.nombre as linea_negocio_nombre, cc.nombre as centro_costo_nombre
@@ -201,10 +234,18 @@ async def get_gasto(id: int, empresa_id: int = Depends(get_empresa_id)):
         await conn.execute("SET search_path TO finanzas2, public")
         row = await conn.fetchrow("""
             SELECT g.*, m.codigo as moneda_codigo, m.simbolo as moneda_simbolo,
-                   t.nombre as proveedor_nombre
+                   t.nombre as proveedor_nombre,
+                   cg.nombre as categoria_gasto_nombre,
+                   cc.nombre as centro_costo_nombre,
+                   ma.nombre as marca_nombre,
+                   ln.nombre as linea_negocio_nombre
             FROM finanzas2.cont_gasto g
             LEFT JOIN finanzas2.cont_moneda m ON g.moneda_id = m.id
             LEFT JOIN finanzas2.cont_tercero t ON g.proveedor_id = t.id
+            LEFT JOIN finanzas2.cont_categoria_gasto cg ON g.categoria_gasto_id = cg.id
+            LEFT JOIN finanzas2.cont_centro_costo cc ON g.centro_costo_id = cc.id
+            LEFT JOIN finanzas2.cont_marca ma ON g.marca_id = ma.id
+            LEFT JOIN finanzas2.cont_linea_negocio ln ON g.linea_negocio_id = ln.id
             WHERE g.id = $1 AND g.empresa_id = $2
         """, id, empresa_id)
         if not row:

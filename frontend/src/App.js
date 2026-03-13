@@ -55,6 +55,8 @@ import Reportes from './pages/Reportes';
 import Tesoreria from './pages/Tesoreria';
 import ValorizacionInventario from './pages/ValorizacionInventario';
 import RentabilidadLinea from './pages/RentabilidadLinea';
+import CategoriasGasto from './pages/CategoriasGasto';
+import ProrrateoGastos from './pages/ProrrateoGastos';
 
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
@@ -210,6 +212,8 @@ function App() {
             <Route path="/centros-costo" element={<CentrosCosto />} />
             <Route path="/marcas" element={<Marcas />} />
             <Route path="/proyectos" element={<Proyectos />} />
+            <Route path="/categorias-gasto" element={<CategoriasGasto />} />
+            <Route path="/prorrateo" element={<ProrrateoGastos />} />
             
             {/* Contabilidad */}
             <Route path="/balance-general" element={<BalanceGeneral />} />
