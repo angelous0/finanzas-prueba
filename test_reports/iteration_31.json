@@ -75,7 +75,7 @@
     "empresa_id": 6,
     "empresa_name": "Ambission Industries SAC",
     "company_key": "Ambission",
-    "api_base_url": "https://payment-refactor-8.preview.emergentagent.com"
+    "api_base_url": "https://erp-audit-refactor-1.preview.emergentagent.com"
   },
   "seed_data_creation": "No new seed data - used existing data for empresa_id=6",
   "retest_needed": false,

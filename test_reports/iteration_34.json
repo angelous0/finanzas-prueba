@@ -1,0 +1,33 @@
+{
+  "iteration": 34,
+  "date": "2026-03-13",
+  "feature": "P0 - Verify fix for classification save on paid/canjeada invoices",
+  "tests": [
+    {
+      "name": "Backend API - Update classification on canjeada invoice",
+      "status": "PASSED",
+      "details": "PUT /api/facturas-proveedor/102 with linea_negocio_id, categoria_id, descripcion updated correctly"
+    },
+    {
+      "name": "Backend API - Data persistence",
+      "status": "PASSED",
+      "details": "GET /api/facturas-proveedor/102 returns updated classification fields after save"
+    },
+    {
+      "name": "Frontend - Edit classification modal for canjeada invoice",
+      "status": "PASSED",
+      "details": "Modal shows Editar Clasificacion title, financial fields locked, classification fields editable"
+    },
+    {
+      "name": "Frontend - Save classification from UI",
+      "status": "PASSED",
+      "details": "Changed description, clicked Guardar, modal closed, table refreshed, data persisted in DB"
+    },
+    {
+      "name": "Estado preserved after classification edit",
+      "status": "PASSED",
+      "details": "Invoice estado remains canjeado after classification update"
+    }
+  ],
+  "overall_status": "ALL_PASSED"
+}

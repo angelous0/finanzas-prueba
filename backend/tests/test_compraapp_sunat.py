@@ -20,7 +20,7 @@ import uuid
 from datetime import date, timedelta
 
 # Get BASE_URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://payment-refactor-8.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://erp-audit-refactor-1.preview.emergentagent.com').rstrip('/')
 
 # Get actual empresa ID from API
 def get_empresa_id():

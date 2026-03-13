@@ -84,15 +84,31 @@ Pagos se escribian en dos tablas separadas: `cont_pago` y `cont_movimiento_tesor
 - Backend: 13/13 tests passed (lifecycle factura+pago, lifecycle letras+pago)
 - Frontend: Todas las pruebas UI pasaron
 
+## Bug Fix - Clasificacion en facturas pagadas/canjeadas - COMPLETADO (2026-03-13)
+
+### Problema
+Al editar la clasificacion (Linea de Negocio, Categoria, Centro de Costo) de una factura pagada o canjeada y guardar, los cambios no se persistian.
+
+### Causa Raiz
+En `FacturaFormModal.jsx`, la funcion `populateFromFactura` no incluia el `id` de cada linea de detalle al cargar los datos en el state del formulario. Sin el `id`, el backend no podia identificar que lineas actualizar y las ignoraba.
+
+### Fix
+Se agrego `id: l.id` en el mapeo de lineas dentro de `populateFromFactura` (lineas 70 y 75 del archivo).
+
+### Testing
+- Backend API: PUT classification update -> PASSED
+- Frontend UI: Modal edit + Guardar -> PASSED
+- Data persistence verified -> PASSED
+
 ## Backlog
 
-### P0 - Pendiente de split (Fase 5)
+### P1 - Pendiente de split (Fase 5)
 - Split Gastos.jsx (frontend)
 - Split VentasPOS.jsx (frontend)
 - Split compras.py (backend)
 - Split gastos.py (backend)
 
-### P0 - Decisiones pendientes usuario
+### P1 - Decisiones pendientes usuario
 - Ordenes de Compra, PagarFacturas -> CORE o LEGACY?
 - RESUELTO: Letras -> CORE (reactivado 2026-03-13)
 - RESUELTO: Conciliacion Bancaria -> CORE (reactivado 2026-03-13)

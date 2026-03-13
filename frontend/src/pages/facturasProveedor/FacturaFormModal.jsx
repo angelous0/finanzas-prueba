@@ -67,12 +67,12 @@ const FacturaFormModal = ({
       lineas: (() => {
         const catLines = (factura.lineas || []).filter(l => !l.articulo_id);
         return catLines.length > 0
-          ? catLines.map(l => ({ categoria_id: l.categoria_id || '', descripcion: l.descripcion || '', linea_negocio_id: l.linea_negocio_id || '', centro_costo_id: l.centro_costo_id || '', importe: l.importe || 0, igv_aplica: l.igv_aplica !== false }))
+          ? catLines.map(l => ({ id: l.id, categoria_id: l.categoria_id || '', descripcion: l.descripcion || '', linea_negocio_id: l.linea_negocio_id || '', centro_costo_id: l.centro_costo_id || '', importe: l.importe || 0, igv_aplica: l.igv_aplica !== false }))
           : [getEmptyLinea()];
       })(),
       articulos: (() => {
         const artLines = (factura.lineas || []).filter(l => l.articulo_id);
-        return artLines.map(a => ({ articulo_id: a.articulo_id || '', modelo_corte_id: a.modelo_corte_id || '', unidad: a.descripcion || '', cantidad: a.cantidad || 1, precio: a.precio_unitario || 0, linea_negocio_id: a.linea_negocio_id || '', igv_aplica: a.igv_aplica !== false }));
+        return artLines.map(a => ({ id: a.id, articulo_id: a.articulo_id || '', modelo_corte_id: a.modelo_corte_id || '', unidad: a.descripcion || '', cantidad: a.cantidad || 1, precio: a.precio_unitario || 0, linea_negocio_id: a.linea_negocio_id || '', igv_aplica: a.igv_aplica !== false }));
       })()
     });
   };

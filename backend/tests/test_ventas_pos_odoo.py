@@ -16,7 +16,7 @@ import os
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = 'https://payment-refactor-8.preview.emergentagent.com'
+    BASE_URL = 'https://erp-audit-refactor-1.preview.emergentagent.com'
 
 
 class TestVentasPOSPaginated:
