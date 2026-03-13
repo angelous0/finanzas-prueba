@@ -108,27 +108,27 @@ async def get_resumen_ejecutivo(empresa_id: int = Depends(get_empresa_id)):
             ORDER BY saldo_pendiente DESC
         """, empresa_id)
 
-        # 5. Ingresos confirmados del mes
+        # 5. Ingresos cobrados del mes (solo dinero real recibido)
         ingresos_mes = await conn.fetchval("""
-            SELECT COALESCE(SUM(v.amount_total), 0)
-            FROM cont_venta_pos v
-            JOIN cont_venta_pos_estado e ON e.odoo_order_id = v.odoo_id AND e.empresa_id = v.empresa_id
-            WHERE v.date_order >= $1 AND e.estado_local IN ('confirmada', 'credito') AND v.empresa_id = $2
-        """, inicio_mes, empresa_id) or 0
+            SELECT COALESCE(SUM(d.monto), 0)
+            FROM cont_distribucion_analitica d
+            WHERE d.empresa_id = $1 AND d.fecha >= $2
+              AND d.origen_tipo = 'cobranza_cxc'
+        """, empresa_id, inicio_mes.date()) or 0
 
         # 6. Gastos del mes
         gastos_mes = await conn.fetchval("""
             SELECT COALESCE(SUM(total), 0) FROM cont_gasto WHERE fecha >= $1 AND empresa_id = $2
         """, inicio_mes.date(), empresa_id) or 0
 
-        # 7. Ingresos por línea (distribución analítica) - solo venta_pos_ingreso
+        # 7. Ingresos por línea (solo cobros reales - movimientos de dinero)
         ingresos_linea = await conn.fetch("""
             SELECT ln.id as linea_id, ln.nombre as linea_nombre,
                    COALESCE(SUM(d.monto), 0) as ingresos
             FROM cont_distribucion_analitica d
             JOIN cont_linea_negocio ln ON d.linea_negocio_id = ln.id
             WHERE d.empresa_id = $1 AND d.fecha >= $2
-              AND d.origen_tipo = 'venta_pos_ingreso'
+              AND d.origen_tipo = 'cobranza_cxc'
             GROUP BY ln.id, ln.nombre
         """, empresa_id, inicio_mes.date())
 

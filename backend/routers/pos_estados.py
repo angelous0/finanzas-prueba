@@ -125,11 +125,7 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                             WHERE odoo_order_id = $2 AND empresa_id = $3
                         """, cxc['id'], order_id, empresa_id)
 
-                # DISTRIBUCION ANALITICA: N registros por linea de negocio
-                from services.distribucion_analitica import crear_distribucion_ingreso
-                await crear_distribucion_ingreso(conn, empresa_id, order_id, date.today())
-
-                # Si hubo pagos, también crear distribución de cobro
+                # Si hubo pagos, crear distribución de cobro (dinero real recibido)
                 if amount > 0:
                     total_cobrado = sum(float(p['monto']) for p in pagos) if pagos else amount
                     if total_cobrado > 0:
@@ -197,9 +193,8 @@ async def marcar_credito_venta_pos(
                     DO UPDATE SET estado_local='credito', cxc_id=$3, updated_at=NOW()
                 """, empresa_id, order_id, cxc['id'])
 
-                # DISTRIBUCION ANALITICA: ingreso reconocido por linea (sin movimiento de tesoreria)
-                from services.distribucion_analitica import crear_distribucion_ingreso
-                await crear_distribucion_ingreso(conn, empresa_id, order_id, date.today())
+                # Crédito: NO crear distribución de ingreso (no hay movimiento de dinero)
+                # El ingreso se registrará cuando se cobre la CxC
 
             return {"message": "Venta marcada como credito", "cxc_id": cxc['id']}
         else:

@@ -98,12 +98,13 @@ Los pagos de letras vinculadas a una factura no generaban distribuciones analiti
 - Fix 1: Corregido FK en BD y en `database.py` (con migracion automatica)
 - Fix 2: Removido el `return` temprano en `distribucion_service.py`
 
-### Problema 3 - Doble conteo en reportes de ingresos (184.74 en vez de 100)
-Al confirmar y cobrar una venta, el dashboard sumaba AMBAS distribuciones (venta + cobranza).
-- Causa 1: Dashboard y reportes usaban `IN ('venta_pos_ingreso', 'cobranza_cxc')` = doble conteo
-- Causa 2: `crear_distribucion_ingreso` usaba `price_subtotal` (sin IGV=84.74) en vez de `amount_total` (100)
-- Causa 3: KPI Ingresos del mes consultaba `estado_local` en tabla equivocada
-- Fix: Reportes solo usan `venta_pos_ingreso`, distribucion usa `amount_total` prorrateado, KPI hace JOIN con `cont_venta_pos_estado`
+### Problema 3 - Reportes deben mostrar solo movimientos de dinero real (CORREGIDO 2026-03-13)
+- Regla de negocio: Dashboard/reportes solo muestran ingresos cuando hay movimiento de dinero real
+- Venta a credito NO debe sumar en ingresos hasta que se cobre la CxC
+- Fix final: Dashboard/reportes usan solo `cobranza_cxc` (cobros reales), NO `venta_pos_ingreso`
+- `marcar_credito` ya no crea distribucion de ingreso
+- `confirmar_venta` solo crea `cobranza_cxc` (dinero recibido), ya no `venta_pos_ingreso`
+- Todo con IGV incluido (amount_total)
 
 ### Testing
 - Backend API: PUT classification update -> PASSED
