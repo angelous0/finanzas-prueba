@@ -1222,7 +1222,7 @@ async def create_schema():
                 origen_tipo VARCHAR(30) NOT NULL,
                 origen_id INT NOT NULL,
                 linea_negocio_id INT REFERENCES finanzas2.cont_linea_negocio(id),
-                categoria_id INT REFERENCES finanzas2.cont_categoria_gasto(id),
+                categoria_id INT REFERENCES finanzas2.cont_categoria(id),
                 centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id),
                 monto NUMERIC(15,2) NOT NULL,
                 fecha DATE NOT NULL,
@@ -1232,10 +1232,24 @@ async def create_schema():
         await conn.execute("""
             DO $$ BEGIN
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_distribucion_analitica' AND column_name='categoria_id') THEN
-                    ALTER TABLE finanzas2.cont_distribucion_analitica ADD COLUMN categoria_id INT REFERENCES finanzas2.cont_categoria_gasto(id);
+                    ALTER TABLE finanzas2.cont_distribucion_analitica ADD COLUMN categoria_id INT REFERENCES finanzas2.cont_categoria(id);
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_distribucion_analitica' AND column_name='centro_costo_id') THEN
                     ALTER TABLE finanzas2.cont_distribucion_analitica ADD COLUMN centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id);
+                END IF;
+            END $$;
+        """)
+        # Migration: fix FK from cont_categoria_gasto to cont_categoria
+        await conn.execute("""
+            DO $$ BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.constraint_column_usage ccu
+                    JOIN information_schema.table_constraints tc ON tc.constraint_name = ccu.constraint_name
+                    WHERE tc.table_name = 'cont_distribucion_analitica' AND tc.constraint_type = 'FOREIGN KEY'
+                    AND ccu.table_name = 'cont_categoria_gasto' AND ccu.column_name = 'id'
+                ) THEN
+                    ALTER TABLE finanzas2.cont_distribucion_analitica DROP CONSTRAINT cont_distribucion_analitica_categoria_id_fkey;
+                    ALTER TABLE finanzas2.cont_distribucion_analitica ADD CONSTRAINT cont_distribucion_analitica_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES finanzas2.cont_categoria(id);
                 END IF;
             END $$;
         """)

@@ -86,19 +86,22 @@ Pagos se escribian en dos tablas separadas: `cont_pago` y `cont_movimiento_tesor
 
 ## Bug Fix - Clasificacion en facturas pagadas/canjeadas - COMPLETADO (2026-03-13)
 
-### Problema
+### Problema 1 - Form state sin IDs
 Al editar la clasificacion (Linea de Negocio, Categoria, Centro de Costo) de una factura pagada o canjeada y guardar, los cambios no se persistian.
+- Causa: `populateFromFactura` no incluia el `id` de cada linea de detalle
+- Fix: Se agrego `id: l.id` en el mapeo de lineas
 
-### Causa Raiz
-En `FacturaFormModal.jsx`, la funcion `populateFromFactura` no incluia el `id` de cada linea de detalle al cargar los datos en el state del formulario. Sin el `id`, el backend no podia identificar que lineas actualizar y las ignoraba.
-
-### Fix
-Se agrego `id: l.id` en el mapeo de lineas dentro de `populateFromFactura` (lineas 70 y 75 del archivo).
+### Problema 2 - Distribuciones analiticas no se creaban para pagos de letras
+Los pagos de letras vinculadas a una factura no generaban distribuciones analiticas, causando que los costos por linea de negocio no aparecieran en el Dashboard.
+- Causa 1: FK incorrecto en `cont_distribucion_analitica.categoria_id` apuntaba a `cont_categoria_gasto` en vez de `cont_categoria`
+- Causa 2: `recalcular_distribuciones_factura` retornaba temprano si no habia pagos directos, sin procesar pagos de letras
+- Fix 1: Corregido FK en BD y en `database.py` (con migracion automatica)
+- Fix 2: Removido el `return` temprano en `distribucion_service.py`
 
 ### Testing
 - Backend API: PUT classification update -> PASSED
 - Frontend UI: Modal edit + Guardar -> PASSED
-- Data persistence verified -> PASSED
+- Dashboard: Costos por linea de negocio ahora muestran Element Premium S/3000 + Confeccion S/5900 -> PASSED
 
 ## Backlog
 

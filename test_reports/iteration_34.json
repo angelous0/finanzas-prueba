@@ -1,32 +1,32 @@
 {
   "iteration": 34,
   "date": "2026-03-13",
-  "feature": "P0 - Verify fix for classification save on paid/canjeada invoices",
+  "feature": "P0 - Fix analytical distributions for letra payments + FK migration",
   "tests": [
     {
-      "name": "Backend API - Update classification on canjeada invoice",
+      "name": "FK constraint fix - cont_distribucion_analitica.categoria_id",
       "status": "PASSED",
-      "details": "PUT /api/facturas-proveedor/102 with linea_negocio_id, categoria_id, descripcion updated correctly"
+      "details": "Changed FK from cont_categoria_gasto to cont_categoria. Added auto-migration in database.py"
     },
     {
-      "name": "Backend API - Data persistence",
+      "name": "recalcular_distribuciones_factura - no early return",
       "status": "PASSED",
-      "details": "GET /api/facturas-proveedor/102 returns updated classification fields after save"
+      "details": "Removed early return when no direct payments exist, allowing letra payments to be processed"
     },
     {
-      "name": "Frontend - Edit classification modal for canjeada invoice",
+      "name": "Distribution created for letra payment",
       "status": "PASSED",
-      "details": "Modal shows Editar Clasificacion title, financial fields locked, classification fields editable"
+      "details": "Factura 102 letra payment of S/3000 now creates distribution to Element Premium - Pantalon Denim"
     },
     {
-      "name": "Frontend - Save classification from UI",
+      "name": "Dashboard shows correct costs by business line",
       "status": "PASSED",
-      "details": "Changed description, clicked Guardar, modal closed, table refreshed, data persisted in DB"
+      "details": "Element Premium S/3000 + Confeccion S/5900 = Total S/8900 costos proveedores"
     },
     {
-      "name": "Estado preserved after classification edit",
+      "name": "Classification save on canjeada invoice",
       "status": "PASSED",
-      "details": "Invoice estado remains canjeado after classification update"
+      "details": "Frontend edit + save + persistence all working correctly"
     }
   ],
   "overall_status": "ALL_PASSED"

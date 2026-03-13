@@ -58,9 +58,6 @@ async def recalcular_distribuciones_factura(conn, empresa_id: int, factura_id: i
         WHERE pa.tipo_documento = 'factura' AND pa.documento_id = $1
     """, factura_id)
 
-    if not aplicaciones:
-        return
-
     for app in aplicaciones:
         mov_id = app['movimiento_tesoreria_id'] or app['pago_id']
         if not mov_id:
