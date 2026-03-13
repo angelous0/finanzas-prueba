@@ -486,10 +486,11 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
         if company_key:
             # Leer desde tablas locales (desacoplado de Odoo)
             order = await conn.fetchrow(
-                "SELECT amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id=$1 AND empresa_id=$2",
+                "SELECT id, amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id=$1 AND empresa_id=$2",
                 order_id, empresa_id)
             if not order:
                 raise HTTPException(404, "Orden no encontrada en tablas locales")
+            venta_pos_internal_id = order['id']
             estado = await conn.fetchrow(
                 "SELECT estado_local FROM finanzas2.cont_venta_pos_estado WHERE odoo_order_id=$1 AND empresa_id=$2",
                 order_id, empresa_id)
@@ -579,9 +580,9 @@ async def confirmar_venta_pos(order_id: int, empresa_id: int = Depends(get_empre
                             INSERT INTO finanzas2.cont_cxc
                             (empresa_id, venta_pos_id, monto_original, saldo_pendiente,
                              fecha_vencimiento, estado, tipo_origen, odoo_order_id)
-                            VALUES ($1, $2, $3, $3, CURRENT_DATE + 30, 'pendiente', 'venta_pos_saldo', $2)
+                            VALUES ($1, $2, $3, $3, CURRENT_DATE + 30, 'pendiente', 'venta_pos_saldo', $4)
                             RETURNING id
-                        """, empresa_id, order_id, saldo_pendiente)
+                        """, empresa_id, venta_pos_internal_id, saldo_pendiente, order_id)
                         await conn.execute("""
                             UPDATE finanzas2.cont_venta_pos_estado SET cxc_id = $1
                             WHERE odoo_order_id = $2 AND empresa_id = $3
@@ -628,7 +629,7 @@ async def marcar_credito_venta_pos(
         if company_key:
             # Leer desde tablas locales
             order = await conn.fetchrow(
-                "SELECT amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id=$1 AND empresa_id=$2",
+                "SELECT id, amount_total FROM finanzas2.cont_venta_pos WHERE odoo_id=$1 AND empresa_id=$2",
                 order_id, empresa_id)
             if not order:
                 raise HTTPException(404, "Orden no encontrada")
@@ -640,15 +641,16 @@ async def marcar_credito_venta_pos(
                 raise HTTPException(400, f"Venta ya tiene estado: {estado['estado_local']}")
 
             venc = fecha_vencimiento or (datetime.now().date() + timedelta(days=30))
+            venta_pos_internal_id = order['id']
 
             async with conn.transaction():
                 cxc = await conn.fetchrow("""
                     INSERT INTO finanzas2.cont_cxc
                     (empresa_id, venta_pos_id, monto_original, saldo_pendiente,
                      fecha_vencimiento, estado, tipo_origen, odoo_order_id)
-                    VALUES ($1, $2, $3, $3, $4, 'pendiente', 'venta_pos_credito', $2)
+                    VALUES ($1, $2, $3, $3, $4, 'pendiente', 'venta_pos_credito', $5)
                     RETURNING id
-                """, empresa_id, order_id, order['amount_total'], venc)
+                """, empresa_id, venta_pos_internal_id, order['amount_total'], venc, order_id)
 
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_venta_pos_estado

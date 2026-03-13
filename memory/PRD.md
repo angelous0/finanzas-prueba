@@ -61,6 +61,12 @@ Ventas POS, Gastos, CxC, CxP, Tesoreria y dimensiones analiticas clave.
 - Backfill de datos existentes para order 146662
 - Testing: 100% pass (backend 14/14, frontend 8/8)
 
+### Bug Fix - Error al marcar Credito (COMPLETADO - Mar 2026)
+- Causa raiz: El INSERT en cont_cxc usaba odoo_order_id como venta_pos_id, pero el FK referencia cont_venta_pos.id (id interno)
+- Fix: Ahora busca el id interno de cont_venta_pos y lo usa para venta_pos_id, pasando odoo_order_id en su columna separada
+- Aplica a: marcar_credito_venta_pos Y confirmar_venta_pos (CxC por saldo pendiente)
+- Testing: Verificado via curl y UI screenshot
+
 ## Arquitectura
 - Backend: FastAPI + PostgreSQL (schema finanzas2)
 - Frontend: React + Shadcn UI
