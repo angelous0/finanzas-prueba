@@ -695,7 +695,7 @@ export const VentasPOS = () => {
                       <tr key={venta.id} data-testid={`venta-row-${venta.id}`}>
                         <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>{formatDateTime(venta.date_order)}</td>
                         <td style={{ padding: '5px 8px' }}>{venta.tipo_comp || '-'}</td>
-                        <td style={{ padding: '5px 8px', fontFamily: 'monospace', fontSize: '0.75rem' }}>{venta.num_comp || venta.name}</td>
+                        <td style={{ padding: '5px 8px', fontFamily: 'monospace', fontSize: '0.75rem' }}>{venta.num_comp || '-'}</td>
                         <td style={{ padding: '5px 8px' }}>{venta.partner_name || '-'}</td>
                         <td style={{ padding: '5px 8px' }}>{venta.vendedor_name || '-'}</td>
                         <td style={{ padding: '5px 8px', fontWeight: 500 }}>{venta.tienda_name || '-'}</td>
