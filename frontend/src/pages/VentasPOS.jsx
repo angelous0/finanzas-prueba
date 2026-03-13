@@ -182,9 +182,9 @@ export const VentasPOS = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [maxDateOrder, setMaxDateOrder] = useState(null);
 
-  // Filters
-  const [fechaDesde, setFechaDesde] = useState(getYesterdayInLima());
-  const [fechaHasta, setFechaHasta] = useState(getTodayInLima());
+  // Filters - start empty to show all records, user can narrow down
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
