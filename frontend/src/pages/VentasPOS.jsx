@@ -672,31 +672,40 @@ export const VentasPOS = () => {
               </div>
             ) : (
               <>
-                <table className="data-table" data-testid="ventas-table">
+                <table className="data-table" data-testid="ventas-table" style={{ fontSize: '0.8125rem' }}>
                   <thead>
                     <tr>
-                      <th>Fecha</th>
-                      <th>Orden</th>
-                      <th>Cliente</th>
-                      <th>Vendedor</th>
-                      <th>Estado</th>
-                      <th>Pagos Asignados</th>
-                      <th className="text-right">Total</th>
-                      <th className="text-center">Acciones</th>
+                      <th style={{ padding: '6px 8px' }}>Fecha</th>
+                      <th style={{ padding: '6px 8px' }}>Comp.</th>
+                      <th style={{ padding: '6px 8px' }}>N° Comp.</th>
+                      <th style={{ padding: '6px 8px' }}>Cliente</th>
+                      <th style={{ padding: '6px 8px' }}>Vendedor</th>
+                      <th style={{ padding: '6px 8px' }}>Tienda</th>
+                      <th style={{ padding: '6px 8px' }}>Pagos</th>
+                      <th className="text-right" style={{ padding: '6px 8px' }}>Cant.</th>
+                      <th className="text-right" style={{ padding: '6px 8px' }}>Total</th>
+                      <th style={{ padding: '6px 8px' }}>Estado</th>
+                      <th style={{ padding: '6px 8px' }}>Pagos Asoc.</th>
+                      <th className="text-center" style={{ padding: '6px 8px' }}>Acc.</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ventas.map((venta) => (
                       <tr key={venta.id} data-testid={`venta-row-${venta.id}`}>
-                        <td>{formatDateTime(venta.date_order)}</td>
-                        <td style={{ fontWeight: 500 }}>{venta.name}</td>
-                        <td>{venta.partner_name || '-'}</td>
-                        <td>{venta.vendedor_name || '-'}</td>
-                        <td>
+                        <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>{formatDateTime(venta.date_order)}</td>
+                        <td style={{ padding: '5px 8px' }}>{venta.tipo_comp || '-'}</td>
+                        <td style={{ padding: '5px 8px', fontFamily: 'monospace', fontSize: '0.75rem' }}>{venta.num_comp || venta.name}</td>
+                        <td style={{ padding: '5px 8px' }}>{venta.partner_name || '-'}</td>
+                        <td style={{ padding: '5px 8px' }}>{venta.vendedor_name || '-'}</td>
+                        <td style={{ padding: '5px 8px', fontWeight: 500 }}>{venta.tienda_name || '-'}</td>
+                        <td style={{ padding: '5px 8px', fontSize: '0.75rem', color: '#6b7280' }}>{venta.x_pagos || '-'}</td>
+                        <td className="text-right" style={{ padding: '5px 8px' }}>{venta.quantity_total || '-'}</td>
+                        <td className="text-right" style={{ padding: '5px 8px', fontWeight: 600 }}>{formatCurrency(venta.amount_total)}</td>
+                        <td style={{ padding: '5px 8px' }}>
                           <span style={{
-                            padding: '0.25rem 0.75rem',
+                            padding: '2px 8px',
                             borderRadius: '9999px',
-                            fontSize: '0.75rem',
+                            fontSize: '0.7rem',
                             fontWeight: 500,
                             backgroundColor: venta.estado_local === 'confirmada' ? '#d1fae5' : venta.estado_local === 'credito' ? '#dbeafe' : venta.estado_local === 'descartada' ? '#fee2e2' : '#fef3c7',
                             color: venta.estado_local === 'confirmada' ? '#065f46' : venta.estado_local === 'credito' ? '#1e40af' : venta.estado_local === 'descartada' ? '#991b1b' : '#92400e'
@@ -704,46 +713,44 @@ export const VentasPOS = () => {
                             {venta.estado_local}
                           </span>
                         </td>
-                        <td className="text-center">
+                        <td style={{ padding: '5px 8px' }}>
                           {venta.estado_local === 'pendiente' ? (
-                            <button className="btn btn-sm btn-primary" onClick={() => openPagosModal(venta)} title="Asignar pagos" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}>
-                              <Plus size={12} style={{ marginRight: '0.25rem' }} />
-                              S/ {venta.pagos_asignados ? parseFloat(venta.pagos_asignados).toFixed(2) : '0.00'}
+                            <button className="btn btn-sm btn-primary" onClick={() => openPagosModal(venta)} title="Asignar pagos" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                              <Plus size={11} /> S/ {venta.pagos_asignados ? parseFloat(venta.pagos_asignados).toFixed(2) : '0.00'}
                             </button>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
-                              <span style={{ color: '#059669', fontSize: '0.875rem', fontWeight: 600 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ color: '#059669', fontSize: '0.8rem', fontWeight: 600 }}>
                                 S/ {venta.pagos_oficiales ? parseFloat(venta.pagos_oficiales).toFixed(2) : '0.00'}
                               </span>
                               {venta.num_pagos_oficiales > 0 && (
-                                <button className="btn btn-sm btn-outline" onClick={() => verPagosConfirmada(venta)} title="Ver pagos" style={{ padding: '0.25rem', fontSize: '0.7rem' }}>
-                                  <Eye size={12} />
+                                <button className="btn btn-sm btn-outline" onClick={() => verPagosConfirmada(venta)} title="Ver pagos" style={{ padding: '2px', fontSize: '0.65rem' }}>
+                                  <Eye size={11} />
                                 </button>
                               )}
                             </div>
                           )}
                         </td>
-                        <td className="text-right" style={{ fontWeight: 500 }}>{formatCurrency(venta.amount_total)}</td>
-                        <td className="text-center">
-                          <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <button className="btn btn-outline btn-sm btn-icon" onClick={() => verLineasProductos(venta)} title="Ver productos" style={{ fontSize: '0.7rem' }} data-testid={`ver-lineas-${venta.id}`}>
-                              <ShoppingCart size={14} />
+                        <td className="text-center" style={{ padding: '5px 8px' }}>
+                          <div style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
+                            <button className="btn btn-outline btn-sm btn-icon" onClick={() => verLineasProductos(venta)} title="Ver productos" style={{ fontSize: '0.65rem', padding: '2px 4px' }} data-testid={`ver-lineas-${venta.id}`}>
+                              <ShoppingCart size={13} />
                             </button>
                             {venta.estado_local === 'confirmada' && (
-                              <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDesconfirmar(venta)} title="Desconfirmar" data-testid={`desconfirmar-${venta.id}`} style={{ color: '#dc2626' }}>
-                                <RotateCcw size={14} />
+                              <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDesconfirmar(venta)} title="Desconfirmar" data-testid={`desconfirmar-${venta.id}`} style={{ color: '#dc2626', padding: '2px 4px' }}>
+                                <RotateCcw size={13} />
                               </button>
                             )}
                             {venta.estado_local === 'pendiente' && (
                               <>
-                                <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleConfirmar(venta.id)} title="Confirmar" data-testid={`confirmar-${venta.id}`}>
-                                  <Check size={14} />
+                                <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleConfirmar(venta.id)} title="Confirmar" data-testid={`confirmar-${venta.id}`} style={{ padding: '2px 4px' }}>
+                                  <Check size={13} />
                                 </button>
-                                <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleCredito(venta.id)} title="Marcar Credito" data-testid={`credito-${venta.id}`}>
-                                  <CreditCard size={14} />
+                                <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleCredito(venta.id)} title="Credito" data-testid={`credito-${venta.id}`} style={{ padding: '2px 4px' }}>
+                                  <CreditCard size={13} />
                                 </button>
-                                <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDescartar(venta.id)} title="Descartar" data-testid={`descartar-${venta.id}`}>
-                                  <X size={14} />
+                                <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDescartar(venta.id)} title="Descartar" data-testid={`descartar-${venta.id}`} style={{ padding: '2px 4px' }}>
+                                  <X size={13} />
                                 </button>
                               </>
                             )}

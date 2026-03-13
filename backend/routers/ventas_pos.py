@@ -175,11 +175,14 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
     # 1. Sync orders: odoo.v_pos_order_enriched -> cont_venta_pos
     orders = await conn.fetch(f"""
         SELECT o.odoo_order_id, o.date_order, o.amount_total, o.state,
-               o.is_cancelled, o.reserva,
-               p.name AS partner_name, u.name AS vendedor_name
+               o.is_cancelled, o.reserva, o.user_id,
+               p.name AS partner_name, u.name AS vendedor_name,
+               sl.x_nombre AS tienda_name, po.location_id AS tienda_id
         FROM odoo.v_pos_order_enriched o
         LEFT JOIN odoo.res_partner p ON p.odoo_id = o.cuenta_partner_id AND p.company_key = 'GLOBAL'
         LEFT JOIN odoo.res_users u ON u.odoo_id = o.user_id AND u.company_key = 'GLOBAL'
+        LEFT JOIN odoo.pos_order po ON po.odoo_id = o.odoo_order_id AND po.company_key = o.company_key
+        LEFT JOIN odoo.stock_location sl ON sl.odoo_id = po.location_id AND sl.company_key = 'GLOBAL'
         WHERE o.company_key = $1 {date_filter}
     """, *date_params)
 
@@ -190,20 +193,26 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
         await conn.execute("""
             INSERT INTO finanzas2.cont_venta_pos
                 (empresa_id, odoo_id, name, date_order, amount_total, state,
-                 partner_name, vendedor_name, is_cancel, reserva)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 partner_name, vendedor_id, vendedor_name, is_cancel, reserva,
+                 tienda_id, tienda_name)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             ON CONFLICT (empresa_id, odoo_id) DO UPDATE SET
                 date_order = EXCLUDED.date_order,
                 amount_total = EXCLUDED.amount_total,
                 state = EXCLUDED.state,
                 partner_name = EXCLUDED.partner_name,
+                vendedor_id = EXCLUDED.vendedor_id,
                 vendedor_name = EXCLUDED.vendedor_name,
                 is_cancel = EXCLUDED.is_cancel,
-                reserva = EXCLUDED.reserva
+                reserva = EXCLUDED.reserva,
+                tienda_id = EXCLUDED.tienda_id,
+                tienda_name = EXCLUDED.tienda_name
         """, empresa_id, o['odoo_order_id'], f"POS-{o['odoo_order_id']}",
             date_order, o['amount_total'], o['state'],
-            o['partner_name'] or '-', o['vendedor_name'] or '-',
-            o['is_cancelled'] or False, o['reserva'] or False)
+            o['partner_name'] or '-', o['user_id'],
+            o['vendedor_name'] or '-',
+            o['is_cancelled'] or False, o['reserva'] or False,
+            o['tienda_id'], o['tienda_name'])
 
     if not orders:
         return
@@ -304,7 +313,7 @@ async def _list_from_odoo(conn, empresa_id, company_key,
         params.append(datetime.combine(fecha_hasta, datetime.max.time()))
         idx += 1
     if search:
-        conditions.append(f"(v.partner_name ILIKE ${idx} OR v.vendedor_name ILIKE ${idx} OR CAST(v.odoo_id AS TEXT) LIKE ${idx})")
+        conditions.append(f"(v.partner_name ILIKE ${idx} OR v.vendedor_name ILIKE ${idx} OR v.tienda_name ILIKE ${idx} OR CAST(v.odoo_id AS TEXT) LIKE ${idx})")
         params.append(f"%{search}%")
         idx += 1
 
@@ -341,7 +350,14 @@ async def _list_from_odoo(conn, empresa_id, company_key,
             v.is_cancel AS is_cancelled,
             v.reserva,
             v.partner_name,
+            v.vendedor_id,
             v.vendedor_name,
+            v.tienda_name,
+            v.quantity_total,
+            v.x_pagos,
+            v.tipo_comp,
+            v.num_comp,
+            v.company_name,
             COALESCE(e.estado_local, 'pendiente') AS estado_local,
             e.notas AS estado_notas,
             e.cxc_id,
@@ -379,20 +395,21 @@ async def _list_from_odoo(conn, empresa_id, company_key,
             "is_cancelled": r['is_cancelled'],
             "reserva": r['reserva'],
             "partner_name": r['partner_name'] or '-',
+            "vendedor_id": r['vendedor_id'],
             "vendedor_name": r['vendedor_name'] or '-',
+            "tienda_name": r['tienda_name'],
+            "quantity_total": float(r['quantity_total'] or 0),
+            "x_pagos": r['x_pagos'],
+            "tipo_comp": r['tipo_comp'],
+            "num_comp": r['num_comp'],
+            "company_name": r['company_name'],
             "estado_local": r['estado_local'],
             "pagos_asignados": float(r['pagos_asignados']),
             "num_pagos": r['num_pagos'],
             "pagos_oficiales": float(r['pagos_oficiales']),
             "num_pagos_oficiales": r['num_pagos_oficiales'],
             "cxc_id": r['cxc_id'],
-            # Compat fields for frontend
             "name": f"POS-{r['odoo_order_id']}",
-            "tipo_comp": None,
-            "num_comp": None,
-            "company_name": None,
-            "tienda_name": None,
-            "x_pagos": None,
             "source": "odoo",
         })
     return {
