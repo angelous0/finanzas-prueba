@@ -57,6 +57,7 @@ export const FacturasProveedor = () => {
   // Modal states
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingFactura, setEditingFactura] = useState(null);
+  const [viewOnlyMode, setViewOnlyMode] = useState(false);
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [facturaParaPago, setFacturaParaPago] = useState(null);
   const [showLetrasModal, setShowLetrasModal] = useState(false);
@@ -135,20 +136,17 @@ export const FacturasProveedor = () => {
       return;
     }
     setEditingFactura(factura);
+    setViewOnlyMode(false);
     setShowFormModal(true);
   };
 
   const handleView = (factura) => {
-    if (factura.estado === 'canjeado') {
-      setFacturaParaVerLetras(factura); setShowVerLetrasModal(true);
-    } else if (factura.estado === 'pagado' || factura.estado === 'parcial') {
-      setFacturaParaVerPagos(factura); setShowVerPagosModal(true);
-    } else {
-      toast.info(`Factura ${factura.numero} - Total: ${formatCurrency(factura.total)}`);
-    }
+    setEditingFactura(factura);
+    setViewOnlyMode(true);
+    setShowFormModal(true);
   };
 
-  const handleNewFactura = () => { setEditingFactura(null); setShowFormModal(true); };
+  const handleNewFactura = () => { setEditingFactura(null); setViewOnlyMode(false); setShowFormModal(true); };
 
   // Calculate totals for header
   const facturasFiltradas = filtroNumero
@@ -199,6 +197,7 @@ export const FacturasProveedor = () => {
       <FacturaFormModal
         show={showFormModal}
         editingFactura={editingFactura}
+        readOnly={viewOnlyMode}
         proveedores={proveedores}
         monedas={monedas}
         categorias={categorias}
@@ -207,7 +206,7 @@ export const FacturasProveedor = () => {
         inventario={inventario}
         modelosCortes={modelosCortes}
         valorizacionMap={valorizacionMap}
-        onClose={() => { setShowFormModal(false); setEditingFactura(null); }}
+        onClose={() => { setShowFormModal(false); setEditingFactura(null); setViewOnlyMode(false); }}
         onSaved={loadData}
         onProveedorCreated={(newProv) => setProveedores(prev => [...prev, newProv])}
       />

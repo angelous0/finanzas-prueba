@@ -7,7 +7,7 @@ import SearchableSelect from '../../components/SearchableSelect';
 import TableSearchSelect from '../../components/TableSearchSelect';
 
 const FacturaFormModal = ({
-  show, editingFactura, proveedores, monedas, categorias, lineasNegocio,
+  show, editingFactura, readOnly, proveedores, monedas, categorias, lineasNegocio,
   centrosCosto, inventario, modelosCortes, valorizacionMap,
   onClose, onSaved, onProveedorCreated
 }) => {
@@ -201,7 +201,7 @@ const FacturaFormModal = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <FileText size={24} color="#1B4D3E" />
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
-              {editingFactura ? `Editar Factura ${editingFactura.numero}` : 'Factura de proveedor'}
+              {readOnly ? `Ver Factura ${editingFactura?.numero || ''}` : editingFactura ? `Editar Factura ${editingFactura.numero}` : 'Factura de proveedor'}
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -215,7 +215,8 @@ const FacturaFormModal = ({
           </div>
         </div>
 
-        <form onSubmit={(e) => handleSubmit(e, false)}>
+        <form onSubmit={(e) => { if (readOnly) { e.preventDefault(); return; } handleSubmit(e, false); }}>
+          <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0 }}>
           <div className="factura-modal-body">
             {/* Proveedor row */}
             <div className="form-row">
@@ -473,18 +474,21 @@ const FacturaFormModal = ({
               </div>
             </div>
           </div>
+          </fieldset>
 
           {/* Footer */}
           <div className="factura-modal-footer">
-            <button type="button" className="btn btn-outline" onClick={onClose}>Cancelar</button>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="submit" className="btn btn-secondary" data-testid="guardar-factura-btn" disabled={submitting}>
-                <FileText size={16} /> {submitting ? 'Guardando...' : 'Guardar'}
-              </button>
-              <button type="button" className="btn btn-primary" onClick={(e) => handleSubmit(e, true)} data-testid="guardar-crear-btn" disabled={submitting}>
-                {submitting ? 'Guardando...' : 'Guardar y crear nueva'}
-              </button>
-            </div>
+            <button type="button" className="btn btn-outline" onClick={onClose}>{readOnly ? 'Cerrar' : 'Cancelar'}</button>
+            {!readOnly && (
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button type="submit" className="btn btn-secondary" data-testid="guardar-factura-btn" disabled={submitting}>
+                  <FileText size={16} /> {submitting ? 'Guardando...' : 'Guardar'}
+                </button>
+                <button type="button" className="btn btn-primary" onClick={(e) => handleSubmit(e, true)} data-testid="guardar-crear-btn" disabled={submitting}>
+                  {submitting ? 'Guardando...' : 'Guardar y crear nueva'}
+                </button>
+              </div>
+            )}
           </div>
         </form>
       </div>
