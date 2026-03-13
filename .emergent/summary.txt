@@ -1,83 +1,67 @@
 <analysis>**original_problem_statement:**
-The user, acting as a Senior ERP Architect, has requested a major simplification of the Finanzas Gerenciales module. The goal is to streamline the application to focus on core, usable financial operations and pause more complex, less-used features.
+The user, acting as a Senior ERP Architect, requested a multi-phase technical audit and cleanup of the Finanzas Gerenciales application. The goal is to improve maintainability, reduce complexity, and formally separate CORE, business-critical modules from LEGACY, unused features.
 
-PRODUCT REQUIREMENTS:
-1.  **Simplify Core Flow:** Focus the application on Ventas POS, Gastos, CxC, CxP, Tesorería, and key analytical dimensions (Línea de Negocio, Marca, Centro de Costo, Categoría de Gasto).
-2.  **Pause/Hide Modules:** De-emphasize or hide modules for Proyectos, Capital por Línea (ROI), and Valorización de Inventario.
-3.  **POS Sales Logic:** Enforce automatic analytical revenue distribution based on line items. Manual assignment is forbidden. The flow is:  ->  /  / .
-4.  **Treasury vs. Analytical Principle:** Strictly enforce 1 real treasury movement, N analytical distributions.
-5.  **Expense Management:** Introduce  (Expense Category) and  (Assignment Type: , , ).
-6.  **Proration Module:** Create a new module to distribute  (common) expenses among business lines based on sales revenue or manual percentages.
-7.  **Dashboard & Reporting:** Implement a simple executive dashboard for daily KPIs and a set of clear, useful reports for sales, collections, expenses, and profitability.
-8.  **UI/UX Improvements:** Enhance the POS Sales views (main table and detail modal) for clarity and to include specific new columns from the Odoo data source.
+PRODUCT REQUIREMENTS (for the cleanup):
+1.  **Audit & Classify:** Analyze the entire codebase (frontend and backend) to identify active CORE modules, unused LEGACY modules, duplicate routes/components, and large, monolithic files.
+2.  **Phase 1 (Frontend Cleanup):** Remove dead code, unused imports, and legacy routes. Simplify the main navigation () to only show CORE features.
+3.  **Phase 2 (Backend Cleanup):** De-register unused LEGACY routers from the main FastAPI application () without breaking CORE functionality.
+4.  **Phase 3 (Decoupling):** For legacy routers that contain essential functions used by CORE modules, extract only the required CORE logic into new, separate, lean routers.
+5.  **Phase 4 (Physical Separation):** Move all confirmed LEGACY files into dedicated  directories.
+6.  **Phase 5 (Split Large Files):** Systematically break down the largest, most complex files into smaller, single-responsibility modules.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is a stable full-stack solution (React/FastAPI/PostgreSQL) that has undergone significant refactoring.
+The agent has completed the first parts of a large, user-directed code refactoring (Phase 5), successfully splitting the monolithic  and  files into smaller modules. It also audited and reactivated the Letras and Conciliación Bancaria modules, which were functional but hidden from the UI.
 
-Completed work includes:
--   **Backend:** Full implementation of the expense simplification (categories, proration), including database migrations, CRUD endpoints, and business logic.
--   **Frontend:** All UI for the simplification is complete, including new pages for  and , a heavily updated  form, and a simplified main sidebar.
--   **Executive Dashboard:** A new dashboard with KPI cards and summary tables is live.
--   **POS Views:** The main sales table () has been completely overhauled to display new columns (, , , etc.) and fix pagination and timezone issues. The sale detail modal has been redesigned for better readability.
--   **Core Logic:** The critical bug preventing analytical distributions from being created on auto-confirmation has been fixed. The logic now correctly creates revenue and collection distributions when a sale is paid in full.
--   **Reporting:** A new simplified reports page () has been created, showing key metrics like Profitability by Business Line, Revenue by Brand, and Collections.
-
-The application is functionally complete for the simplification task, but a critical discrepancy has been found between the analytical reports and the operational treasury views.
+After the user cleared the database for testing, they discovered a critical architectural flaw: payments were being recorded in two separate, inconsistent tables ( and ), causing data discrepancies across the application. The user requested to unify these into a single source of truth. The agent is currently in the middle of this major database and backend refactoring.
 
 **Last working item**:
-The agent was investigating a critical user report: after a sale was confirmed and paid, the resulting revenue (S/ 84.74) and collection (S/ 100) appeared correctly in the new analytical reports and dashboard, but the user could not see the corresponding S/ 100 movement in the Tesoreria (Treasury) or Movimiento/Pagos sections of the application.
+The agent is performing a major architectural refactor to unify two separate payment tables ( and ) into a single master table ().
 
-- **Last item agent was working:** Investigating why a real treasury movement is not visible in operational views despite its corresponding analytical entries being correctly generated and displayed in reports. The user asked: de donde salen los 100 y 84.74, en movimiento/pagos no veo nada y tesorería tampoco (where do the 100 and 84.74 come from, I don't see anything in movements/payments or treasury either).
+- **Last item agent was working:** The agent was refactoring  to use the new unified structure. It had just begun a  operation to remove all logic related to the now-deprecated  and  tables, preparing to replace it with code that writes exclusively to .
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** both
+- **Which testing method agent to use?** both. This is a critical database and backend change affecting all payment flows. A full regression test (frontend and backend) is mandatory upon completion.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Treasury movements are not visible in operational UI views (P0)**
-  - **Description:** When a payment is registered for a sale, the system correctly generates the analytical distributions for reporting. However, the underlying real treasury movement (the cash/bank entry) is not visible on the dedicated Treasury or Payment list pages. This breaks the user's ability to reconcile analytical data with real-world financial movements.
-  - **Attempted fixes:** The agent had just started investigating the code path in  before the user's message. No concrete fix has been attempted.
-  - **Next debug checklist:**
-    1.  Inspect , specifically the  and  functions. Confirm that a record is being inserted into the  table upon successful payment.
-    2.  Use  or a  command to directly query the  table and verify if a record for the S/ 100 payment against sale  exists.
-    3.  Identify the backend endpoints that power the Tesoreria and Pagos frontend pages.
-    4.  Review those endpoints to ensure they are querying and returning data from .
-    5.  Inspect the corresponding frontend components to confirm they are rendering the data received from the backend.
-  - **Why fix this issue?** This is a critical bug that undermines the core architectural principle of the application (1 real treasury movement, N analytical distributions). Without visibility into the real treasury transactions, the system is not trustworthy for financial management.
-  - **Status:** IN PROGRESS
-  - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** both
-  - **Blocked on other issue:** None
+- **Issue 1: Complete the unification of payment tables (P0)**
+  - This is the highest priority task and is currently in progress. The application's payment functionality is broken until this is finished.
 
 **In progress Task List**:
-- None.
+- **Task 1: Unify  and  tables (P0)**
+    - **Where to resume:** Continue the refactoring of . The old code writing to  has been targeted for removal. The next step is to implement the new logic within functions like  to create records in the master  table and correctly link payment applications in the  table (which will now reference ).
+    - **What will be achieved with this?** A single, reliable source of truth for all financial movements, eliminating data inconsistencies between the Tesorería and Movimientos/Pagos views and simplifying the overall architecture.
+    - **Status:** IN PROGRESS
+    - **Should Test frontend/backend/both after fix?** both
+    - **Blocked on something:** None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - **P1: Complete Simplified Reports:** The user initially requested 12 reports. The agent has implemented the 8 most critical ones. The remaining reports to consider are:
-    - Ventas por cruce línea × marca
-    - Gastos directos por línea
-    - Gastos comunes pendientes de prorrateo (as a formal report)
-    - Utilidad por línea antes de prorrateo (already on dashboard, but maybe a standalone report is needed)
+    - **P1: Continue with File Splitting (Phase 5):** Once the payment table unification is complete and verified, proceed with splitting the remaining large files as prioritized by the user:
+        - 
+        - 
+        - 
+        - 
+    - **P2: Decide Fate of In-Review Modules:** The user previously marked  and  for review. An audit is needed to decide if they are CORE or should be moved to LEGACY.
 
-- **Future Tasks (Backlog):**
-  - Proyectos
-  - Capital & ROI
-  - Valorización de Inventario
-  - Presupuesto vs Real
+- **Future Tasks:**
+    - **Complete Simplified Reports:** Implement the remaining 4 out of 12 reports requested by the user in a previous session.
+    - **Legacy Backlog:** Re-evaluate and potentially re-implement paused features like Proyectos, Capital & ROI, and Presupuesto vs Real.
 
 **Completed work in this session**
-- **Backend Expense Module (DONE):** Completed the entire backend for expense simplification, including expense categories (), proration (), and updating the main expenses router ().
-- **Frontend Simplification (DONE):** Created all required frontend pages (, , ), updated the  form, and simplified the .
-- **Executive Dashboard (DONE):** Implemented a new backend endpoint and completely rewrote  to provide an at-a-glance executive summary with KPIs.
-- **POS View Overhaul (DONE):** Massively improved  by adding user-requested columns (Tienda, Vendedor, Empresa, Cantidad), fixing timezone and pagination bugs, and redesigning the detail modal for clarity.
-- **Critical Bug Fixes (DONE):**
-  - **Payment Flow:** Fixed a crash caused by a hardcoded .
-  - **Analytical Distribution:** Corrected the logic to ensure analytical revenue/collection distributions are created automatically when a sale is fully paid.
-  - **Data Sync:** Repaired the data sync process from Odoo to correctly map  and other new fields, and backfilled existing records.
-- **Testing (DONE):** All major features were successfully validated with the testing agent, achieving 100% pass rates.
+- **Refactoring (Phase 5 - File Splitting):**
+  - Successfully split  (1191 lines) into 5 smaller, focused modules.
+  - Successfully split  (2576 lines) into 8 modular components.
+- **Module Restoration:**
+  - Performed an audit and reactivated the Letras and Conciliación Bancaria modules by re-adding their navigation links to .
+- **Database Administration:**
+  - Truncated all 53 application tables at user's request for a clean testing environment.
+- **Critical Bug Fixes (Letras Payment Flow):**
+  - Fixed issue where paying a Letra did not create a corresponding movement in treasury.
+  - Enforced payment of the exact amount of the Letra on both frontend and backend.
+  - Ensured analytical data was created upon payment for correct dashboard reporting.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -89,71 +73,79 @@ The agent was investigating a critical user report: after a sale was confirmed a
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Python, Pydantic.
-- **Frontend:** React, Shadcn UI, Recharts.
-- **Database:** PostgreSQL.
-- **Architecture:** The core principle is the separation of real transactions () from analytical records (, ). The current bug highlights a failure in the visibility of the real transactions part of this architecture.
+- **Backend:** FastAPI, Python, Pydantic
+- **Frontend:** React, Shadcn UI, Recharts
+- **Database:** PostgreSQL
+- **Architectural Refactoring:** The core activities are splitting monolithic files and unifying data models. The current critical task is migrating from a dual-table payment system (, ) to a single source of truth ().
 
 **key DB schema**
-- **cont_movimiento_tesoreria:** Stores real cash/bank movements. **This table is central to the current P0 bug.**
-- **pos_order_local:** The local cache for POS sales, enriched with fields like , , , etc.
-- **cont_distribucion_analitica_ingreso:** Tracks analytical revenue from sales.
-- **cont_distribucion_analitica_cobro:** Tracks analytical revenue from collections.
-- **cont_gasto:** Main expenses table, now includes , , .
+- ****: **[MODIFIED]** Promoted to the master table for all financial transactions. New columns were added: , , . This is now the single source of truth.
+- ** / **: **[DEPRECATED]** These tables are being phased out. All new payment logic writes to .
+- ****: **[MODIFIED]** The foreign key in this table is being updated to point to  instead of the old .
 
 **changes in tech stack**
 - None.
 
 **All files of reference**
-- **Bug Investigation:**
-  - : Contains the  function where the treasury movement should be created.
-  - Any files related to the Tesoreria or Pagos frontend pages and their backend data sources.
-- **Recently Modified:**
-  - 
-  - 
-  - 
-  - 
-  - 
+- **Primary files for current task:**
+  -  (File being actively refactored).
+  -  (Contains the updated schema definitions).
+  -  (Contains the updated Pydantic models).
+- **Recently completed/modified files:**
+  -  (and the new  files).
+  -  (and its new sub-components).
+  - .
 
 **Areas that need refactoring**:
-- The  router has grown very large. A future task could be to break it down into more focused services (e.g., a separate payment service).
+- The ongoing unification of the payment data model in the backend is the top priority.
+- The user's prioritized backlog of large files to be split (, , etc.) remains pending.
 
 **key api endpoints**
-- : Registers a payment for a sale. This is where the treasury movement should be generated.
-- : Feeds the new executive dashboard.
-- : Retrieves data for the new reports page.
+- : These endpoints within  are at the center of the current refactoring and are non-functional until the work is complete.
+- 
+- 
 
 **Critical Info for New Agent**
-- **Your immediate and only priority is to fix the P0 bug.** The user cannot see real treasury movements in the UI. This breaks the application's core value proposition.
-- **Follow the debug checklist:** Systematically verify that a payment record is created in  and then trace its path to the frontend. The bug could be in the backend (not writing the data) or in the frontend/backend bridge (not reading/displaying the data).
-- The analytical side of the equation is working correctly. Do not modify the analytical distribution logic unless it's directly related to the missing treasury movement. The focus is solely on the visibility of the real transaction.
+- **Your immediate and only priority is to complete the in-progress refactoring of the payment system.** The application is in a broken state until this is done.
+- **Resume the plan:** You were in the middle of overhauling . You have removed the old logic that writes to the deprecated  table. Your next step is to implement the new logic to write all payments into the  table and correctly handle their document applications via the  table.
+- **Test thoroughly:** After the refactor, a full regression test of both the backend and frontend is essential. Verify all payment flows (creating, viewing, deleting payments for invoices, letters, etc.) work correctly with the new unified table.
+- **Do not switch tasks:** Do not begin any other refactoring or feature requests until this critical architectural change is complete, tested, and verified.
 
 **documents and test reports created in this job**
--  (updated)
-- Multiple test reports were created and passed in . The last successful one was .
+- 
+- 
+- 
+- 
+- 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-- The user has been interactively testing and providing feedback on the new features.
-- Recent feedback led to fixes in the POS sales view (columns, layout, timezone).
-- The user then tested the payment flow, reporting an error which was fixed (hardcoded ).
-- After the fix, the user confirmed a sale, paid it, and asked how to see the results in reports.
-- The agent implemented the reports page and showed the correct analytical data.
-- **Pending Message (P0 Issue):** The user then asked why the real payment of S/ 100 is not visible in the Tesoreria or Pagos views, even though it appears in the analytical reports.
+1.  **User:** Shared an image of the empty Movimientos/Pagos screen, pointing out the inconsistency with the Tesorería view, which had data.
+2.  **Agent:** Diagnosed the root cause: Movimientos/Pagos reads from  (empty), while Tesorería reads from  (has data). Proposed changing the Movimientos/Pagos view to read from the latter.
+3.  **User:** Rejected the simple fix and requested a full unification: unifica todo y las relaciones que cada uno tenia que se unifique en uno (unify everything, and the relationships each one had, unify them into one).
+4.  **Agent:** Presented a detailed plan to make  the master table, deprecate , and update all related modules and tables.
+5.  **Agent:** Started implementation by updating the database schema in .
+6.  **Agent:** Added new columns (, , ) to the  table definition.
+7.  **Agent:** Updated the Pydantic models in  to reflect the schema changes.
+8.  **Agent:** Began the main part of the refactor: modifying the central  router.
+9.  **Agent:** Initiated a  to remove the outdated logic creating records in the  table.
+10. **Agent:** (Last action) Continued the  to remove logic related to the associated  table.
 
 **Project Health Check:**
-- **Broken:** The visibility of real-world treasury transactions is broken. This is a critical failure for a financial application.
+- **Broken:** YES. The entire payment creation and management functionality is broken mid-refactor.  is non-functional.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Odoo Data Source:** A read-only dependency on a user-provided PostgreSQL database that contains synced Odoo data.
+- **Odoo Data Source:** A read-only dependency on a user-provided PostgreSQL database containing synced Odoo data, accessed via the  service.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. All major features in this session were validated by the testing agent with 100% pass rates.
-- **Test files created:** None.
-- **Known regressions:** The lack of visibility for treasury movements is either a regression or a gap that was never tested.
+- **Testing agent used after significant changes:** YES, used after the file-splitting refactors. Will be needed again after the current task.
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:** []
+- **Known regressions:** All functionality related to creating or viewing payments via the  router is currently non-operational.
 
 **Credentials to test flow:**
-- Available in .
+- Credentials can be found in .
 
 **What agent forgot to execute**
-- The previous agent successfully fixed and implemented the *analytical* side of transactions (the reports are correct). However, they failed to verify the full end-to-end flow, which includes the creation *and visualization* of the corresponding *real* treasury movement in the operational UI. The user's latest question directly points to this oversight.</analysis>
+- Nothing. The agent is in the middle of a complex, user-directed task and has stopped at a logical intermediate step.</analysis>

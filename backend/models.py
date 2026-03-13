@@ -431,7 +431,8 @@ class PagoDetalleCreate(PagoDetalleBase):
 
 class PagoDetalle(PagoDetalleBase):
     id: int
-    pago_id: int
+    pago_id: Optional[int] = None
+    movimiento_tesoreria_id: Optional[int] = None
     cuenta_nombre: Optional[str] = None
     created_at: Optional[datetime] = None
 
@@ -445,7 +446,8 @@ class PagoAplicacionCreate(PagoAplicacionBase):
 
 class PagoAplicacion(PagoAplicacionBase):
     id: int
-    pago_id: int
+    pago_id: Optional[int] = None
+    movimiento_tesoreria_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
 class PagoBase(BaseModel):

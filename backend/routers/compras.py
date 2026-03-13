@@ -470,13 +470,26 @@ async def get_pagos_de_factura(id: int, empresa_id: int = Depends(get_empresa_id
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
         rows = await conn.fetch("""
-            SELECT p.*, pa.monto_aplicado, cf.nombre as cuenta_nombre, m.codigo as moneda_codigo, m.simbolo as moneda_simbolo
-            FROM finanzas2.cont_pago p
-            JOIN finanzas2.cont_pago_aplicacion pa ON pa.pago_id = p.id
-            LEFT JOIN finanzas2.cont_cuenta_financiera cf ON p.cuenta_financiera_id = cf.id
-            LEFT JOIN finanzas2.cont_moneda m ON p.moneda_id = m.id
+            SELECT COALESCE(mt.id, p.id) as id,
+                   COALESCE(mt.numero, p.numero) as numero,
+                   COALESCE(mt.tipo, p.tipo::text) as tipo,
+                   COALESCE(mt.fecha, p.fecha) as fecha,
+                   COALESCE(mt.monto, p.monto_total) as monto_total,
+                   pa.monto_aplicado,
+                   COALESCE(cf_mt.nombre, cf_p.nombre) as cuenta_nombre,
+                   COALESCE(mon_mt.codigo, mon_p.codigo) as moneda_codigo,
+                   COALESCE(mon_mt.simbolo, mon_p.simbolo) as moneda_simbolo,
+                   COALESCE(mt.referencia, p.referencia) as referencia,
+                   COALESCE(mt.conciliado, false) as conciliado
+            FROM finanzas2.cont_pago_aplicacion pa
+            LEFT JOIN finanzas2.cont_movimiento_tesoreria mt ON pa.movimiento_tesoreria_id = mt.id
+            LEFT JOIN finanzas2.cont_pago p ON pa.pago_id = p.id
+            LEFT JOIN finanzas2.cont_cuenta_financiera cf_mt ON mt.cuenta_financiera_id = cf_mt.id
+            LEFT JOIN finanzas2.cont_cuenta_financiera cf_p ON p.cuenta_financiera_id = cf_p.id
+            LEFT JOIN finanzas2.cont_moneda mon_mt ON mt.moneda_id = mon_mt.id
+            LEFT JOIN finanzas2.cont_moneda mon_p ON p.moneda_id = mon_p.id
             WHERE pa.tipo_documento = 'factura' AND pa.documento_id = $1
-            ORDER BY p.fecha DESC
+            ORDER BY COALESCE(mt.fecha, p.fecha) DESC
         """, id)
         return [dict(r) for r in rows]
 

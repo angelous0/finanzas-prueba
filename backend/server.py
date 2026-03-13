@@ -180,16 +180,16 @@ async def sync_correlativos():
         doc_types = [
             ('cont_oc', 'numero', 'oc', f'OC-{year}-'),
             ('cont_factura_proveedor', 'numero', 'factura_proveedor', f'FP-{year}-'),
-            ('cont_pago', 'numero', 'pago_ingreso', f'PAG-I-{year}-'),
-            ('cont_pago', 'numero', 'pago_egreso', f'PAG-E-{year}-'),
+            ('cont_movimiento_tesoreria', 'numero', 'pago_ingreso', f'PAG-I-{year}-'),
+            ('cont_movimiento_tesoreria', 'numero', 'pago_egreso', f'PAG-E-{year}-'),
             ('cont_gasto', 'numero', 'gasto', f'GAS-{year}-'),
         ]
         for table, col, tipo_doc, prefix in doc_types:
             tipo_filter = ""
             if tipo_doc == 'pago_ingreso':
-                tipo_filter = "AND tipo = 'ingreso'"
+                tipo_filter = "AND tipo = 'ingreso' AND origen_tipo = 'pago_ingreso'"
             elif tipo_doc == 'pago_egreso':
-                tipo_filter = "AND tipo = 'egreso'"
+                tipo_filter = "AND tipo = 'egreso' AND origen_tipo = 'pago_egreso'"
             rows = await conn.fetch(f"""
                 SELECT empresa_id, MAX(
                     CASE WHEN {col} LIKE $1 || '%'

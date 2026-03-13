@@ -1,0 +1,93 @@
+{
+  "summary": "Backend payment refactoring tests PASSED (13/13, 2 skipped). Frontend /pagos page working correctly. Fixed one bug in GET /api/facturas-proveedor/{id}/pagos endpoint (COALESCE type mismatch with ENUM).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "bugs_fixed": [
+    {
+      "file": "/app/backend/routers/compras.py",
+      "line": 475,
+      "issue": "COALESCE types character varying and tipo_pago cannot be matched",
+      "fix": "Changed COALESCE(mt.tipo, p.tipo) to COALESCE(mt.tipo, p.tipo::text) to cast ENUM to text"
+    }
+  ],
+  "tests_executed": {
+    "backend_tests": {
+      "TestListPagos::test_list_pagos_basic": "PASS",
+      "TestListPagos::test_list_pagos_response_structure": "PASS",
+      "TestListPagos::test_list_pagos_filter_by_tipo": "PASS",
+      "TestListPagos::test_list_pagos_includes_detalles_aplicaciones": "PASS",
+      "TestCreatePago::test_create_pago_basic": "PASS",
+      "TestCreatePago::test_create_pago_validates_monto_aplicado": "PASS",
+      "TestGetPago::test_get_pago_by_id": "PASS",
+      "TestGetPago::test_get_pago_not_found": "PASS",
+      "TestUpdatePago::test_update_pago_referencia": "PASS",
+      "TestUpdatePago::test_update_conciliado_pago_only_referencia": "SKIPPED (no conciliado pagos in test data)",
+      "TestDeletePago::test_delete_pago_not_found": "PASS",
+      "TestDeletePago::test_delete_conciliado_pago_rejected": "SKIPPED (no conciliado pagos in test data)",
+      "TestFullPaymentLifecycle::test_factura_payment_lifecycle": "PASS",
+      "TestLetrasLifecycle::test_letras_payment_lifecycle": "PASS",
+      "TestGetFacturaPagos::test_get_factura_pagos_endpoint": "PASS (after fix)"
+    },
+    "frontend_tests": {
+      "pagos_page_load": "PASS - data-testid='pagos-page' found",
+      "pagos_table_display": "PASS - data-testid='pagos-table' with 4 rows",
+      "kpi_cards": "PASS - 3 KPI cards (Ingresos, Egresos, Neto)",
+      "table_columns": "PASS - 8 columns (Número, Fecha, Tipo, Cuenta, Monto, Referencia, Estado, Acciones)",
+      "edit_button": "PASS - Edit button visible and opens modal",
+      "delete_button": "PASS - Delete button visible",
+      "edit_modal": "PASS - Modal has numero (disabled), tipo (disabled), fecha, referencia, notas fields",
+      "tipo_filter": "PASS - Filter dropdown works correctly with API"
+    }
+  },
+  "api_endpoints_verified": {
+    "GET /api/pagos": "Returns list from cont_movimiento_tesoreria with detalles/aplicaciones",
+    "POST /api/pagos": "Creates record in cont_movimiento_tesoreria, updates cuenta_financiera saldo and factura estado",
+    "GET /api/pagos/{id}": "Returns single payment with detalles and aplicaciones",
+    "PUT /api/pagos/{id}": "Updates referencia/notas/fecha (referencia only for conciliado)",
+    "DELETE /api/pagos/{id}": "Reverses balances and deletes from cont_movimiento_tesoreria",
+    "GET /api/facturas-proveedor/{id}/pagos": "Returns payments via COALESCE query for both old/new records (FIXED)"
+  },
+  "lifecycle_tests": {
+    "factura_payment_lifecycle": "PASS - Create factura -> pay -> verify estado=pagado -> delete pago -> verify estado=pendiente",
+    "letras_lifecycle": "PASS - Create factura -> generate letras -> pay letra -> verify letra estado=pagada"
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pagos_refactor.py",
+    "/app/test_reports/pytest/pytest_pagos_refactor_iter33.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PASS: pagos.py correctly reads/writes from cont_movimiento_tesoreria as single source of truth",
+    "PASS: cont_pago_detalle and cont_pago_aplicacion use movimiento_tesoreria_id for new payments",
+    "PASS: Delete handler has fallback logic for both old (pago_id) and new (movimiento_tesoreria_id) styles",
+    "PASS: Frontend Pagos.jsx displays all treasury movements with correct columns",
+    "PASS: Frontend edit modal correctly restricts fields for conciliado pagos",
+    "FIXED: compras.py COALESCE query needed p.tipo::text cast for ENUM compatibility"
+  ],
+  "updated_files": [
+    "/app/backend/routers/compras.py",
+    "/app/backend/tests/test_pagos_refactor.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 passed, 2 skipped due to no test data)",
+    "frontend": "100% (all UI tests passed)"
+  },
+  "test_credentials": {
+    "empresa_id": 7,
+    "cuenta_financiera_id": 10,
+    "moneda_id": 9,
+    "proveedor_id": 46,
+    "api_base_url": "https://payment-refactor-8.preview.emergentagent.com"
+  },
+  "seed_data_creation": "Test creates and cleans up test facturas, pagos, and letras during lifecycle tests",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Payment refactoring is complete. All CRUD operations on /api/pagos now use cont_movimiento_tesoreria as single source of truth. cont_pago table is deprecated. Frontend /pagos page displays movements correctly with edit/delete functionality. The fix applied was to cast p.tipo ENUM to text in the COALESCE query for get_pagos_de_factura endpoint."
+}

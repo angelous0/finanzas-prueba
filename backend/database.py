@@ -1102,7 +1102,7 @@ async def create_schema():
         # REFACTORING: CAPA DE TESORERIA
         # ══════════════════════════════════════
 
-        # -- cont_movimiento_tesoreria: Fuente unica de verdad de flujo de caja
+        # -- cont_movimiento_tesoreria: Fuente unica de verdad UNIFICADA de todos los movimientos
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS finanzas2.cont_movimiento_tesoreria (
                 id SERIAL PRIMARY KEY,
@@ -1117,6 +1117,13 @@ async def create_schema():
                 -- Trazabilidad de origen
                 origen_tipo VARCHAR(30) NOT NULL,
                 origen_id INT,
+                -- Documento vinculado (factura, letra, etc.)
+                documento_tipo VARCHAR(30),
+                documento_id INT,
+                -- Campos unificados de cont_pago
+                numero VARCHAR(50),
+                moneda_id INT REFERENCES finanzas2.cont_moneda(id),
+                conciliado BOOLEAN DEFAULT FALSE,
                 -- Dimensiones analiticas
                 marca_id INT REFERENCES finanzas2.cont_marca(id),
                 linea_negocio_id INT REFERENCES finanzas2.cont_linea_negocio(id),
@@ -1128,6 +1135,18 @@ async def create_schema():
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        # Add unified columns if not exist (migration for existing tables)
+        for col_def in [
+            ("numero", "VARCHAR(50)"),
+            ("moneda_id", "INT REFERENCES finanzas2.cont_moneda(id)"),
+            ("conciliado", "BOOLEAN DEFAULT FALSE"),
+            ("documento_tipo", "VARCHAR(30)"),
+            ("documento_id", "INT"),
+        ]:
+            try:
+                await conn.execute(f"ALTER TABLE finanzas2.cont_movimiento_tesoreria ADD COLUMN IF NOT EXISTS {col_def[0]} {col_def[1]}")
+            except Exception:
+                pass
 
         # -- Indexes for tesoreria
         tesoreria_indexes = [
@@ -1256,5 +1275,21 @@ async def create_schema():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_prorrateo_empresa ON finanzas2.cont_prorrateo_gasto(empresa_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_prorrateo_gasto ON finanzas2.cont_prorrateo_gasto(gasto_id)")
 
+
+        # ══════════════════════════════════════
+        # UNIFICACIÓN PAGOS: cont_movimiento_tesoreria como fuente única
+        # ══════════════════════════════════════
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_pago_aplicacion' AND column_name='movimiento_tesoreria_id') THEN
+                    ALTER TABLE finanzas2.cont_pago_aplicacion ADD COLUMN movimiento_tesoreria_id INT REFERENCES finanzas2.cont_movimiento_tesoreria(id) ON DELETE CASCADE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_pago_detalle' AND column_name='movimiento_tesoreria_id') THEN
+                    ALTER TABLE finanzas2.cont_pago_detalle ADD COLUMN movimiento_tesoreria_id INT REFERENCES finanzas2.cont_movimiento_tesoreria(id) ON DELETE CASCADE;
+                END IF;
+            END $$;
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_pago_aplicacion_mov_tes ON finanzas2.cont_pago_aplicacion(movimiento_tesoreria_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_pago_detalle_mov_tes ON finanzas2.cont_pago_detalle(movimiento_tesoreria_id)")
 
         logger.info("Schema finanzas2 and all tables created/verified successfully")
