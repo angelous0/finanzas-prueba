@@ -32,27 +32,37 @@ tesoreria, valorizacion, categorias_gasto, prorrateo, reportes_simplificados
 - Fase 4: 28 archivos movidos a /legacy/ (9 backend + 19 frontend)
 - Total: 50 endpoints legacy removidos, 0 dependencias CORE rotas
 
-## Fase 5: Split de archivos grandes (EN PROGRESO)
+## Fase 5: Split de archivos grandes
 
 ### ventas_pos.py - COMPLETADO (2026-03-13)
 Archivo original: 1191 lineas -> Orquestador de 21 lineas + 4 modulos
+| Modulo | Lineas | Responsabilidad |
+|--------|--------|-----------------|
+| pos_common.py | 10 | get_company_key() |
+| pos_sync.py | 267 | Config Odoo, sync-local, refresh |
+| pos_crud.py | 232 | Listado ventas, detalle lineas |
+| pos_estados.py | 419 | Confirmar/credito/descartar/desconfirmar, distribucion analitica |
+| pos_pagos.py | 298 | CRUD pagos |
+| ventas_pos.py | 21 | Orquestador |
 
-| Modulo | Lineas | Responsabilidad | Endpoints |
-|--------|--------|-----------------|-----------|
-| pos_common.py | 10 | Utilidades compartidas (get_company_key) | 0 |
-| pos_sync.py | 267 | Config Odoo, sync-local, refresh, _sync_odoo_to_local | 4 |
-| pos_crud.py | 232 | Listado ventas, detalle lineas, _list_from_odoo | 2 |
-| pos_estados.py | 419 | Confirmar/credito/descartar/desconfirmar, distribucion analitica | 5 |
-| pos_pagos.py | 298 | CRUD pagos (GET/POST/PUT/DELETE), pagos oficiales | 5 |
-| ventas_pos.py | 21 | Orquestador: importa e incluye los 4 sub-routers | 0 |
-| **Total** | **1247** | | **16** |
-
-Verificacion: 90% backend (18/20 - 2 son comportamiento esperado), 100% frontend. 0 regresiones.
+### FacturasProveedor.jsx - COMPLETADO (2026-03-13)
+Archivo original: 2576 lineas -> Orquestador de 256 lineas + 9 componentes
+| Modulo | Lineas | Responsabilidad |
+|--------|--------|-----------------|
+| helpers.js | 209 | Formatters, calculos, PDF |
+| FacturaFormModal.jsx | 495 | Modal crear/editar factura |
+| FacturasTable.jsx | 170 | Tabla con filtros y acciones |
+| PagoModal.jsx | 144 | Modal registrar pago |
+| LetrasModal.jsx | 203 | Modal canjear por letras |
+| VerPagosModal.jsx | 125 | Modal historial de pagos |
+| VerLetrasModal.jsx | 127 | Modal letras vinculadas |
+| ExportModal.jsx | 85 | Modal exportar CompraAPP |
+| ProveedorModal.jsx | 59 | Modal crear proveedor |
+| FacturasProveedor.jsx | 256 | Orquestador |
 
 ## Backlog
 
 ### P0 - Pendiente de split (Fase 5)
-- Split FacturasProveedor.jsx (frontend)
 - Split Gastos.jsx (frontend)
 - Split VentasPOS.jsx (frontend)
 - Split compras.py (backend)
