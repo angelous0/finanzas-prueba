@@ -17,7 +17,8 @@ const formatCurrency = (value, symbol = 'S/') => {
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '';
-  const utcDate = new Date(dateStr);
+  const raw = String(dateStr);
+  const utcDate = new Date(raw.endsWith('Z') ? raw : raw + 'Z');
   return utcDate.toLocaleString('es-PE', {
     day: '2-digit',
     month: '2-digit',
@@ -979,32 +980,29 @@ export const VentasPOS = () => {
               ) : (
                 <>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', marginBottom: '1.5rem' }}>
-                    <table className="table table-zebra" style={{ marginBottom: 0 }} data-testid="pos-detail-table">
+                    <table className="table table-zebra" style={{ marginBottom: 0, fontSize: '0.8rem' }} data-testid="pos-detail-table">
                       <thead style={{ backgroundColor: '#f9fafb' }}>
                         <tr>
-                          <th>Producto</th>
-                          <th style={{ width: '90px' }}>Codigo</th>
-                          <th className="text-right" style={{ width: '50px' }}>Cant.</th>
-                          <th className="text-right" style={{ width: '90px' }}>P. Unit</th>
-                          <th className="text-right" style={{ width: '100px' }}>Total c/IGV</th>
-                          <th style={{ minWidth: '140px' }}>Marca</th>
-                          <th style={{ minWidth: '180px' }}>Linea de Negocio</th>
+                          <th style={{ padding: '6px 10px' }}>Producto</th>
+                          <th className="text-right" style={{ width: '40px', padding: '6px 10px' }}>Cant.</th>
+                          <th className="text-right" style={{ width: '80px', padding: '6px 10px' }}>P. Unit</th>
+                          <th className="text-right" style={{ width: '85px', padding: '6px 10px' }}>Subtotal</th>
+                          <th style={{ padding: '6px 10px' }}>Marca</th>
+                          <th style={{ padding: '6px 10px' }}>Linea de Negocio</th>
                         </tr>
                       </thead>
                       <tbody>
                         {lineasProductos.map((linea, index) => (
                           <tr key={index} data-testid={`pos-line-${index}`}>
-                            <td style={{ fontWeight: 500 }}>{linea.product_name}</td>
-                            <td style={{ fontSize: '0.8rem', color: '#6b7280', fontFamily: 'monospace' }}>{linea.product_code || '-'}</td>
-                            <td className="text-right">{linea.qty}</td>
-                            <td className="text-right">{formatCurrency(linea.price_unit)}</td>
-                            <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(linea.price_subtotal_incl || linea.price_subtotal)}</td>
-                            <td style={{ fontSize: '0.8rem' }}>{linea.marca || '-'}</td>
-                            <td>
+                            <td style={{ fontWeight: 500, padding: '5px 10px' }}>{linea.product_name}</td>
+                            <td className="text-right" style={{ padding: '5px 10px' }}>{linea.qty}</td>
+                            <td className="text-right" style={{ padding: '5px 10px' }}>{formatCurrency(linea.price_unit)}</td>
+                            <td className="text-right" style={{ fontWeight: 600, padding: '5px 10px' }}>{formatCurrency(linea.price_subtotal_incl || linea.price_subtotal)}</td>
+                            <td style={{ padding: '5px 10px', color: '#4b5563' }}>{linea.marca || '-'}</td>
+                            <td style={{ padding: '5px 10px' }}>
                               {linea.linea_negocio_nombre ? (
                                 <span style={{
-                                  display: 'inline-block',
-                                  fontSize: '0.8rem', fontWeight: 500,
+                                  fontSize: '0.78rem', fontWeight: 500,
                                   color: linea.linea_negocio_nombre === 'SIN CLASIFICAR' ? '#92400e' : '#065f46',
                                 }}>{linea.linea_negocio_nombre}</span>
                               ) : '-'}
@@ -1014,8 +1012,8 @@ export const VentasPOS = () => {
                       </tbody>
                       <tfoot style={{ backgroundColor: '#f9fafb', borderTop: '2px solid #e5e7eb' }}>
                         <tr>
-                          <td colSpan="4" style={{ fontWeight: 600 }}>TOTAL</td>
-                          <td className="text-right" style={{ fontWeight: 700, fontSize: '1.125rem', color: '#059669' }}>
+                          <td colSpan="3" style={{ fontWeight: 600, padding: '6px 10px' }}>TOTAL</td>
+                          <td className="text-right" style={{ fontWeight: 700, fontSize: '0.9rem', color: '#059669', padding: '6px 10px' }}>
                             {formatCurrency(lineasProductos.reduce((sum, l) => sum + parseFloat(l.price_subtotal_incl || l.price_subtotal || 0), 0))}
                           </td>
                           <td colSpan="2"></td>
