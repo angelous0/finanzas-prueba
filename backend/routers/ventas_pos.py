@@ -218,7 +218,7 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
              odoo_linea_negocio_id, odoo_linea_negocio_nombre)
         SELECT $1, v.id, l.pos_order_line_id, l.product_id,
                COALESCE(pt.name, l.barcode, '-'), l.barcode,
-               l.qty, l.price_unit, l.price_subtotal, l.price_subtotal,
+               l.qty, l.price_unit, l.price_subtotal, l.price_unit * l.qty,
                l.discount, l.marca, l.tipo,
                pt.linea_negocio_id, pt.linea_negocio
         FROM odoo.v_pos_line_full l

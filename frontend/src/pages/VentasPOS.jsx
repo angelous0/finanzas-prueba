@@ -182,9 +182,12 @@ export const VentasPOS = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [maxDateOrder, setMaxDateOrder] = useState(null);
 
-  // Filters - start empty to show all records, user can narrow down
-  const [fechaDesde, setFechaDesde] = useState('');
-  const [fechaHasta, setFechaHasta] = useState('');
+  // Filters - default to current month
+  const [fechaDesde, setFechaDesde] = useState(() => {
+    const d = new Date(); d.setDate(1);
+    return d.toISOString().split('T')[0];
+  });
+  const [fechaHasta, setFechaHasta] = useState(() => new Date().toISOString().split('T')[0]);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
@@ -981,11 +984,11 @@ export const VentasPOS = () => {
                         <tr>
                           <th>Producto</th>
                           <th style={{ width: '90px' }}>Codigo</th>
-                          <th className="text-right" style={{ width: '55px' }}>Cant.</th>
-                          <th className="text-right" style={{ width: '85px' }}>P. Unit</th>
-                          <th className="text-right" style={{ width: '95px' }}>Subtotal</th>
-                          <th style={{ width: '120px' }}>Marca</th>
-                          <th style={{ width: '130px' }}>Linea de Negocio</th>
+                          <th className="text-right" style={{ width: '50px' }}>Cant.</th>
+                          <th className="text-right" style={{ width: '90px' }}>P. Unit</th>
+                          <th className="text-right" style={{ width: '100px' }}>Total c/IGV</th>
+                          <th style={{ minWidth: '140px' }}>Marca</th>
+                          <th style={{ minWidth: '180px' }}>Linea de Negocio</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -995,15 +998,14 @@ export const VentasPOS = () => {
                             <td style={{ fontSize: '0.8rem', color: '#6b7280', fontFamily: 'monospace' }}>{linea.product_code || '-'}</td>
                             <td className="text-right">{linea.qty}</td>
                             <td className="text-right">{formatCurrency(linea.price_unit)}</td>
-                            <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(linea.price_subtotal)}</td>
-                            <td>{linea.marca ? <span style={{ padding: '0.2rem 0.6rem', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '0.75rem' }}>{linea.marca}</span> : '-'}</td>
+                            <td className="text-right" style={{ fontWeight: 600 }}>{formatCurrency(linea.price_subtotal_incl || linea.price_subtotal)}</td>
+                            <td style={{ fontSize: '0.8rem' }}>{linea.marca || '-'}</td>
                             <td>
                               {linea.linea_negocio_nombre ? (
                                 <span style={{
-                                  padding: '0.2rem 0.6rem',
-                                  backgroundColor: linea.linea_negocio_nombre === 'SIN CLASIFICAR' ? '#fef3c7' : '#d1fae5',
+                                  display: 'inline-block',
+                                  fontSize: '0.8rem', fontWeight: 500,
                                   color: linea.linea_negocio_nombre === 'SIN CLASIFICAR' ? '#92400e' : '#065f46',
-                                  borderRadius: '9999px', fontSize: '0.75rem'
                                 }}>{linea.linea_negocio_nombre}</span>
                               ) : '-'}
                             </td>
@@ -1014,7 +1016,7 @@ export const VentasPOS = () => {
                         <tr>
                           <td colSpan="4" style={{ fontWeight: 600 }}>TOTAL</td>
                           <td className="text-right" style={{ fontWeight: 700, fontSize: '1.125rem', color: '#059669' }}>
-                            {formatCurrency(lineasProductos.reduce((sum, l) => sum + parseFloat(l.price_subtotal || 0), 0))}
+                            {formatCurrency(lineasProductos.reduce((sum, l) => sum + parseFloat(l.price_subtotal_incl || l.price_subtotal || 0), 0))}
                           </td>
                           <td colSpan="2"></td>
                         </tr>
@@ -1029,7 +1031,7 @@ export const VentasPOS = () => {
                         const porLN = {};
                         lineasProductos.forEach(l => {
                           const ln = l.linea_negocio_nombre || 'SIN CLASIFICAR';
-                          porLN[ln] = (porLN[ln] || 0) + parseFloat(l.price_subtotal || 0);
+                          porLN[ln] = (porLN[ln] || 0) + parseFloat(l.price_subtotal_incl || l.price_subtotal || 0);
                         });
                         const total = Object.values(porLN).reduce((s, v) => s + v, 0);
                         return Object.entries(porLN).sort((a, b) => b[1] - a[1]).map(([ln, sum]) => (
@@ -1047,7 +1049,7 @@ export const VentasPOS = () => {
                       <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '0.75rem' }}>Total por Marca</h4>
                       {(() => {
                         const porMarca = {};
-                        lineasProductos.forEach(l => { const m = l.marca || 'Sin Marca'; porMarca[m] = (porMarca[m] || 0) + parseFloat(l.price_subtotal || 0); });
+                        lineasProductos.forEach(l => { const m = l.marca || 'Sin Marca'; porMarca[m] = (porMarca[m] || 0) + parseFloat(l.price_subtotal_incl || l.price_subtotal || 0); });
                         return Object.entries(porMarca).sort((a, b) => b[1] - a[1]).map(([marca, total]) => (
                           <div key={marca} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
                             <span style={{ fontSize: '0.875rem' }}>{marca}</span>
