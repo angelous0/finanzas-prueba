@@ -37,6 +37,7 @@ from routers.valorizacion import router as valorizacion_router
 from routers.capital_linea import router as capital_linea_router
 from routers.categorias_gasto import router as categorias_gasto_router
 from routers.prorrateo import router as prorrateo_router
+from routers.reportes_simplificados import router as reportes_simplificados_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -83,6 +84,7 @@ api_router.include_router(valorizacion_router)
 api_router.include_router(capital_linea_router)
 api_router.include_router(categorias_gasto_router)
 api_router.include_router(prorrateo_router)
+api_router.include_router(reportes_simplificados_router)
 
 # Include main router in app
 app.include_router(api_router)

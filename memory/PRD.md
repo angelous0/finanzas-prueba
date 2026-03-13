@@ -15,7 +15,7 @@ Ventas POS, Gastos, CxC, CxP, Tesorería y dimensiones analíticas clave.
 - Ventas POS + CxC
 - Gastos + Prorrateo + Factura Proveedor + CxP
 - Tesorería + Cuentas Bancarias + Movimientos + Flujo de Caja
-- Reportes Gerenciales
+- Reportes Gerenciales + Reportes Simplificados
 - Catálogos: Líneas de Negocio, Marcas, Centros de Costo, Categorías Gasto, Proveedores, Clientes, Empresas
 
 ## Módulos Pausados
@@ -25,50 +25,35 @@ Ventas POS, Gastos, CxC, CxP, Tesorería y dimensiones analíticas clave.
 
 ### Fase 0 - Desacoplamiento Odoo (COMPLETADO - Feb 2026)
 - Refactorización completa de endpoints financieros para leer tablas locales
-- Sincronización local de datos Odoo (POST /api/ventas-pos/sync-local)
+- Sincronización local de datos Odoo
 - Tabla cont_distribucion_analitica para separar tesorería de analítica
 
 ### Fase 1 - Backend Simplificación (COMPLETADO - Mar 2026)
-- CRUD categorías de gasto (cont_categoria_gasto)
+- CRUD categorías de gasto
 - Gastos con campos: categoria_gasto_id, tipo_asignacion, centro_costo_id, marca_id, linea_negocio_id
-- Endpoints gastos devuelven nombres enriquecidos (JOINs)
 - Prorrateo: pendientes, preview (3 métodos), ejecutar, historial
-- Filtro prorrateo: solo tipo_asignacion='comun' o (no_asignado + linea_negocio_id IS NULL)
 
 ### Fase 2 - Frontend Simplificación (COMPLETADO - Mar 2026)
-- Sidebar simplificado: 6 secciones (Principal, Ventas, Egresos, Tesorería, Reportes, Catálogos)
-- Gastos.jsx actualizado con nuevos campos y tabla mejorada
-- CategoriasGasto.jsx: CRUD completo inline
-- ProrrateoGastos.jsx: tabs Pendientes/Historial, modal con 3 métodos de prorrateo
+- Sidebar simplificado, CategoriasGasto.jsx, ProrrateoGastos.jsx, Gastos.jsx actualizado
 
 ### Dashboard Ejecutivo (COMPLETADO - Mar 2026)
-- Endpoint GET /api/dashboard/resumen-ejecutivo con todos los KPIs
-- 3 alertas clickables: ventas pendientes, gastos sin prorratear, cobranza pendiente
-- 4 KPI cards: Ingresos del Mes, Gastos del Mes, Resultado Neto, Cobranza Pendiente
-- Tabla Utilidad por Línea: ingresos, gastos directos, utilidad antes/después prorrateo
-- Cobranza Pendiente por Línea
+- KPIs, alertas clickables, utilidad por línea, cobranza por línea
 
-## Próximas Tareas
+### Ventas POS - Mejoras (COMPLETADO - Mar 2026)
+- Tabla con columnas: Fecha, Comp, N°Comp, Cliente, Vendedor, Tienda, Empresa, Pagos, Cant, Total, Estado, Pagos Asoc
+- Detalle modal: sin Código, Subtotal = price_subtotal_incl, layout compacto
+- Timezone fix: UTC -> Lima (UTC-5)
+- Sync mejorado: vendedor_id, vendedor_name, tienda_name, company_name, quantity_total
+- Fix moneda_id en pagos (dinámico, no hardcoded)
+- Auto-confirmación solo cuando pago total >= amount_total
 
-### P2 - Reportes Simplificados (PENDIENTE)
-1. Ventas pendientes por revisar
-2. Ingresos confirmados por línea de negocio
-3. Ingresos confirmados por marca
-4. Cobranzas por línea
-5. Pendiente por cobrar por línea
-6. Gastos por categoría
-7. Gastos por centro de costo
-8. Utilidad por línea antes de prorrateo
-9. Utilidad por línea después de prorrateo
+### Distribución Analítica (COMPLETADO - Mar 2026)
+- Auto-confirm via pagos ahora crea distribución analítica de ingreso + cobro
+- crear_distribucion_ingreso y crear_distribucion_cobro integrados en el flujo de pagos
 
-## Esquema BD Clave
-- **cont_gasto**: empresa_id, fecha, tipo_asignacion, categoria_gasto_id, centro_costo_id, marca_id, linea_negocio_id
-- **cont_categoria_gasto**: id, codigo, nombre, descripcion, activo, empresa_id
-- **cont_prorrateo_gasto**: id, gasto_id, linea_negocio_id, monto, porcentaje, metodo
-- **cont_distribucion_analitica**: distribución analítica de ventas/cobros
-- **cont_linea_negocio**: catálogo con mapeo odoo_linea_negocio_id
-- **cont_venta_pos**: ventas POS sincronizadas con estado_local
-- **cont_cxc**: cuentas por cobrar con saldo_pendiente
+### Reportes Simplificados (COMPLETADO - Mar 2026)
+- 8 endpoints: ventas-pendientes, ingresos-por-linea, ingresos-por-marca, cobranzas-por-linea, pendiente-cobrar, gastos-por-categoria, gastos-por-centro-costo, utilidad-por-linea
+- Página ReportesSimplificados.jsx con filtros de fecha y cards por reporte
 
 ## Arquitectura
 - Backend: FastAPI + PostgreSQL (schema finanzas2)

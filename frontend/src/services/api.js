@@ -321,4 +321,14 @@ export const createProyecto = (data) => api.post('/proyectos', data);
 export const updateProyecto = (id, data) => api.put(`/proyectos/${id}`, data);
 export const deleteProyecto = (id) => api.delete(`/proyectos/${id}`);
 
+// Reportes Simplificados
+export const getReporteVentasPendientes = () => api.get('/reportes/ventas-pendientes');
+export const getReporteIngresosPorLinea = (params) => api.get('/reportes/ingresos-por-linea', { params });
+export const getReporteIngresosPorMarca = (params) => api.get('/reportes/ingresos-por-marca', { params });
+export const getReporteCobranzasPorLinea = (params) => api.get('/reportes/cobranzas-por-linea', { params });
+export const getReportePendienteCobrar = () => api.get('/reportes/pendiente-cobrar-por-linea');
+export const getReporteGastosPorCategoria = (params) => api.get('/reportes/gastos-por-categoria', { params });
+export const getReporteGastosPorCentro = (params) => api.get('/reportes/gastos-por-centro-costo', { params });
+export const getReporteUtilidadPorLinea = (params) => api.get('/reportes/utilidad-por-linea', { params });
+
 export default api;

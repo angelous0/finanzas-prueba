@@ -935,6 +935,10 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                     moneda_id = await conn.fetchval(
                         "SELECT id FROM finanzas2.cont_moneda ORDER BY id LIMIT 1")
 
+                # Create analytical distribution for the confirmed sale
+                from services.distribucion_analitica import crear_distribucion_ingreso, crear_distribucion_cobro
+                await crear_distribucion_ingreso(conn, empresa_id, order_id, date.today())
+
                 pagos_venta = await conn.fetch(
                     "SELECT * FROM finanzas2.cont_venta_pos_pago WHERE odoo_order_id=$1 AND empresa_id=$2",
                     order_id, empresa_id)
@@ -970,6 +974,8 @@ async def add_pago_venta_pos(order_id: int, pago: dict, empresa_id: int = Depend
                         (pago_id, tipo_documento, documento_id, monto_aplicado, empresa_id)
                         VALUES ($1, 'venta_pos_odoo', $2, $3, $4)
                     """, pago_id, order_id, pago_item['monto'], empresa_id)
+                    # Create analytical distribution for this cobro
+                    await crear_distribucion_cobro(conn, empresa_id, order_id, pago_id, pago_item['monto'], date.today())
 
                 return {
                     "message": "Pago agregado y venta confirmada automaticamente",

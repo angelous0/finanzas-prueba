@@ -46,6 +46,7 @@ const navSections = [
     title: 'Reportes',
     items: [
       { icon: ClipboardList, label: 'Reportes', path: '/reportes-gerenciales' },
+      { icon: PieChart, label: 'Reportes Simplificados', path: '/reportes-simplificados' },
     ]
   },
   {
