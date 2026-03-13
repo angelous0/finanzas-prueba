@@ -168,7 +168,7 @@ export const Letras = () => {
       cuenta_financiera_id: cuentasFinancieras[0]?.id || '',
       monto: letra.saldo_pendiente,
       medio_pago: 'transferencia',
-      referencia: ''
+      referencia: `${letra.factura_numero || ''}-${letra.numero}`.replace(/^-/, '')
     });
     setShowPagarModal(true);
   };
