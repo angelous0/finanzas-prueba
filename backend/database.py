@@ -1222,10 +1222,22 @@ async def create_schema():
                 origen_tipo VARCHAR(30) NOT NULL,
                 origen_id INT NOT NULL,
                 linea_negocio_id INT REFERENCES finanzas2.cont_linea_negocio(id),
+                categoria_id INT REFERENCES finanzas2.cont_categoria_gasto(id),
+                centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id),
                 monto NUMERIC(15,2) NOT NULL,
                 fecha DATE NOT NULL,
                 created_at TIMESTAMP DEFAULT NOW()
             )
+        """)
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_distribucion_analitica' AND column_name='categoria_id') THEN
+                    ALTER TABLE finanzas2.cont_distribucion_analitica ADD COLUMN categoria_id INT REFERENCES finanzas2.cont_categoria_gasto(id);
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='finanzas2' AND table_name='cont_distribucion_analitica' AND column_name='centro_costo_id') THEN
+                    ALTER TABLE finanzas2.cont_distribucion_analitica ADD COLUMN centro_costo_id INT REFERENCES finanzas2.cont_centro_costo(id);
+                END IF;
+            END $$;
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_dist_analitica_empresa ON finanzas2.cont_distribucion_analitica(empresa_id, origen_tipo)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_dist_analitica_ln ON finanzas2.cont_distribucion_analitica(empresa_id, linea_negocio_id)")

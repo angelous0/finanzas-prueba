@@ -4,6 +4,10 @@ from datetime import date, datetime, timedelta
 from database import get_pool
 from models import OC, OCCreate, OCUpdate, FacturaProveedor, FacturaProveedorCreate, FacturaProveedorUpdate
 from dependencies import get_empresa_id, get_next_correlativo, safe_date_param
+from services.distribucion_service import recalcular_distribuciones_factura
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -450,6 +454,7 @@ async def update_factura_proveedor(id: int, data: FacturaProveedorUpdate, empres
 
         if lineas_data is not None:
             LINEA_CLASS_FIELDS = {'categoria_id', 'descripcion', 'linea_negocio_id', 'centro_costo_id'}
+            classification_changed = False
             for linea in lineas_data:
                 linea_id = linea.get('id')
                 if not linea_id:
@@ -460,10 +465,15 @@ async def update_factura_proveedor(id: int, data: FacturaProveedorUpdate, empres
                 for lf in LINEA_CLASS_FIELDS:
                     if lf in linea:
                         lu.append(f"{lf} = ${li}"); lv.append(linea[lf]); li += 1
+                        if lf in ('linea_negocio_id', 'categoria_id', 'centro_costo_id'):
+                            classification_changed = True
                 if lu:
                     lv.append(linea_id)
                     await conn.execute(
                         f"UPDATE finanzas2.cont_factura_proveedor_linea SET {', '.join(lu)} WHERE id = ${li}", *lv)
+
+            if classification_changed:
+                await recalcular_distribuciones_factura(conn, empresa_id, id)
 
         return await get_factura_proveedor(id, empresa_id)
 

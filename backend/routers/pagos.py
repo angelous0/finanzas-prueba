@@ -10,6 +10,7 @@ from database import get_pool
 from models import PagoCreate, Letra, GenerarLetrasRequest
 from dependencies import get_empresa_id, get_next_correlativo, safe_date_param
 from services.treasury_service import create_movimiento_tesoreria
+from services.distribucion_service import calcular_distribucion_factura
 import logging
 
 logger = logging.getLogger(__name__)
@@ -227,6 +228,13 @@ async def create_pago(data: PagoCreate, empresa_id: int = Depends(get_empresa_id
                             "UPDATE finanzas2.cont_cxp SET estado = 'parcial', saldo_pendiente = $2 WHERE factura_id = $1",
                             aplicacion.documento_id, fp['saldo_pendiente'])
 
+                    # Distribución analítica proporcional a líneas de factura
+                    await calcular_distribucion_factura(
+                        conn, empresa_id, aplicacion.documento_id,
+                        mov_id, aplicacion.monto_aplicado,
+                        data.fecha, f'pago_{data.tipo}'
+                    )
+
                 elif aplicacion.tipo_documento == 'letra':
                     await conn.execute(
                         "UPDATE finanzas2.cont_letra SET saldo_pendiente = saldo_pendiente - $1 WHERE id = $2",
@@ -255,25 +263,12 @@ async def create_pago(data: PagoCreate, empresa_id: int = Depends(get_empresa_id
                         await conn.execute(
                             "UPDATE finanzas2.cont_factura_proveedor SET saldo_pendiente = $2 WHERE id = $1",
                             letra['factura_id'], nuevo_saldo)
-                        # Analytical distribution for letra payment
-                        try:
-                            lineas_fp = await conn.fetch("""
-                                SELECT linea_negocio_id, importe FROM finanzas2.cont_factura_proveedor_linea
-                                WHERE factura_id = $1 AND linea_negocio_id IS NOT NULL
-                            """, letra['factura_id'])
-                            if lineas_fp:
-                                total_fp = sum(float(l['importe']) for l in lineas_fp)
-                                if total_fp > 0:
-                                    for linea in lineas_fp:
-                                        proporcion = float(linea['importe']) / total_fp
-                                        monto_dist = round(aplicacion.monto_aplicado * proporcion, 2)
-                                        await conn.execute("""
-                                            INSERT INTO finanzas2.cont_distribucion_analitica
-                                            (empresa_id, fecha, monto, linea_negocio_id, origen_tipo, origen_id)
-                                            VALUES ($1, $2, $3, $4, 'pago_letra', $5)
-                                        """, empresa_id, date.today(), monto_dist, linea['linea_negocio_id'], mov_id)
-                        except Exception as e:
-                            logger.warning(f"Error creating analytical distribution: {e}")
+                        # Distribución analítica proporcional a líneas de factura madre
+                        await calcular_distribucion_factura(
+                            conn, empresa_id, letra['factura_id'],
+                            mov_id, aplicacion.monto_aplicado,
+                            data.fecha, 'pago_letra'
+                        )
 
             # ── Return the created payment ──
             row = await conn.fetchrow(f"""{_PAGO_SELECT}
