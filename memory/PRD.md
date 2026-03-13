@@ -60,6 +60,30 @@ Archivo original: 2576 lineas -> Orquestador de 256 lineas + 9 componentes
 | ProveedorModal.jsx | 59 | Modal crear proveedor |
 | FacturasProveedor.jsx | 256 | Orquestador |
 
+## Unificacion Tablas de Pago - COMPLETADO (2026-03-13)
+
+### Problema
+Pagos se escribian en dos tablas separadas: `cont_pago` y `cont_movimiento_tesoreria`, causando inconsistencias entre las vistas "Movimientos/Pagos" (leia cont_pago) y "Tesoreria" (leia cont_movimiento_tesoreria).
+
+### Solucion
+`cont_movimiento_tesoreria` es ahora la UNICA fuente de verdad para todos los movimientos financieros.
+
+### Cambios realizados
+| Archivo | Cambio |
+|---------|--------|
+| pagos.py | Reescritura completa: CRUD lee/escribe de cont_movimiento_tesoreria |
+| database.py | Migracion: columna movimiento_tesoreria_id en cont_pago_aplicacion y cont_pago_detalle |
+| models.py | PagoDetalle/PagoAplicacion: pago_id opcional, nuevo movimiento_tesoreria_id |
+| server.py | sync_correlativos actualizado para leer de cont_movimiento_tesoreria |
+| compras.py | get_pagos_de_factura usa COALESCE para soportar registros old/new style |
+
+### Tabla deprecada
+- `cont_pago` ya NO se escribe desde pagos.py (otros routers aun escriben dual)
+
+### Testing
+- Backend: 13/13 tests passed (lifecycle factura+pago, lifecycle letras+pago)
+- Frontend: Todas las pruebas UI pasaron
+
 ## Backlog
 
 ### P0 - Pendiente de split (Fase 5)
