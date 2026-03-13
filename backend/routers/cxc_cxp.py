@@ -472,6 +472,8 @@ async def create_cxp_abono(cxp_id: int, data: AbonoCreate, empresa_id: int = Dep
             raise HTTPException(404, "CxP no encontrada")
         if cxp['estado'] in ('pagado', 'anulada'):
             raise HTTPException(400, f"CxP ya esta {cxp['estado']}")
+        if cxp['estado'] == 'canjeado':
+            raise HTTPException(400, "Esta CxP fue canjeada por letras. Debe pagar las letras directamente.")
         if data.monto <= 0:
             raise HTTPException(400, "El monto del abono debe ser positivo")
         if data.monto > float(cxp['saldo_pendiente']):

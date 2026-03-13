@@ -210,13 +210,15 @@ export default function CxP() {
                           </span>
                         </td>
                         <td>
-                          {item.estado !== 'pagado' && item.estado !== 'anulada' && (
+                          {item.estado === 'canjeado' ? (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontStyle: 'italic' }}>Pagar por Letras</span>
+                          ) : item.estado !== 'pagado' && item.estado !== 'anulada' ? (
                             <button className="btn btn-outline" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}
                               onClick={e => { e.stopPropagation(); setSelectedId(item.id); setShowAbono(true); getCxPAbonos(item.id).then(r => setAbonos(r.data || [])); }}
                               data-testid={`abono-btn-${item.id}`}>
                               <DollarSign size={12} /> Pagar
                             </button>
-                          )}
+                          ) : null}
                         </td>
                       </tr>
                       {selectedId === item.id && (
