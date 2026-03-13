@@ -91,8 +91,9 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }} data-testid="kpi-cards">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '1.5rem' }} data-testid="kpi-cards">
         <KpiCard label="Ingresos del Mes" value={fmt(data.ingresos_mes)} icon={TrendingUp} color="#22c55e" testId="kpi-ingresos" />
+        <KpiCard label="Costos Proveedores" value={fmt(data.egresos_proveedores_mes || 0)} icon={Wallet} color="#f97316" testId="kpi-costos-prov" />
         <KpiCard label="Gastos del Mes" value={fmt(data.gastos_mes)} icon={Wallet} color="#ef4444" testId="kpi-gastos" />
         <KpiCard label="Resultado Neto" value={fmt(data.resultado_neto)} icon={TrendingUp}
           color={data.resultado_neto >= 0 ? '#22c55e' : '#ef4444'} testId="kpi-resultado" />
@@ -109,12 +110,13 @@ export default function Dashboard() {
           <table className="data-table" style={{ fontSize: '0.8125rem' }} data-testid="utilidad-linea-table">
             <thead>
               <tr>
-                <th>Línea de Negocio</th>
+                <th>Linea de Negocio</th>
                 <th className="text-right">Ingresos</th>
+                <th className="text-right">Costos Prov.</th>
                 <th className="text-right">Gastos Directos</th>
                 <th className="text-right">Utilidad (antes)</th>
                 <th className="text-right">Prorrateo</th>
-                <th className="text-right">Utilidad (después)</th>
+                <th className="text-right">Utilidad (despues)</th>
               </tr>
             </thead>
             <tbody>
@@ -122,6 +124,7 @@ export default function Dashboard() {
                 <tr key={i}>
                   <td style={{ fontWeight: 500 }}>{l.linea_nombre}</td>
                   <td className="text-right" style={{ color: '#22c55e' }}>{fmt(l.ingresos)}</td>
+                  <td className="text-right" style={{ color: '#f97316' }}>{fmt(l.egresos_proveedores || 0)}</td>
                   <td className="text-right" style={{ color: '#ef4444' }}>{fmt(l.gastos_directos)}</td>
                   <td className="text-right" style={{ fontWeight: 600, color: l.utilidad_antes_prorrateo >= 0 ? '#166534' : '#991b1b' }}>
                     {fmt(l.utilidad_antes_prorrateo)}
@@ -132,7 +135,7 @@ export default function Dashboard() {
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem' }}>Sin movimientos este mes</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem' }}>Sin movimientos este mes</td></tr>
               )}
             </tbody>
             {data.utilidad_linea?.length > 0 && (
@@ -141,6 +144,9 @@ export default function Dashboard() {
                   <td>Total</td>
                   <td className="text-right" style={{ color: '#22c55e' }}>
                     {fmt(data.utilidad_linea.reduce((s, l) => s + l.ingresos, 0))}
+                  </td>
+                  <td className="text-right" style={{ color: '#f97316' }}>
+                    {fmt(data.utilidad_linea.reduce((s, l) => s + (l.egresos_proveedores || 0), 0))}
                   </td>
                   <td className="text-right" style={{ color: '#ef4444' }}>
                     {fmt(data.utilidad_linea.reduce((s, l) => s + l.gastos_directos, 0))}

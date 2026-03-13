@@ -149,11 +149,29 @@ async def get_resumen_ejecutivo(empresa_id: int = Depends(get_empresa_id)):
             GROUP BY p.linea_negocio_id
         """, empresa_id, inicio_mes.date())
 
+        # 10. Egresos proveedores por línea (pagos facturas + letras desde distribución analítica)
+        egresos_prov_linea = await conn.fetch("""
+            SELECT d.linea_negocio_id as linea_id, COALESCE(SUM(d.monto), 0) as egresos
+            FROM cont_distribucion_analitica d
+            WHERE d.empresa_id = $1 AND d.fecha >= $2
+              AND d.origen_tipo IN ('pago_egreso', 'pago_letra')
+            GROUP BY d.linea_negocio_id
+        """, empresa_id, inicio_mes.date())
+
+        # 11. Egresos proveedores total mes
+        egresos_prov_mes = await conn.fetchval("""
+            SELECT COALESCE(SUM(d.monto), 0)
+            FROM cont_distribucion_analitica d
+            WHERE d.empresa_id = $1 AND d.fecha >= $2
+              AND d.origen_tipo IN ('pago_egreso', 'pago_letra')
+        """, empresa_id, inicio_mes.date()) or 0
+
         # Build utilidad por linea
         todas_lineas = await conn.fetch("SELECT id, nombre FROM cont_linea_negocio WHERE empresa_id = $1 AND activo = TRUE", empresa_id)
         ing_map = {r['linea_id']: float(r['ingresos']) for r in ingresos_linea}
         gd_map = {r['linea_id']: float(r['gastos']) for r in gastos_directos_linea}
         gp_map = {r['linea_id']: float(r['gastos_prorrateo']) for r in gastos_prorrateados_linea}
+        ep_map = {r['linea_id']: float(r['egresos']) for r in egresos_prov_linea}
 
         utilidad_linea = []
         for ln in todas_lineas:
@@ -161,14 +179,16 @@ async def get_resumen_ejecutivo(empresa_id: int = Depends(get_empresa_id)):
             ing = ing_map.get(lid, 0)
             gd = gd_map.get(lid, 0)
             gp = gp_map.get(lid, 0)
+            ep = ep_map.get(lid, 0)
             utilidad_linea.append({
                 "linea_id": lid,
                 "linea_nombre": ln['nombre'],
                 "ingresos": ing,
+                "egresos_proveedores": ep,
                 "gastos_directos": gd,
                 "gastos_prorrateados": gp,
-                "utilidad_antes_prorrateo": ing - gd,
-                "utilidad_despues_prorrateo": ing - gd - gp,
+                "utilidad_antes_prorrateo": ing - gd - ep,
+                "utilidad_despues_prorrateo": ing - gd - gp - ep,
             })
         utilidad_linea.sort(key=lambda x: x['ingresos'], reverse=True)
 
@@ -181,6 +201,7 @@ async def get_resumen_ejecutivo(empresa_id: int = Depends(get_empresa_id)):
             "cobranza_pendiente_linea": [dict(r) for r in cobranza_linea],
             "ingresos_mes": float(ingresos_mes),
             "gastos_mes": float(gastos_mes),
-            "resultado_neto": float(ingresos_mes) - float(gastos_mes),
+            "egresos_proveedores_mes": float(egresos_prov_mes),
+            "resultado_neto": float(ingresos_mes) - float(gastos_mes) - float(egresos_prov_mes),
             "utilidad_linea": utilidad_linea,
         }

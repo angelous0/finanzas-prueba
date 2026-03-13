@@ -76,10 +76,11 @@ export default function ReportesSimplificados() {
         </Card>
         <Card title="Utilidad por Linea de Negocio" icon={TrendingUp} testId="rep-utilidad">
           <ReportTable
-            headers={['Linea', 'Ingresos', 'G. Directos', 'Util. (antes)', 'Prorrateo', 'Util. (despues)']}
+            headers={['Linea', 'Ingresos', 'Costos Prov.', 'G. Directos', 'Util. (antes)', 'Prorrateo', 'Util. (despues)']}
             rows={data.utilidadLinea?.map(r => [
               r.linea,
               { v: fmt(r.ingresos), color: '#22c55e' },
+              { v: fmt(r.egresos_proveedores || 0), color: '#f97316' },
               { v: fmt(r.gastos_directos), color: '#ef4444' },
               { v: fmt(r.utilidad_antes), color: r.utilidad_antes >= 0 ? '#166534' : '#991b1b', bold: true },
               { v: fmt(r.gastos_prorrateados), color: '#8b5cf6' },

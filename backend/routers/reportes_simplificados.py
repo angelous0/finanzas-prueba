@@ -186,9 +186,18 @@ async def reporte_utilidad_por_linea(
             GROUP BY p.linea_negocio_id
         """, empresa_id, fd, fh)
 
+        egresos_proveedores = await conn.fetch("""
+            SELECT d.linea_negocio_id, COALESCE(SUM(d.monto), 0) as egresos
+            FROM cont_distribucion_analitica d
+            WHERE d.empresa_id = $1 AND d.fecha BETWEEN $2 AND $3
+              AND d.origen_tipo IN ('pago_egreso', 'pago_letra')
+            GROUP BY d.linea_negocio_id
+        """, empresa_id, fd, fh)
+
         ing_map = {r['linea_negocio_id']: float(r['ingresos']) for r in ingresos}
         gd_map = {r['linea_negocio_id']: float(r['gastos']) for r in gastos_directos}
         gp_map = {r['linea_negocio_id']: float(r['gastos_prorrateo']) for r in gastos_prorrateados}
+        ep_map = {r['linea_negocio_id']: float(r['egresos']) for r in egresos_proveedores}
 
         result = []
         for ln in todas_lineas:
@@ -196,13 +205,15 @@ async def reporte_utilidad_por_linea(
             ing = ing_map.get(lid, 0)
             gd = gd_map.get(lid, 0)
             gp = gp_map.get(lid, 0)
+            ep = ep_map.get(lid, 0)
             result.append({
                 "linea": ln['nombre'],
                 "ingresos": ing,
+                "egresos_proveedores": ep,
                 "gastos_directos": gd,
                 "gastos_prorrateados": gp,
-                "utilidad_antes": ing - gd,
-                "utilidad_despues": ing - gd - gp,
+                "utilidad_antes": ing - gd - ep,
+                "utilidad_despues": ing - gd - gp - ep,
             })
         result.sort(key=lambda x: x['ingresos'], reverse=True)
         return result
