@@ -1,0 +1,76 @@
+{
+  "iteration": 35,
+  "date": "2026-03-13",
+  "feature": "Libro Analítico - History of entries and exits by analytical dimension",
+  "summary": "Complete testing of Libro Analítico feature - all backend APIs and frontend functionality working correctly",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_libro_analitico.py",
+    "/app/test_reports/pytest/pytest_libro_analitico_iter35.xml"
+  ],
+  "tests_executed": [
+    {
+      "name": "GET /api/libro-analitico?dimension=linea_negocio&dimension_id=18",
+      "status": "PASSED",
+      "details": "Returns 3 movements: Venta POS (+100), Pago Letra (-3000), Cobranza CxC (+100). Total Entradas: 200, Total Salidas: 3000, Saldo Final: -2800"
+    },
+    {
+      "name": "GET /api/libro-analitico/export",
+      "status": "PASSED",
+      "details": "Returns CSV file with correct headers and data"
+    },
+    {
+      "name": "Frontend: Navigate to /libro-analitico page",
+      "status": "PASSED",
+      "details": "Page loads correctly with all filter controls"
+    },
+    {
+      "name": "Frontend: Select Element Premium and click Buscar",
+      "status": "PASSED",
+      "details": "Shows 3 movements with correct summary cards"
+    },
+    {
+      "name": "Frontend: Summary cards display correct totals",
+      "status": "PASSED",
+      "details": "Entradas S/200, Salidas S/3000, Saldo Final S/-2800"
+    },
+    {
+      "name": "Frontend: Export CSV button",
+      "status": "PASSED",
+      "details": "Download triggers with correct filename"
+    },
+    {
+      "name": "Frontend: Document link buttons",
+      "status": "PASSED",
+      "details": "3 link buttons present, navigation to /ventas-pos works"
+    },
+    {
+      "name": "Frontend: Sidebar shows Libro Analitico",
+      "status": "PASSED",
+      "details": "Present under Reportes section with BookOpen icon"
+    }
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_libro_analitico.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": "empresa_id=7 (Ambission Industries)",
+  "seed_data_creation": "No seed data created - using existing test data",
+  "retest_needed": false,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Libro Analítico feature fully tested. API uses dimension types: linea_negocio (id=18 for Element Premium), marca, centro_costo, categoria. Test data shows 3 movements for linea_negocio=18.",
+  "overall_status": "ALL_PASSED"
+}

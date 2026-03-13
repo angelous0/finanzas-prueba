@@ -245,4 +245,8 @@ export const getReporteGastosPorCategoria = (params) => api.get('/reportes/gasto
 export const getReporteGastosPorCentro = (params) => api.get('/reportes/gastos-por-centro-costo', { params });
 export const getReporteUtilidadPorLinea = (params) => api.get('/reportes/utilidad-por-linea', { params });
 
+// Libro Analitico
+export const getLibroAnalitico = (params) => api.get('/libro-analitico', { params });
+export const exportLibroAnalitico = (params) => api.get('/libro-analitico/export', { params, responseType: 'blob' });
+
 export default api;
