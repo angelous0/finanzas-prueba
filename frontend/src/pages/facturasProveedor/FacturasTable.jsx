@@ -141,7 +141,7 @@ const FacturasTable = ({
                           )}
                           <button className="action-btn" onClick={() => onView(factura)} title="Ver" data-testid={`ver-factura-${factura.id}`}><Eye size={15} /></button>
                           <button className="action-btn" onClick={() => onDownloadPDF(factura)} title="Descargar PDF" data-testid={`pdf-factura-${factura.id}`}><Download size={15} /></button>
-                          {factura.estado !== 'pagado' && factura.estado !== 'canjeado' && (
+                          {factura.estado !== 'anulada' && (
                             <button className="action-btn" onClick={() => onEdit(factura)} title="Editar" data-testid={`editar-factura-${factura.id}`}><Edit2 size={15} /></button>
                           )}
                           {factura.estado === 'pendiente' && (

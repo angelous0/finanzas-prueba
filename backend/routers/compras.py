@@ -426,18 +426,45 @@ async def update_factura_proveedor(id: int, data: FacturaProveedorUpdate, empres
         factura = await conn.fetchrow("SELECT * FROM finanzas2.cont_factura_proveedor WHERE id = $1 AND empresa_id = $2", id, empresa_id)
         if not factura:
             raise HTTPException(404, "Factura not found")
-        if factura['estado'] in ('pagado', 'anulada'):
-            raise HTTPException(400, "Cannot edit paid or cancelled factura")
+        if factura['estado'] == 'anulada':
+            raise HTTPException(400, "No se puede editar una factura anulada")
+
+        is_locked = factura['estado'] in ('pagado', 'canjeado')
+        CLASSIFICATION_FIELDS = {'notas', 'fecha_contable', 'tipo_comprobante_sunat'}
+
+        data_dict = data.model_dump(exclude_unset=True)
+        lineas_data = data_dict.pop('lineas', None)
+
         updates = []
         values = []
         idx = 1
-        for field, value in data.model_dump(exclude_unset=True).items():
+        for field, value in data_dict.items():
+            if is_locked and field not in CLASSIFICATION_FIELDS:
+                continue
             updates.append(f"{field} = ${idx}"); values.append(value); idx += 1
-        if not updates:
-            raise HTTPException(400, "No fields to update")
-        values.append(id)
-        query = f"UPDATE finanzas2.cont_factura_proveedor SET {', '.join(updates)}, updated_at = NOW() WHERE id = ${idx}"
-        await conn.execute(query, *values)
+
+        if updates:
+            values.append(id)
+            query = f"UPDATE finanzas2.cont_factura_proveedor SET {', '.join(updates)}, updated_at = NOW() WHERE id = ${idx}"
+            await conn.execute(query, *values)
+
+        if lineas_data is not None:
+            LINEA_CLASS_FIELDS = {'categoria_id', 'descripcion', 'linea_negocio_id', 'centro_costo_id'}
+            for linea in lineas_data:
+                linea_id = linea.get('id')
+                if not linea_id:
+                    continue
+                lu = []
+                lv = []
+                li = 1
+                for lf in LINEA_CLASS_FIELDS:
+                    if lf in linea:
+                        lu.append(f"{lf} = ${li}"); lv.append(linea[lf]); li += 1
+                if lu:
+                    lv.append(linea_id)
+                    await conn.execute(
+                        f"UPDATE finanzas2.cont_factura_proveedor_linea SET {', '.join(lu)} WHERE id = ${li}", *lv)
+
         return await get_factura_proveedor(id, empresa_id)
 
 

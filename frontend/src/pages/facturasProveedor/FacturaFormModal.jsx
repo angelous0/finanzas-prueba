@@ -164,8 +164,26 @@ const FacturaFormModal = ({
 
       setSubmitting(true);
       if (editingFactura) {
-        await updateFacturaProveedor(editingFactura.id, dataToSend);
-        toast.success('Factura actualizada exitosamente');
+        const isLockedState = editingFactura.estado === 'pagado' || editingFactura.estado === 'canjeado';
+        if (isLockedState) {
+          const classificationData = {
+            notas: dataToSend.notas,
+            fecha_contable: dataToSend.fecha_contable,
+            tipo_comprobante_sunat: dataToSend.tipo_comprobante_sunat,
+            lineas: formData.lineas.map(l => ({
+              id: l.id,
+              categoria_id: l.categoria_id ? parseInt(l.categoria_id) : null,
+              descripcion: l.descripcion,
+              linea_negocio_id: l.linea_negocio_id ? parseInt(l.linea_negocio_id) : null,
+              centro_costo_id: l.centro_costo_id ? parseInt(l.centro_costo_id) : null,
+            }))
+          };
+          await updateFacturaProveedor(editingFactura.id, classificationData);
+          toast.success('Clasificacion actualizada exitosamente');
+        } else {
+          await updateFacturaProveedor(editingFactura.id, dataToSend);
+          toast.success('Factura actualizada exitosamente');
+        }
       } else {
         await createFacturaProveedor(dataToSend);
         toast.success('Factura creada exitosamente');
@@ -192,6 +210,8 @@ const FacturaFormModal = ({
 
   const totales = calcularTotales(formData);
   const monedaActual = monedas.find(m => m.id === parseInt(formData.moneda_id));
+  const isLocked = !readOnly && editingFactura && (editingFactura.estado === 'pagado' || editingFactura.estado === 'canjeado');
+  const lockedStyle = { background: '#f1f5f9', pointerEvents: 'none', opacity: 0.7 };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -201,7 +221,7 @@ const FacturaFormModal = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <FileText size={24} color="#1B4D3E" />
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
-              {readOnly ? `Ver Factura ${editingFactura?.numero || ''}` : editingFactura ? `Editar Factura ${editingFactura.numero}` : 'Factura de proveedor'}
+              {readOnly ? `Ver Factura ${editingFactura?.numero || ''}` : isLocked ? `Editar Clasificacion - ${editingFactura?.numero || ''}` : editingFactura ? `Editar Factura ${editingFactura.numero}` : 'Factura de proveedor'}
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -230,9 +250,10 @@ const FacturaFormModal = ({
                   searchPlaceholder="Buscar por nombre..."
                   displayKey="nombre"
                   valueKey="id"
-                  onCreateNew={handleCreateProveedor}
+                  onCreateNew={isLocked ? undefined : handleCreateProveedor}
                   createNewLabel="Crear proveedor"
                   data-testid="proveedor-select"
+                  disabled={isLocked}
                 />
               </div>
               {!formData.proveedor_id && (
@@ -247,11 +268,11 @@ const FacturaFormModal = ({
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Terminos</label>
-                <input type="text" className="form-input" placeholder="Ej: 30 dias" value={formData.terminos_dias} onChange={(e) => setFormData(prev => ({ ...prev, terminos_dias: e.target.value }))} />
+                <input type="text" className="form-input" placeholder="Ej: 30 dias" value={formData.terminos_dias} onChange={(e) => setFormData(prev => ({ ...prev, terminos_dias: e.target.value }))} disabled={isLocked} style={isLocked ? lockedStyle : undefined} />
               </div>
               <div className="form-group">
                 <label className="form-label">Moneda</label>
-                <select className="form-input form-select" value={formData.moneda_id} onChange={(e) => {
+                <select className="form-input form-select" value={formData.moneda_id} disabled={isLocked} style={isLocked ? lockedStyle : undefined} onChange={(e) => {
                   const selMoneda = monedas.find(m => m.id === parseInt(e.target.value));
                   setFormData(prev => ({ ...prev, moneda_id: e.target.value, tipo_cambio: selMoneda?.codigo === 'PEN' ? '1' : prev.tipo_cambio || '' }));
                 }}>
@@ -262,20 +283,20 @@ const FacturaFormModal = ({
               {monedas.find(m => m.id === parseInt(formData.moneda_id))?.codigo === 'USD' && (
                 <div className="form-group">
                   <label className="form-label required">T.C.</label>
-                  <input type="number" step="0.001" className="form-input" placeholder="Ej: 3.72" value={formData.tipo_cambio} onChange={(e) => setFormData(prev => ({ ...prev, tipo_cambio: e.target.value }))} data-testid="tipo-cambio-input" required />
+                  <input type="number" step="0.001" className="form-input" placeholder="Ej: 3.72" value={formData.tipo_cambio} onChange={(e) => setFormData(prev => ({ ...prev, tipo_cambio: e.target.value }))} data-testid="tipo-cambio-input" required disabled={isLocked} style={isLocked ? lockedStyle : undefined} />
                 </div>
               )}
               <div className="form-group">
                 <label className="form-label required">Fecha de factura</label>
-                <input type="date" className="form-input" value={formData.fecha_factura} onChange={(e) => setFormData(prev => ({ ...prev, fecha_factura: e.target.value }))} required />
+                <input type="date" className="form-input" value={formData.fecha_factura} onChange={(e) => setFormData(prev => ({ ...prev, fecha_factura: e.target.value }))} required disabled={isLocked} style={isLocked ? lockedStyle : undefined} />
               </div>
               <div className="form-group">
-                <label className="form-label">Fecha contable</label>
+                <label className="form-label">Fecha contable {isLocked && <span style={{ fontSize: '0.65rem', color: '#22C55E' }}>editable</span>}</label>
                 <input type="date" className="form-input" value={formData.fecha_contable} onChange={(e) => { setFechaContableManual(true); setFormData(prev => ({ ...prev, fecha_contable: e.target.value })); }} data-testid="factura-fecha-contable" />
               </div>
               <div className="form-group">
                 <label className="form-label">Fecha de vencimiento</label>
-                <input type="date" className="form-input" value={formData.fecha_vencimiento} onChange={(e) => setFormData(prev => ({ ...prev, fecha_vencimiento: e.target.value }))} />
+                <input type="date" className="form-input" value={formData.fecha_vencimiento} onChange={(e) => setFormData(prev => ({ ...prev, fecha_vencimiento: e.target.value }))} disabled={isLocked} style={isLocked ? lockedStyle : undefined} />
               </div>
             </div>
 
@@ -283,7 +304,7 @@ const FacturaFormModal = ({
             <div className="form-row">
               <div className="form-group" style={{ maxWidth: '200px' }}>
                 <label className="form-label required">Tipo de documento</label>
-                <select className="form-input form-select" value={formData.tipo_documento} onChange={(e) => setFormData(prev => ({ ...prev, tipo_documento: e.target.value }))}>
+                <select className="form-input form-select" value={formData.tipo_documento} onChange={(e) => setFormData(prev => ({ ...prev, tipo_documento: e.target.value }))} disabled={isLocked} style={isLocked ? lockedStyle : undefined}>
                   <option value="factura">Factura</option>
                   <option value="boleta">Boleta</option>
                   <option value="recibo">Recibo por Honorarios</option>
@@ -292,7 +313,7 @@ const FacturaFormModal = ({
               </div>
               <div className="form-group" style={{ maxWidth: '200px' }}>
                 <label className="form-label required">N. de documento</label>
-                <input type="text" className="form-input" placeholder="NV001-00001" value={formData.numero} onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))} />
+                <input type="text" className="form-input" placeholder="NV001-00001" value={formData.numero} onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))} disabled={isLocked} style={isLocked ? lockedStyle : undefined} />
               </div>
             </div>
 
@@ -326,7 +347,7 @@ const FacturaFormModal = ({
               </div>
               <div className="form-group" style={{ maxWidth: '120px' }}>
                 <label className="form-label">ISC</label>
-                <input type="number" step="0.01" min="0" className="form-input" value={formData.isc} onChange={(e) => setFormData(prev => ({ ...prev, isc: parseFloat(e.target.value) || 0 }))} data-testid="factura-isc" />
+                <input type="number" step="0.01" min="0" className="form-input" value={formData.isc} onChange={(e) => setFormData(prev => ({ ...prev, isc: parseFloat(e.target.value) || 0 }))} data-testid="factura-isc" disabled={isLocked} style={isLocked ? lockedStyle : undefined} />
               </div>
             </div>
 
@@ -340,7 +361,7 @@ const FacturaFormModal = ({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Los importes son</span>
-                  <select className="form-input form-select" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.875rem' }} value={formData.impuestos_incluidos ? 'incluidos' : 'sin_igv'} onChange={(e) => setFormData(prev => ({ ...prev, impuestos_incluidos: e.target.value === 'incluidos' }))}>
+                  <select className="form-input form-select" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.875rem' }} value={formData.impuestos_incluidos ? 'incluidos' : 'sin_igv'} onChange={(e) => setFormData(prev => ({ ...prev, impuestos_incluidos: e.target.value === 'incluidos' }))} disabled={isLocked}>
                     <option value="sin_igv">Sin IGV</option>
                     <option value="incluidos">Impuestos incluidos</option>
                   </select>
@@ -373,14 +394,18 @@ const FacturaFormModal = ({
                           <TableSearchSelect options={lineasNegocio} value={linea.linea_negocio_id} onChange={(value) => handleLineaChange(index, 'linea_negocio_id', value)} placeholder="Linea" displayKey="nombre" valueKey="id" />
                         </td>
                         <td>
-                          <input type="number" step="0.01" placeholder="0.00" value={linea.importe} onChange={(e) => handleLineaChange(index, 'importe', e.target.value)} style={{ textAlign: 'right' }} data-testid={`linea-importe-${index}`} />
+                          <input type="number" step="0.01" placeholder="0.00" value={linea.importe} onChange={(e) => handleLineaChange(index, 'importe', e.target.value)} style={{ textAlign: 'right', ...(isLocked ? lockedStyle : {}) }} data-testid={`linea-importe-${index}`} disabled={isLocked} />
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <input type="checkbox" checked={linea.igv_aplica} onChange={(e) => handleLineaChange(index, 'igv_aplica', e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#1B4D3E' }} />
+                          <input type="checkbox" checked={linea.igv_aplica} onChange={(e) => handleLineaChange(index, 'igv_aplica', e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#1B4D3E' }} disabled={isLocked} />
                         </td>
                         <td className="actions-cell">
-                          <button type="button" className="btn-icon-small" onClick={() => handleDuplicateLinea(index)} title="Duplicar"><Copy size={14} /></button>
-                          <button type="button" className="btn-icon-small" onClick={() => handleRemoveLinea(index)} title="Eliminar" disabled={formData.lineas.length === 1}><Trash2 size={14} /></button>
+                          {!isLocked && (
+                            <>
+                              <button type="button" className="btn-icon-small" onClick={() => handleDuplicateLinea(index)} title="Duplicar"><Copy size={14} /></button>
+                              <button type="button" className="btn-icon-small" onClick={() => handleRemoveLinea(index)} title="Eliminar" disabled={formData.lineas.length === 1}><Trash2 size={14} /></button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -388,8 +413,12 @@ const FacturaFormModal = ({
                 </table>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-                <button type="button" className="btn btn-outline btn-sm" onClick={handleAddLinea}><Plus size={16} /> Agregar linea</button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => setFormData(prev => ({ ...prev, lineas: [getEmptyLinea()] }))}>Borrar todas las lineas</button>
+                {!isLocked && (
+                  <>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={handleAddLinea}><Plus size={16} /> Agregar linea</button>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={() => setFormData(prev => ({ ...prev, lineas: [getEmptyLinea()] }))}>Borrar todas las lineas</button>
+                  </>
+                )}
               </div>
             </div>
 

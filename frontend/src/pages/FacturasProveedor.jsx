@@ -131,8 +131,8 @@ export const FacturasProveedor = () => {
   };
 
   const handleEdit = (factura) => {
-    if (factura.estado !== 'pendiente') {
-      toast.error('Solo se pueden editar facturas en estado pendiente');
+    if (factura.estado === 'anulada') {
+      toast.error('No se puede editar una factura anulada');
       return;
     }
     setEditingFactura(factura);

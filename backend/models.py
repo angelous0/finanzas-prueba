@@ -399,6 +399,7 @@ class FacturaProveedorUpdate(BaseModel):
     isc: Optional[float] = None
     tipo_cambio: Optional[float] = None
     notas: Optional[str] = None
+    lineas: Optional[list] = None
 
 class FacturaProveedor(FacturaProveedorBase):
     id: int
