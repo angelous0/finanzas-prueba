@@ -177,12 +177,14 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
         SELECT o.odoo_order_id, o.date_order, o.amount_total, o.state,
                o.is_cancelled, o.reserva, o.user_id,
                p.name AS partner_name, u.name AS vendedor_name,
-               sl.x_nombre AS tienda_name, po.location_id AS tienda_id
+               sl.x_nombre AS tienda_name, po.location_id AS tienda_id,
+               rc.name AS company_name
         FROM odoo.v_pos_order_enriched o
         LEFT JOIN odoo.res_partner p ON p.odoo_id = o.cuenta_partner_id AND p.company_key = 'GLOBAL'
         LEFT JOIN odoo.res_users u ON u.odoo_id = o.user_id AND u.company_key = 'GLOBAL'
         LEFT JOIN odoo.pos_order po ON po.odoo_id = o.odoo_order_id AND po.company_key = o.company_key
         LEFT JOIN odoo.stock_location sl ON sl.odoo_id = po.location_id AND sl.company_key = 'GLOBAL'
+        LEFT JOIN odoo.res_company rc ON rc.company_key = o.company_key
         WHERE o.company_key = $1 {date_filter}
     """, *date_params)
 
@@ -194,8 +196,8 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
             INSERT INTO finanzas2.cont_venta_pos
                 (empresa_id, odoo_id, name, date_order, amount_total, state,
                  partner_name, vendedor_id, vendedor_name, is_cancel, reserva,
-                 tienda_id, tienda_name)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                 tienda_id, tienda_name, company_name)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             ON CONFLICT (empresa_id, odoo_id) DO UPDATE SET
                 date_order = EXCLUDED.date_order,
                 amount_total = EXCLUDED.amount_total,
@@ -206,13 +208,14 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
                 is_cancel = EXCLUDED.is_cancel,
                 reserva = EXCLUDED.reserva,
                 tienda_id = EXCLUDED.tienda_id,
-                tienda_name = EXCLUDED.tienda_name
+                tienda_name = EXCLUDED.tienda_name,
+                company_name = EXCLUDED.company_name
         """, empresa_id, o['odoo_order_id'], f"POS-{o['odoo_order_id']}",
             date_order, o['amount_total'], o['state'],
             o['partner_name'] or '-', o['user_id'],
             o['vendedor_name'] or '-',
             o['is_cancelled'] or False, o['reserva'] or False,
-            o['tienda_id'], o['tienda_name'])
+            o['tienda_id'], o['tienda_name'], o['company_name'])
 
     if not orders:
         return

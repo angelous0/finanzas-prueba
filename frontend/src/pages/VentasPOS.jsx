@@ -681,6 +681,7 @@ export const VentasPOS = () => {
                       <th style={{ padding: '6px 8px' }}>Cliente</th>
                       <th style={{ padding: '6px 8px' }}>Vendedor</th>
                       <th style={{ padding: '6px 8px' }}>Tienda</th>
+                      <th style={{ padding: '6px 8px' }}>Empresa</th>
                       <th style={{ padding: '6px 8px' }}>Pagos</th>
                       <th className="text-right" style={{ padding: '6px 8px' }}>Cant.</th>
                       <th className="text-right" style={{ padding: '6px 8px' }}>Total</th>
@@ -698,6 +699,7 @@ export const VentasPOS = () => {
                         <td style={{ padding: '5px 8px' }}>{venta.partner_name || '-'}</td>
                         <td style={{ padding: '5px 8px' }}>{venta.vendedor_name || '-'}</td>
                         <td style={{ padding: '5px 8px', fontWeight: 500 }}>{venta.tienda_name || '-'}</td>
+                        <td style={{ padding: '5px 8px', fontSize: '0.75rem' }}>{venta.company_name || '-'}</td>
                         <td style={{ padding: '5px 8px', fontSize: '0.75rem', color: '#6b7280' }}>{venta.x_pagos || '-'}</td>
                         <td className="text-right" style={{ padding: '5px 8px' }}>{venta.quantity_total || '-'}</td>
                         <td className="text-right" style={{ padding: '5px 8px', fontWeight: 600 }}>{formatCurrency(venta.amount_total)}</td>
