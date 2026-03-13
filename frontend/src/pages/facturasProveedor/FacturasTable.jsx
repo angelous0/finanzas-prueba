@@ -1,0 +1,170 @@
+import React from 'react';
+import { formatCurrency, formatDate, estadoBadge } from './helpers';
+import { Plus, Trash2, Search, X, FileText, Edit2, Eye, DollarSign, FileSpreadsheet, History, Download, BookOpen } from 'lucide-react';
+import { generarAsiento } from '../../services/api';
+import { toast } from 'sonner';
+import SearchableSelect from '../../components/SearchableSelect';
+
+const FacturasTable = ({
+  facturas, loading, proveedores,
+  filtroNumero, setFiltroNumero, filtroProveedorId, setFiltroProveedorId,
+  filtroFecha, setFiltroFecha, filtroEstado, setFiltroEstado,
+  onOpenPago, onOpenLetras, onVerPagos, onVerLetras, onView, onEdit, onDelete, onDownloadPDF,
+  onNewFactura
+}) => {
+  const facturasFiltradas = filtroNumero
+    ? facturas.filter(f => f.numero?.toLowerCase().includes(filtroNumero.toLowerCase()))
+    : facturas;
+
+  const totalPendiente = facturasFiltradas.filter(f => f.estado === 'pendiente' || f.estado === 'parcial')
+    .reduce((sum, f) => sum + parseFloat(f.saldo_pendiente || 0), 0);
+
+  const clearFilters = () => { setFiltroNumero(''); setFiltroProveedorId(''); setFiltroFecha(''); setFiltroEstado(''); };
+  const hasFilters = filtroNumero || filtroProveedorId || filtroFecha || filtroEstado;
+
+  return (
+    <>
+      {/* Filtros */}
+      <div className="filters-bar">
+        <div className="filter-group">
+          <label className="filter-label">N. Doc</label>
+          <input type="text" className="form-input" placeholder="Buscar..." value={filtroNumero} onChange={(e) => setFiltroNumero(e.target.value)} data-testid="filtro-numero" style={{ width: '140px' }} />
+        </div>
+        <div className="filter-group">
+          <label className="filter-label">Proveedor</label>
+          <SearchableSelect
+            options={[{ id: '', nombre: 'Todos' }, ...proveedores]}
+            value={filtroProveedorId}
+            onChange={(value) => setFiltroProveedorId(value || '')}
+            placeholder="Todos"
+            searchPlaceholder="Buscar proveedor..."
+            displayKey="nombre"
+            valueKey="id"
+            data-testid="filtro-proveedor"
+            style={{ width: '200px' }}
+          />
+        </div>
+        <div className="filter-group">
+          <label className="filter-label">Fecha emision</label>
+          <input type="date" className="form-input" value={filtroFecha} onChange={(e) => setFiltroFecha(e.target.value)} data-testid="filtro-fecha" style={{ width: '150px' }} />
+        </div>
+        <div className="filter-group">
+          <label className="filter-label">Estado</label>
+          <select className="form-input form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} data-testid="filtro-estado" style={{ width: '140px' }}>
+            <option value="">Todos</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="parcial">Parcial</option>
+            <option value="pagado">Pagado</option>
+            <option value="canjeado">Canjeado</option>
+            <option value="anulada">Anulada</option>
+          </select>
+        </div>
+        {hasFilters && (
+          <button className="btn btn-ghost btn-sm" onClick={clearFilters} title="Limpiar filtros"><X size={16} /></button>
+        )}
+      </div>
+
+      {/* Tabla */}
+      <div className="card">
+        <div className="data-table-wrapper">
+          {loading ? (
+            <div className="loading"><div className="loading-spinner"></div></div>
+          ) : facturasFiltradas.length === 0 ? (
+            <div className="empty-state">
+              <FileText className="empty-state-icon" />
+              <div className="empty-state-title">{facturas.length === 0 ? 'No hay facturas registradas' : 'No se encontraron facturas con los filtros aplicados'}</div>
+              <div className="empty-state-description">{facturas.length === 0 ? 'Crea tu primera factura de proveedor' : 'Intenta cambiar los criterios de busqueda'}</div>
+              {facturas.length === 0 && (
+                <button className="btn btn-primary" onClick={onNewFactura}><Plus size={18} /> Crear primera factura</button>
+              )}
+            </div>
+          ) : (
+            <table className="data-table" data-testid="facturas-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Nro. Doc</th>
+                  <th>Proveedor / Beneficiario</th>
+                  <th className="text-right">Total</th>
+                  <th className="text-right">Pagado</th>
+                  <th>Estado</th>
+                  <th className="text-right">Saldo CxP</th>
+                  <th className="text-center" style={{ minWidth: '200px' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facturasFiltradas.map((factura) => {
+                  const saldo = parseFloat(factura.saldo_pendiente) || 0;
+                  const total = parseFloat(factura.total) || 0;
+                  const pagado = total - saldo;
+                  const puedeGenerarLetras = factura.estado === 'pendiente' && saldo > 0;
+                  const puedePagar = (factura.estado === 'pendiente' || factura.estado === 'parcial') && saldo > 0;
+                  const tienePagos = pagado > 0;
+                  const estaCanjeado = factura.estado === 'canjeado';
+
+                  return (
+                    <tr key={factura.id} data-testid={`factura-row-${factura.id}`}>
+                      <td>{formatDate(factura.fecha_factura)}</td>
+                      <td style={{ fontWeight: 500, fontFamily: "'JetBrains Mono', monospace" }}>{factura.numero}</td>
+                      <td>{factura.proveedor_nombre || factura.beneficiario_nombre || '-'}</td>
+                      <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                        {formatCurrency(total, factura.moneda_simbolo)}
+                      </td>
+                      <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", color: pagado > 0 ? '#22C55E' : '#64748b' }}>
+                        {pagado > 0 ? (
+                          <button className="btn-link" onClick={() => onVerPagos(factura)} style={{ color: '#22C55E', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }} title="Ver pagos">
+                            {formatCurrency(pagado, factura.moneda_simbolo)}
+                          </button>
+                        ) : formatCurrency(pagado, factura.moneda_simbolo)}
+                      </td>
+                      <td>
+                        <span className={estadoBadge(factura.estado)} style={{ cursor: estaCanjeado ? 'pointer' : 'default' }} onClick={() => estaCanjeado && onVerLetras(factura)} title={estaCanjeado ? 'Ver letras vinculadas' : ''}>
+                          {factura.estado}
+                        </span>
+                      </td>
+                      <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", color: saldo > 0 ? '#EF4444' : '#22C55E', fontWeight: 500 }}>
+                        {formatCurrency(saldo, factura.moneda_simbolo)}
+                      </td>
+                      <td>
+                        <div className="actions-row">
+                          {puedePagar && !estaCanjeado && (
+                            <button className="action-btn action-success" onClick={() => onOpenPago(factura)} title="Pagar" data-testid={`pagar-factura-${factura.id}`}><DollarSign size={15} /></button>
+                          )}
+                          {puedeGenerarLetras && (
+                            <button className="action-btn action-info" onClick={() => onOpenLetras(factura)} title="Canjear por Letras" data-testid={`letras-factura-${factura.id}`}><FileSpreadsheet size={15} /></button>
+                          )}
+                          {estaCanjeado && (
+                            <button className="action-btn" onClick={() => onVerLetras(factura)} title="Ver letras" data-testid={`ver-letras-${factura.id}`}><FileSpreadsheet size={15} /></button>
+                          )}
+                          {tienePagos && !estaCanjeado && (
+                            <button className="action-btn" onClick={() => onVerPagos(factura)} title="Ver pagos" data-testid={`ver-pagos-${factura.id}`}><History size={15} /></button>
+                          )}
+                          <button className="action-btn" onClick={() => onView(factura)} title="Ver" data-testid={`ver-factura-${factura.id}`}><Eye size={15} /></button>
+                          <button className="action-btn" onClick={() => onDownloadPDF(factura)} title="Descargar PDF" data-testid={`pdf-factura-${factura.id}`}><Download size={15} /></button>
+                          {factura.estado !== 'pagado' && factura.estado !== 'canjeado' && (
+                            <button className="action-btn" onClick={() => onEdit(factura)} title="Editar" data-testid={`editar-factura-${factura.id}`}><Edit2 size={15} /></button>
+                          )}
+                          {factura.estado === 'pendiente' && (
+                            <button className="action-btn action-danger" onClick={() => onDelete(factura.id)} title="Eliminar" data-testid={`delete-factura-${factura.id}`}><Trash2 size={15} /></button>
+                          )}
+                          <button className="action-btn" onClick={async () => {
+                            try {
+                              await generarAsiento({ origen_tipo: 'FPROV', origen_id: factura.id });
+                              toast.success('Asiento generado');
+                            } catch (e) { toast.error(e.response?.data?.detail || 'Error generando asiento'); }
+                          }} title="Generar Asiento" data-testid={`generar-asiento-${factura.id}`}><BookOpen size={15} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default FacturasTable;

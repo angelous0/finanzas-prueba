@@ -1,0 +1,495 @@
+import React, { useState, useEffect } from 'react';
+import { createFacturaProveedor, updateFacturaProveedor, createTercero } from '../../services/api';
+import { formatCurrency, calcularTotales, calcularImporteArticulo, getEmptyLinea, getEmptyFormData } from './helpers';
+import { Plus, Trash2, X, FileText, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { toast } from 'sonner';
+import SearchableSelect from '../../components/SearchableSelect';
+import TableSearchSelect from '../../components/TableSearchSelect';
+
+const FacturaFormModal = ({
+  show, editingFactura, proveedores, monedas, categorias, lineasNegocio,
+  centrosCosto, inventario, modelosCortes, valorizacionMap,
+  onClose, onSaved, onProveedorCreated
+}) => {
+  const [formData, setFormData] = useState(getEmptyFormData());
+  const [fechaContableManual, setFechaContableManual] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showDetallesArticulo, setShowDetallesArticulo] = useState(true);
+
+  // Initialize form when modal opens
+  useEffect(() => {
+    if (!show) return;
+    if (editingFactura) {
+      populateFromFactura(editingFactura);
+    } else {
+      resetForm();
+    }
+  }, [show, editingFactura]);
+
+  // Calculate fecha_vencimiento when fecha_factura or terminos change
+  useEffect(() => {
+    if (formData.fecha_factura && formData.terminos_dias) {
+      const fecha = new Date(formData.fecha_factura);
+      fecha.setDate(fecha.getDate() + parseInt(formData.terminos_dias));
+      const updates = { fecha_vencimiento: fecha.toISOString().split('T')[0] };
+      if (!fechaContableManual) {
+        updates.fecha_contable = formData.fecha_factura;
+      }
+      setFormData(prev => ({ ...prev, ...updates }));
+    }
+  }, [formData.fecha_factura, formData.terminos_dias]);
+
+  const resetForm = () => {
+    const pen = monedas.find(m => m.codigo === 'PEN');
+    setFormData(getEmptyFormData(pen?.id || ''));
+    setFechaContableManual(false);
+  };
+
+  const populateFromFactura = (factura) => {
+    setFormData({
+      proveedor_id: factura.proveedor_id || '',
+      beneficiario_nombre: factura.beneficiario_nombre || '',
+      moneda_id: factura.moneda_id || '',
+      tipo_cambio: factura.tipo_cambio || '',
+      fecha_factura: factura.fecha_factura ? factura.fecha_factura.split('T')[0] : new Date().toISOString().split('T')[0],
+      fecha_contable: factura.fecha_contable ? factura.fecha_contable.split('T')[0] : (factura.fecha_factura ? factura.fecha_factura.split('T')[0] : new Date().toISOString().split('T')[0]),
+      fecha_vencimiento: factura.fecha_vencimiento ? factura.fecha_vencimiento.split('T')[0] : '',
+      terminos_dias: factura.terminos_dias || 30,
+      tipo_documento: factura.tipo_documento || 'factura',
+      numero: factura.numero || '',
+      impuestos_incluidos: factura.impuestos_incluidos !== false,
+      tipo_comprobante_sunat: factura.tipo_comprobante_sunat || '',
+      base_gravada: factura.base_gravada || 0,
+      igv_sunat: factura.igv_sunat || 0,
+      base_no_gravada: factura.base_no_gravada || 0,
+      isc: factura.isc || 0,
+      notas: factura.notas || '',
+      lineas: (() => {
+        const catLines = (factura.lineas || []).filter(l => !l.articulo_id);
+        return catLines.length > 0
+          ? catLines.map(l => ({ categoria_id: l.categoria_id || '', descripcion: l.descripcion || '', linea_negocio_id: l.linea_negocio_id || '', centro_costo_id: l.centro_costo_id || '', importe: l.importe || 0, igv_aplica: l.igv_aplica !== false }))
+          : [getEmptyLinea()];
+      })(),
+      articulos: (() => {
+        const artLines = (factura.lineas || []).filter(l => l.articulo_id);
+        return artLines.map(a => ({ articulo_id: a.articulo_id || '', modelo_corte_id: a.modelo_corte_id || '', unidad: a.descripcion || '', cantidad: a.cantidad || 1, precio: a.precio_unitario || 0, linea_negocio_id: a.linea_negocio_id || '', igv_aplica: a.igv_aplica !== false }));
+      })()
+    });
+  };
+
+  // Line handlers
+  const handleAddLinea = () => setFormData(prev => ({ ...prev, lineas: [...prev.lineas, getEmptyLinea()] }));
+  const handleRemoveLinea = (index) => { if (formData.lineas.length > 1) setFormData(prev => ({ ...prev, lineas: prev.lineas.filter((_, i) => i !== index) })); };
+  const handleDuplicateLinea = (index) => setFormData(prev => ({ ...prev, lineas: [...prev.lineas.slice(0, index + 1), { ...prev.lineas[index] }, ...prev.lineas.slice(index + 1)] }));
+  const handleLineaChange = (index, field, value) => setFormData(prev => ({ ...prev, lineas: prev.lineas.map((linea, i) => i === index ? { ...linea, [field]: value } : linea) }));
+
+  // Article handlers
+  const handleAddArticulo = () => setFormData(prev => ({ ...prev, articulos: [...prev.articulos, { articulo_id: '', modelo_corte_id: '', unidad: '', cantidad: 1, precio: 0, linea_negocio_id: '', igv_aplica: true }] }));
+  const handleRemoveArticulo = (index) => setFormData(prev => ({ ...prev, articulos: prev.articulos.filter((_, i) => i !== index) }));
+  const handleDuplicateArticulo = (index) => setFormData(prev => ({ ...prev, articulos: [...prev.articulos.slice(0, index + 1), { ...prev.articulos[index] }, ...prev.articulos.slice(index + 1)] }));
+  const handleArticuloChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      articulos: prev.articulos.map((art, i) => {
+        if (i !== index) return art;
+        const updated = { ...art, [field]: value };
+        if (field === 'articulo_id' && value) {
+          const selectedArticulo = inventario.find(inv => inv.id === value);
+          if (selectedArticulo) {
+            updated.unidad = selectedArticulo.unidad_medida || 'UND';
+            const fifo = valorizacionMap[value];
+            updated.precio = fifo?.costo_fifo_unitario || parseFloat(selectedArticulo.costo_compra) || parseFloat(selectedArticulo.precio_ref) || 0;
+          }
+        }
+        return updated;
+      })
+    }));
+  };
+
+  // Proveedor creation
+  const handleCreateProveedor = async (nombre) => {
+    if (!nombre || nombre.trim() === '') return;
+    try {
+      const response = await createTercero({ nombre: nombre.trim(), es_proveedor: true, tipo_documento: 'RUC', numero_documento: '', terminos_pago_dias: 30 });
+      setFormData(prev => ({ ...prev, proveedor_id: response.data.id, beneficiario_nombre: '' }));
+      toast.success(`Proveedor "${nombre}" creado exitosamente`);
+      if (onProveedorCreated) onProveedorCreated(response.data);
+    } catch (error) {
+      console.error('Error creating proveedor:', error);
+      toast.error('Error al crear proveedor');
+    }
+  };
+
+  // Submit
+  const handleSubmit = async (e, createNew = false) => {
+    e.preventDefault();
+    if (submitting) return;
+    try {
+      const tots = calcularTotales(formData);
+      const dataToSend = {
+        ...formData,
+        proveedor_id: formData.proveedor_id ? parseInt(formData.proveedor_id) : null,
+        moneda_id: formData.moneda_id ? parseInt(formData.moneda_id) : null,
+        terminos_dias: parseInt(formData.terminos_dias) || 0,
+        tipo_cambio: formData.tipo_cambio ? parseFloat(formData.tipo_cambio) : null,
+        base_gravada: tots.base_gravada,
+        igv_sunat: tots.igv_sunat,
+        base_no_gravada: tots.base_no_gravada,
+        isc: parseFloat(formData.isc) || 0,
+        fecha_factura: formData.fecha_factura || null,
+        fecha_contable: formData.fecha_contable || formData.fecha_factura || null,
+        fecha_vencimiento: formData.fecha_vencimiento || null,
+        lineas: [
+          ...formData.lineas.map(l => ({
+            ...l,
+            categoria_id: l.categoria_id ? parseInt(l.categoria_id) : null,
+            linea_negocio_id: l.linea_negocio_id ? parseInt(l.linea_negocio_id) : null,
+            centro_costo_id: l.centro_costo_id ? parseInt(l.centro_costo_id) : null,
+            importe: parseFloat(l.importe) || 0
+          })),
+          ...formData.articulos.map(art => ({
+            articulo_id: art.articulo_id ? parseInt(art.articulo_id) : null,
+            modelo_corte_id: art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
+            linea_negocio_id: art.linea_negocio_id ? parseInt(art.linea_negocio_id) : null,
+            descripcion: art.unidad || null,
+            cantidad: parseFloat(art.cantidad) || 0,
+            precio_unitario: parseFloat(art.precio) || 0,
+            importe: (parseFloat(art.cantidad) || 0) * (parseFloat(art.precio) || 0),
+            igv_aplica: art.igv_aplica !== false
+          }))
+        ]
+      };
+      delete dataToSend.articulos;
+      if (!dataToSend.fecha_factura) { toast.error('La fecha de factura es requerida'); return; }
+
+      setSubmitting(true);
+      if (editingFactura) {
+        await updateFacturaProveedor(editingFactura.id, dataToSend);
+        toast.success('Factura actualizada exitosamente');
+      } else {
+        await createFacturaProveedor(dataToSend);
+        toast.success('Factura creada exitosamente');
+      }
+      if (createNew) { resetForm(); } else { onClose(); }
+      onSaved();
+    } catch (error) {
+      console.error('Error saving factura:', error);
+      const detail = error.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        const firstError = detail[0];
+        toast.error(firstError?.msg || firstError?.message || 'Error de validacion');
+      } else if (typeof detail === 'string') {
+        toast.error(detail);
+      } else {
+        toast.error('Error al guardar factura');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!show) return null;
+
+  const totales = calcularTotales(formData);
+  const monedaActual = monedas.find(m => m.id === parseInt(formData.moneda_id));
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="factura-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="factura-modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <FileText size={24} color="#1B4D3E" />
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
+              {editingFactura ? `Editar Factura ${editingFactura.numero}` : 'Factura de proveedor'}
+            </h2>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SALDO PENDIENTE</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>
+                {formatCurrency(totales.total, monedaActual?.simbolo || 'S/.')}
+              </div>
+            </div>
+            <button className="modal-close" onClick={onClose}><X size={20} /></button>
+          </div>
+        </div>
+
+        <form onSubmit={(e) => handleSubmit(e, false)}>
+          <div className="factura-modal-body">
+            {/* Proveedor row */}
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label required">Proveedor</label>
+                <SearchableSelect
+                  options={proveedores}
+                  value={formData.proveedor_id}
+                  onChange={(value) => setFormData(prev => ({ ...prev, proveedor_id: value, beneficiario_nombre: value ? '' : prev.beneficiario_nombre }))}
+                  placeholder="Buscar proveedor..."
+                  searchPlaceholder="Buscar por nombre..."
+                  displayKey="nombre"
+                  valueKey="id"
+                  onCreateNew={handleCreateProveedor}
+                  createNewLabel="Crear proveedor"
+                  data-testid="proveedor-select"
+                />
+              </div>
+              {!formData.proveedor_id && (
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">O escribir beneficiario</label>
+                  <input type="text" className="form-input" placeholder="Nombre del beneficiario" value={formData.beneficiario_nombre} onChange={(e) => setFormData(prev => ({ ...prev, beneficiario_nombre: e.target.value }))} data-testid="beneficiario-input" />
+                </div>
+              )}
+            </div>
+
+            {/* Terms, Currency, Dates */}
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Terminos</label>
+                <input type="text" className="form-input" placeholder="Ej: 30 dias" value={formData.terminos_dias} onChange={(e) => setFormData(prev => ({ ...prev, terminos_dias: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Moneda</label>
+                <select className="form-input form-select" value={formData.moneda_id} onChange={(e) => {
+                  const selMoneda = monedas.find(m => m.id === parseInt(e.target.value));
+                  setFormData(prev => ({ ...prev, moneda_id: e.target.value, tipo_cambio: selMoneda?.codigo === 'PEN' ? '1' : prev.tipo_cambio || '' }));
+                }}>
+                  <option value="">Moneda</option>
+                  {monedas.map(m => (<option key={m.id} value={m.id}>{m.codigo}</option>))}
+                </select>
+              </div>
+              {monedas.find(m => m.id === parseInt(formData.moneda_id))?.codigo === 'USD' && (
+                <div className="form-group">
+                  <label className="form-label required">T.C.</label>
+                  <input type="number" step="0.001" className="form-input" placeholder="Ej: 3.72" value={formData.tipo_cambio} onChange={(e) => setFormData(prev => ({ ...prev, tipo_cambio: e.target.value }))} data-testid="tipo-cambio-input" required />
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label required">Fecha de factura</label>
+                <input type="date" className="form-input" value={formData.fecha_factura} onChange={(e) => setFormData(prev => ({ ...prev, fecha_factura: e.target.value }))} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha contable</label>
+                <input type="date" className="form-input" value={formData.fecha_contable} onChange={(e) => { setFechaContableManual(true); setFormData(prev => ({ ...prev, fecha_contable: e.target.value })); }} data-testid="factura-fecha-contable" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fecha de vencimiento</label>
+                <input type="date" className="form-input" value={formData.fecha_vencimiento} onChange={(e) => setFormData(prev => ({ ...prev, fecha_vencimiento: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Document type and number */}
+            <div className="form-row">
+              <div className="form-group" style={{ maxWidth: '200px' }}>
+                <label className="form-label required">Tipo de documento</label>
+                <select className="form-input form-select" value={formData.tipo_documento} onChange={(e) => setFormData(prev => ({ ...prev, tipo_documento: e.target.value }))}>
+                  <option value="factura">Factura</option>
+                  <option value="boleta">Boleta</option>
+                  <option value="recibo">Recibo por Honorarios</option>
+                  <option value="nota_credito">Nota de Credito</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ maxWidth: '200px' }}>
+                <label className="form-label required">N. de documento</label>
+                <input type="text" className="form-input" placeholder="NV001-00001" value={formData.numero} onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* SUNAT */}
+            <div className="form-row" style={{ marginTop: '0.75rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div className="form-group" style={{ maxWidth: '140px' }}>
+                <label className="form-label">Doc SUNAT</label>
+                <select className="form-input form-select" value={formData.tipo_comprobante_sunat} onChange={(e) => setFormData(prev => ({ ...prev, tipo_comprobante_sunat: e.target.value }))} data-testid="factura-tipo-sunat">
+                  <option value="">--</option>
+                  <option value="01">01 - Factura</option>
+                  <option value="03">03 - Boleta</option>
+                  <option value="07">07 - Nota Credito</option>
+                  <option value="08">08 - Nota Debito</option>
+                  <option value="14">14 - Serv. Publico</option>
+                  <option value="02">02 - Recibo Hon.</option>
+                  <option value="12">12 - Ticket</option>
+                  <option value="00">00 - Otros</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ maxWidth: '140px' }}>
+                <label className="form-label">Base Gravada</label>
+                <input type="text" className="form-input" value={totales.base_gravada.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} data-testid="factura-base-gravada" />
+              </div>
+              <div className="form-group" style={{ maxWidth: '130px' }}>
+                <label className="form-label">IGV</label>
+                <input type="text" className="form-input" value={totales.igv_sunat.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} data-testid="factura-igv-sunat" />
+              </div>
+              <div className="form-group" style={{ maxWidth: '140px' }}>
+                <label className="form-label">No Gravada</label>
+                <input type="text" className="form-input" value={totales.base_no_gravada.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} data-testid="factura-base-no-gravada" />
+              </div>
+              <div className="form-group" style={{ maxWidth: '120px' }}>
+                <label className="form-label">ISC</label>
+                <input type="number" step="0.01" min="0" className="form-input" value={formData.isc} onChange={(e) => setFormData(prev => ({ ...prev, isc: parseFloat(e.target.value) || 0 }))} data-testid="factura-isc" />
+              </div>
+            </div>
+
+            {/* Category lines section */}
+            <div className="factura-section">
+              <div className="factura-section-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <ChevronUp size={18} />
+                  <span style={{ fontWeight: 600 }}>Detalles de la categoria</span>
+                  <span style={{ color: '#64748b', fontSize: '0.875rem' }}>({formData.lineas.length} linea{formData.lineas.length !== 1 ? 's' : ''})</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Los importes son</span>
+                  <select className="form-input form-select" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.875rem' }} value={formData.impuestos_incluidos ? 'incluidos' : 'sin_igv'} onChange={(e) => setFormData(prev => ({ ...prev, impuestos_incluidos: e.target.value === 'incluidos' }))}>
+                    <option value="sin_igv">Sin IGV</option>
+                    <option value="incluidos">Impuestos incluidos</option>
+                  </select>
+                </div>
+              </div>
+              <div className="table-scroll-wrapper">
+                <table className="factura-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '40px' }}>#</th>
+                      <th style={{ minWidth: '160px' }}>CATEGORIA</th>
+                      <th style={{ minWidth: '180px' }}>DESCRIPCION</th>
+                      <th style={{ minWidth: '140px' }}>LINEA NEGOCIO</th>
+                      <th style={{ width: '100px' }}>IMPORTE</th>
+                      <th style={{ width: '80px' }}>IGV 18%</th>
+                      <th style={{ width: '100px' }}>ACCIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.lineas.map((linea, index) => (
+                      <tr key={index}>
+                        <td className="row-number">{index + 1}</td>
+                        <td>
+                          <TableSearchSelect options={categorias} value={linea.categoria_id} onChange={(value) => handleLineaChange(index, 'categoria_id', value)} placeholder="Categoria" displayKey="nombre_completo" valueKey="id" />
+                        </td>
+                        <td>
+                          <input type="text" placeholder="Descripcion" value={linea.descripcion} onChange={(e) => handleLineaChange(index, 'descripcion', e.target.value)} />
+                        </td>
+                        <td>
+                          <TableSearchSelect options={lineasNegocio} value={linea.linea_negocio_id} onChange={(value) => handleLineaChange(index, 'linea_negocio_id', value)} placeholder="Linea" displayKey="nombre" valueKey="id" />
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" placeholder="0.00" value={linea.importe} onChange={(e) => handleLineaChange(index, 'importe', e.target.value)} style={{ textAlign: 'right' }} data-testid={`linea-importe-${index}`} />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input type="checkbox" checked={linea.igv_aplica} onChange={(e) => handleLineaChange(index, 'igv_aplica', e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#1B4D3E' }} />
+                        </td>
+                        <td className="actions-cell">
+                          <button type="button" className="btn-icon-small" onClick={() => handleDuplicateLinea(index)} title="Duplicar"><Copy size={14} /></button>
+                          <button type="button" className="btn-icon-small" onClick={() => handleRemoveLinea(index)} title="Eliminar" disabled={formData.lineas.length === 1}><Trash2 size={14} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                <button type="button" className="btn btn-outline btn-sm" onClick={handleAddLinea}><Plus size={16} /> Agregar linea</button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={() => setFormData(prev => ({ ...prev, lineas: [getEmptyLinea()] }))}>Borrar todas las lineas</button>
+              </div>
+            </div>
+
+            {/* Article lines section */}
+            <div className="factura-section">
+              <button type="button" className="factura-section-header" onClick={() => setShowDetallesArticulo(!showDetallesArticulo)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {showDetallesArticulo ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  <span style={{ fontWeight: 600 }}>Detalles del articulo</span>
+                  <span style={{ color: '#64748b', fontSize: '0.875rem' }}>({formData.articulos.length} articulo{formData.articulos.length !== 1 ? 's' : ''})</span>
+                </div>
+              </button>
+              {showDetallesArticulo && (
+                <>
+                  {formData.articulos.length > 0 ? (
+                    <div className="table-scroll-wrapper">
+                      <table className="factura-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '40px' }}>#</th>
+                            <th style={{ minWidth: '180px' }}>ARTICULO</th>
+                            <th style={{ minWidth: '180px' }}>MODELO / CORTE</th>
+                            <th style={{ width: '70px' }}>UND</th>
+                            <th style={{ width: '70px' }}>CANT.</th>
+                            <th style={{ width: '90px' }}>PRECIO FIFO</th>
+                            <th style={{ minWidth: '140px' }}>LINEA NEGOCIO</th>
+                            <th style={{ width: '100px' }}>IMPORTE</th>
+                            <th style={{ width: '60px' }}>IGV</th>
+                            <th style={{ width: '80px' }}>ACCIONES</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.articulos.map((articulo, index) => (
+                            <tr key={index}>
+                              <td className="row-number">{index + 1}</td>
+                              <td>
+                                <TableSearchSelect options={inventario} value={articulo.articulo_id} onChange={(value) => handleArticuloChange(index, 'articulo_id', value)} placeholder="Articulo" displayKey="nombre_completo" valueKey="id" renderOption={(inv) => `${inv.codigo ? inv.codigo + ' - ' : ''}${inv.nombre}`} />
+                              </td>
+                              <td>
+                                <TableSearchSelect options={modelosCortes} value={articulo.modelo_corte_id} onChange={(value) => handleArticuloChange(index, 'modelo_corte_id', value)} placeholder="Modelo / Corte" displayKey="display_name" valueKey="id" renderOption={(mc) => mc.display_name || `${mc.modelo_nombre || 'Sin modelo'} - Corte ${mc.n_corte}`} />
+                              </td>
+                              <td><input type="text" value={articulo.unidad || ''} readOnly disabled style={{ width: '100%', textAlign: 'center', background: '#f8fafc', color: '#64748b' }} /></td>
+                              <td><input type="number" step="1" min="1" placeholder="1" value={articulo.cantidad} onChange={(e) => handleArticuloChange(index, 'cantidad', e.target.value)} style={{ textAlign: 'center' }} data-testid={`articulo-cantidad-${index}`} /></td>
+                              <td><input type="number" step="0.01" placeholder="0.00" value={articulo.precio} onChange={(e) => handleArticuloChange(index, 'precio', e.target.value)} style={{ textAlign: 'right' }} data-testid={`articulo-precio-${index}`} /></td>
+                              <td>
+                                <TableSearchSelect options={lineasNegocio} value={articulo.linea_negocio_id} onChange={(value) => handleArticuloChange(index, 'linea_negocio_id', value)} placeholder="Linea" displayKey="nombre" valueKey="id" />
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 500, fontFamily: "'JetBrains Mono', monospace", padding: '0.625rem 0.75rem' }}>{calcularImporteArticulo(articulo).toFixed(2)}</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <input type="checkbox" checked={articulo.igv_aplica} onChange={(e) => handleArticuloChange(index, 'igv_aplica', e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#1B4D3E' }} />
+                              </td>
+                              <td className="actions-cell">
+                                <button type="button" className="btn-icon-small" onClick={() => handleDuplicateArticulo(index)} title="Duplicar"><Copy size={14} /></button>
+                                <button type="button" className="btn-icon-small" onClick={() => handleRemoveArticulo(index)} title="Eliminar"><Trash2 size={14} /></button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                  <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem' }}>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={handleAddArticulo} data-testid="agregar-articulo-btn"><Plus size={16} /> Agregar articulo</button>
+                    {formData.articulos.length > 0 && (
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => setFormData(prev => ({ ...prev, articulos: [] }))}>Borrar todos</button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Notes and Totals */}
+            <div className="form-row" style={{ alignItems: 'flex-start', marginTop: '1rem' }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Nota</label>
+                <textarea className="form-input" rows={4} placeholder="Anadir una nota..." value={formData.notas} onChange={(e) => setFormData(prev => ({ ...prev, notas: e.target.value }))} style={{ resize: 'vertical' }} />
+              </div>
+              <div className="factura-totales">
+                <div className="totales-row"><span>Subtotal</span><span>{formatCurrency(totales.subtotal, monedaActual?.simbolo || 'S/.')}</span></div>
+                <div className="totales-row"><span>IGV (18%)</span><span>{formatCurrency(totales.igv, monedaActual?.simbolo || 'S/.')}</span></div>
+                <div className="totales-row total"><span>Total</span><span>{formatCurrency(totales.total, monedaActual?.simbolo || 'S/.')}</span></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="factura-modal-footer">
+            <button type="button" className="btn btn-outline" onClick={onClose}>Cancelar</button>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button type="submit" className="btn btn-secondary" data-testid="guardar-factura-btn" disabled={submitting}>
+                <FileText size={16} /> {submitting ? 'Guardando...' : 'Guardar'}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={(e) => handleSubmit(e, true)} data-testid="guardar-crear-btn" disabled={submitting}>
+                {submitting ? 'Guardando...' : 'Guardar y crear nueva'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default FacturaFormModal;
