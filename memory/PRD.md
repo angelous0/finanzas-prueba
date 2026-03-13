@@ -11,7 +11,7 @@ Ventas POS, Gastos, CxC, CxP, Tesorería y dimensiones analíticas clave.
 4. **Dimensiones**: Línea de Negocio (eje principal), Marca, Centro de Costo, Categoría de Gasto
 
 ## Módulos Activos
-- Dashboard / Dashboard Financiero
+- Dashboard Ejecutivo / Dashboard Financiero
 - Ventas POS + CxC
 - Gastos + Prorrateo + Factura Proveedor + CxP
 - Tesorería + Cuentas Bancarias + Movimientos + Flujo de Caja
@@ -26,7 +26,7 @@ Ventas POS, Gastos, CxC, CxP, Tesorería y dimensiones analíticas clave.
 ### Fase 0 - Desacoplamiento Odoo (COMPLETADO - Feb 2026)
 - Refactorización completa de endpoints financieros para leer tablas locales
 - Sincronización local de datos Odoo (POST /api/ventas-pos/sync-local)
-- Tabla cont_distribucion_analitica_ingreso para separar tesorería de analítica
+- Tabla cont_distribucion_analitica para separar tesorería de analítica
 
 ### Fase 1 - Backend Simplificación (COMPLETADO - Mar 2026)
 - CRUD categorías de gasto (cont_categoria_gasto)
@@ -37,10 +37,16 @@ Ventas POS, Gastos, CxC, CxP, Tesorería y dimensiones analíticas clave.
 
 ### Fase 2 - Frontend Simplificación (COMPLETADO - Mar 2026)
 - Sidebar simplificado: 6 secciones (Principal, Ventas, Egresos, Tesorería, Reportes, Catálogos)
-- Gastos.jsx: formulario con Categoría Gasto, Tipo Asignación, Centro Costo, Marca, Línea (condicional directo)
-- Tabla gastos: columnas Categoría, Tipo (badges), Centro Costo
+- Gastos.jsx actualizado con nuevos campos y tabla mejorada
 - CategoriasGasto.jsx: CRUD completo inline
 - ProrrateoGastos.jsx: tabs Pendientes/Historial, modal con 3 métodos de prorrateo
+
+### Dashboard Ejecutivo (COMPLETADO - Mar 2026)
+- Endpoint GET /api/dashboard/resumen-ejecutivo con todos los KPIs
+- 3 alertas clickables: ventas pendientes, gastos sin prorratear, cobranza pendiente
+- 4 KPI cards: Ingresos del Mes, Gastos del Mes, Resultado Neto, Cobranza Pendiente
+- Tabla Utilidad por Línea: ingresos, gastos directos, utilidad antes/después prorrateo
+- Cobranza Pendiente por Línea
 
 ## Próximas Tareas
 
@@ -58,12 +64,13 @@ Ventas POS, Gastos, CxC, CxP, Tesorería y dimensiones analíticas clave.
 ## Esquema BD Clave
 - **cont_gasto**: empresa_id, fecha, tipo_asignacion, categoria_gasto_id, centro_costo_id, marca_id, linea_negocio_id
 - **cont_categoria_gasto**: id, codigo, nombre, descripcion, activo, empresa_id
-- **cont_prorrateo_gasto**: id, gasto_id, metodo, periodo_desde, periodo_hasta, monto_total
-- **cont_prorrateo_gasto_detalle**: id, prorrateo_id, linea_negocio_id, porcentaje, monto
-- **cont_distribucion_analitica_ingreso**: distribución analítica de ventas/cobros
+- **cont_prorrateo_gasto**: id, gasto_id, linea_negocio_id, monto, porcentaje, metodo
+- **cont_distribucion_analitica**: distribución analítica de ventas/cobros
 - **cont_linea_negocio**: catálogo con mapeo odoo_linea_negocio_id
+- **cont_venta_pos**: ventas POS sincronizadas con estado_local
+- **cont_cxc**: cuentas por cobrar con saldo_pendiente
 
 ## Arquitectura
 - Backend: FastAPI + PostgreSQL (schema finanzas2)
-- Frontend: React + Shadcn UI + Recharts
+- Frontend: React + Shadcn UI
 - Odoo: lectura vía sync local, no queries directos
