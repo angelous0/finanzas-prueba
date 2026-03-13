@@ -1,37 +1,69 @@
-# Finanzas 4.0 - PRD (Product Requirements Document)
+# Finanzas 4.0 - PRD (Simplificación)
 
 ## Problema Original
-Sistema ERP financiero integrado con Odoo para gestion contable, ventas POS, gastos, facturacion y reportes gerenciales. Arquitectura de 3 capas financieras.
+Simplificar el módulo de Finanzas Gerenciales para enfocarse en operaciones financieras core:
+Ventas POS, Gastos, CxC, CxP, Tesorería y dimensiones analíticas clave.
 
-## Arquitectura de 3+1 Capas
-1. **Capa Comercial**: Ventas POS (sync Odoo -> tablas locales), gastos, facturas proveedor
-2. **Capa Obligacion**: CxC/CxP auto-generadas, abonos
-3. **Capa Tesoreria**: `cont_movimiento_tesoreria` - movimientos reales de caja/banco
-4. **Capa Analitica**: `cont_distribucion_analitica` - distribucion por linea de negocio
+## Principios Clave
+1. **1 movimiento real de tesorería por cobro** + N distribuciones analíticas
+2. **Distribución automática por línea de negocio** desde detalle POS (nunca manual)
+3. **Gastos**: directo / común / no_asignado con prorrateo de comunes
+4. **Dimensiones**: Línea de Negocio (eje principal), Marca, Centro de Costo, Categoría de Gasto
 
-## Stack Tecnico
-- Backend: FastAPI, Python, PostgreSQL (schema finanzas2 + produccion read-only + odoo read-only)
-- Frontend: React, Shadcn UI, Recharts
+## Módulos Activos
+- Dashboard / Dashboard Financiero
+- Ventas POS + CxC
+- Gastos + Prorrateo + Factura Proveedor + CxP
+- Tesorería + Cuentas Bancarias + Movimientos + Flujo de Caja
+- Reportes Gerenciales
+- Catálogos: Líneas de Negocio, Marcas, Centros de Costo, Categorías Gasto, Proveedores, Clientes, Empresas
 
-## Funcionalidades Implementadas
-1. Dashboard + Dashboard Financiero
-2. Ventas POS: sync Odoo -> tablas locales, detalle con nombre producto/marca/linea negocio
-3. CxC/CxP con aging, abonos, auto-tesoreria
-4. Gastos, Facturas proveedor (FIFO auto-fill), Ordenes de compra
-5. Maestros: Marcas, Proyectos, Lineas de Negocio, Centros de Costo
-6. Tesoreria, Flujo de Caja, Rentabilidad, Presupuesto vs Real, ROI
-7. Valorizacion Inventario FIFO, Reportes Gerenciales
-8. Desacoplamiento Odoo: tablas locales, mapping service, SIN CLASIFICAR
-9. Distribucion analitica: 1 mov real tesoreria + N distribuciones por LN
-10. Catalogo LN con dropdown de opciones Odoo (odoo.x_linea_negocio) + fallback manual
+## Módulos Pausados
+- Proyectos, Capital & ROI, Valorización Inventario, Presupuesto vs Real, Contabilidad compleja
 
-## Tablas Clave
-- `cont_venta_pos` / `cont_venta_pos_linea`: Copia local POS con product_name, odoo_linea_negocio_id
-- `cont_distribucion_analitica`: origen_tipo (venta_pos_ingreso/cobranza_cxc), linea_negocio_id, monto
-- `cont_linea_negocio`: Catalogo oficial con odoo_linea_negocio_id/nombre
+## Lo Implementado
 
-## Backlog
-- Transferencias entre cuentas en tesoreria
-- Calendario vencimientos CxC/CxP
-- Conciliacion bancaria
-- Dashboard salud mapeo (% mapeadas vs sin clasificar)
+### Fase 0 - Desacoplamiento Odoo (COMPLETADO - Feb 2026)
+- Refactorización completa de endpoints financieros para leer tablas locales
+- Sincronización local de datos Odoo (POST /api/ventas-pos/sync-local)
+- Tabla cont_distribucion_analitica_ingreso para separar tesorería de analítica
+
+### Fase 1 - Backend Simplificación (COMPLETADO - Mar 2026)
+- CRUD categorías de gasto (cont_categoria_gasto)
+- Gastos con campos: categoria_gasto_id, tipo_asignacion, centro_costo_id, marca_id, linea_negocio_id
+- Endpoints gastos devuelven nombres enriquecidos (JOINs)
+- Prorrateo: pendientes, preview (3 métodos), ejecutar, historial
+- Filtro prorrateo: solo tipo_asignacion='comun' o (no_asignado + linea_negocio_id IS NULL)
+
+### Fase 2 - Frontend Simplificación (COMPLETADO - Mar 2026)
+- Sidebar simplificado: 6 secciones (Principal, Ventas, Egresos, Tesorería, Reportes, Catálogos)
+- Gastos.jsx: formulario con Categoría Gasto, Tipo Asignación, Centro Costo, Marca, Línea (condicional directo)
+- Tabla gastos: columnas Categoría, Tipo (badges), Centro Costo
+- CategoriasGasto.jsx: CRUD completo inline
+- ProrrateoGastos.jsx: tabs Pendientes/Historial, modal con 3 métodos de prorrateo
+
+## Próximas Tareas
+
+### P2 - Reportes Simplificados (PENDIENTE)
+1. Ventas pendientes por revisar
+2. Ingresos confirmados por línea de negocio
+3. Ingresos confirmados por marca
+4. Cobranzas por línea
+5. Pendiente por cobrar por línea
+6. Gastos por categoría
+7. Gastos por centro de costo
+8. Utilidad por línea antes de prorrateo
+9. Utilidad por línea después de prorrateo
+
+## Esquema BD Clave
+- **cont_gasto**: empresa_id, fecha, tipo_asignacion, categoria_gasto_id, centro_costo_id, marca_id, linea_negocio_id
+- **cont_categoria_gasto**: id, codigo, nombre, descripcion, activo, empresa_id
+- **cont_prorrateo_gasto**: id, gasto_id, metodo, periodo_desde, periodo_hasta, monto_total
+- **cont_prorrateo_gasto_detalle**: id, prorrateo_id, linea_negocio_id, porcentaje, monto
+- **cont_distribucion_analitica_ingreso**: distribución analítica de ventas/cobros
+- **cont_linea_negocio**: catálogo con mapeo odoo_linea_negocio_id
+
+## Arquitectura
+- Backend: FastAPI + PostgreSQL (schema finanzas2)
+- Frontend: React + Shadcn UI + Recharts
+- Odoo: lectura vía sync local, no queries directos
