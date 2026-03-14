@@ -358,8 +358,8 @@ export const VentasPOS = () => {
       const faltante = parseFloat(venta.amount_total) - totalPagos;
       const numPagosExistentes = response.data.length;
       const referenciaAuto = numPagosExistentes === 0
-        ? venta.num_comp || venta.name
-        : `${venta.num_comp || venta.name} - ${numPagosExistentes + 1}`;
+        ? (venta.num_comp || venta.name)
+        : `${venta.num_comp || venta.name}-${numPagosExistentes + 1}`;
       setNuevoPago({
         forma_pago: 'Efectivo',
         cuenta_financiera_id: cuentasResp.data.length > 0 ? cuentasResp.data[0].id : '',
@@ -411,7 +411,7 @@ export const VentasPOS = () => {
         setNuevoPago({
           ...nuevoPago,
           monto: faltante > 0 ? faltante.toFixed(2) : '',
-          referencia: `${ventaSeleccionada.num_comp || ventaSeleccionada.name} - ${numPagos + 1}`,
+          referencia: `${ventaSeleccionada.num_comp || ventaSeleccionada.name}-${numPagos + 1}`,
           observaciones: ''
         });
       }

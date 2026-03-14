@@ -111,6 +111,10 @@ Los pagos de letras vinculadas a una factura no generaban distribuciones analiti
 - Frontend UI: Modal edit + Guardar -> PASSED
 - Dashboard: Costos por linea de negocio ahora muestran Element Premium S/3000 + Confeccion S/5900 -> PASSED
 
+## Vendedor y Referencia de Pago - COMPLETADO (2026-03-14)
+- Corregido: Vendedor ahora usa `vendedor_id`/`vendedor_name` de Odoo (personas: Jaqueline, Luz, Julissa) en vez de `user_id` (tiendas: S. Barranca, Gamarra)
+- Referencia de pago auto-llena con numero de comprobante (B014-04862, B014-04862-2, etc.)
+
 ## Libro Analitico - COMPLETADO (2026-03-13)
 Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - Linea de Negocio, Marca, Centro de Costo, Categoria

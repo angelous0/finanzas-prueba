@@ -169,13 +169,13 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
     orders = await conn.fetch(f"""
         SELECT o.odoo_order_id, o.date_order, o.amount_total, o.state,
                o.is_cancelled, o.reserva, o.user_id,
+               o.vendedor_id, o.vendedor_name,
                o.tipo_comp, o.num_comp, o.x_pagos, o.company_id,
                o.company_name,
-               p.name AS partner_name, u.name AS vendedor_name,
+               p.name AS partner_name,
                sl.x_nombre AS tienda_name, po.location_id AS tienda_id
         FROM odoo.v_pos_order_enriched o
         LEFT JOIN odoo.res_partner p ON p.odoo_id = o.cuenta_partner_id AND p.company_key = 'GLOBAL'
-        LEFT JOIN odoo.res_users u ON u.odoo_id = o.user_id AND u.company_key = 'GLOBAL'
         LEFT JOIN odoo.pos_order po ON po.odoo_id = o.odoo_order_id AND po.company_key = o.company_key
         LEFT JOIN odoo.stock_location sl ON sl.odoo_id = po.location_id AND sl.company_key = 'GLOBAL'
         WHERE o.company_key = $1 {date_filter}
@@ -211,7 +211,7 @@ async def _sync_odoo_to_local(conn, empresa_id: int, company_key: str, fecha_des
                 company_id = EXCLUDED.company_id
         """, empresa_id, o['odoo_order_id'], f"POS-{o['odoo_order_id']}",
             date_order, o['amount_total'], o['state'],
-            o['partner_name'] or '-', o['user_id'],
+            o['partner_name'] or '-', o['vendedor_id'],
             o['vendedor_name'] or '-',
             o['is_cancelled'] or False, o['reserva'] or False,
             o['tienda_id'], o['tienda_name'], o['company_name'],
