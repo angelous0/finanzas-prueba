@@ -1,326 +1,183 @@
-import React, { useState, useEffect } from 'react';
-import { getProveedores, createTercero, updateTercero, deleteTercero } from '../services/api';
-import { useEmpresa } from '../context/EmpresaContext';
-import { Plus, Edit2, Trash2, Users, Search, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Pencil, Trash2, Search, X } from 'lucide-react';
+import { getTerceros, createTercero, updateTercero, deleteTercero } from '../services/api';
 import { toast } from 'sonner';
 
-export const Proveedores = () => {
-  const { empresaActual } = useEmpresa();
+const EMPTY = { nombre: '', tipo_documento: 'RUC', numero_documento: '', telefono: '', email: '', direccion: '', notas: '' };
 
+export default function Proveedores() {
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
-  
-  const [formData, setFormData] = useState({
-    tipo_documento: 'RUC',
-    numero_documento: '',
-    nombre: '',
-    nombre_comercial: '',
-    direccion: '',
-    telefono: '',
-    email: '',
-    terminos_pago_dias: 30,
-    es_proveedor: true
-  });
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadProveedores();
-  }, [search, empresaActual]);
-
-  const loadProveedores = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await getProveedores(search || undefined);
-      setProveedores(response.data);
-    } catch (error) {
-      console.error('Error loading proveedores:', error);
-      toast.error('Error al cargar proveedores');
-    } finally {
-      setLoading(false);
-    }
-  };
+      const res = await getTerceros({ es_proveedor: true, search: search || undefined });
+      setProveedores(res.data);
+    } catch { toast.error('Error cargando proveedores'); }
+    finally { setLoading(false); }
+  }, [search]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      if (editingId) {
-        await updateTercero(editingId, formData);
-        toast.success('Proveedor actualizado');
-      } else {
-        await createTercero(formData);
-        toast.success('Proveedor creado');
-      }
-      setShowModal(false);
-      resetForm();
-      loadProveedores();
-    } catch (error) {
-      console.error('Error saving:', error);
-      toast.error('Error al guardar proveedor');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const handleEdit = (proveedor) => {
-    setFormData({
-      tipo_documento: proveedor.tipo_documento || 'RUC',
-      numero_documento: proveedor.numero_documento || '',
-      nombre: proveedor.nombre,
-      nombre_comercial: proveedor.nombre_comercial || '',
-      direccion: proveedor.direccion || '',
-      telefono: proveedor.telefono || '',
-      email: proveedor.email || '',
-      terminos_pago_dias: proveedor.terminos_pago_dias || 30,
-      es_proveedor: true
-    });
-    setEditingId(proveedor.id);
+  const openNew = () => { setEditing(null); setForm(EMPTY); setShowModal(true); };
+  const openEdit = (p) => {
+    setEditing(p);
+    setForm({ nombre: p.nombre || '', tipo_documento: p.tipo_documento || 'RUC', numero_documento: p.numero_documento || '', telefono: p.telefono || '', email: p.email || '', direccion: p.direccion || '', notas: p.notas || '' });
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Está seguro de eliminar este proveedor?')) return;
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!form.nombre.trim()) { toast.error('Nombre es obligatorio'); return; }
+    setSaving(true);
     try {
-      await deleteTercero(id);
-      toast.success('Proveedor eliminado');
-      loadProveedores();
-    } catch (error) {
-      console.error('Error deleting:', error);
-      toast.error('Error al eliminar proveedor');
-    }
+      const payload = { ...form, es_proveedor: true, es_cliente: false, es_personal: false, activo: true };
+      if (editing) {
+        await updateTercero(editing.id, payload);
+        toast.success('Proveedor actualizado');
+      } else {
+        await createTercero(payload);
+        toast.success('Proveedor creado');
+      }
+      setShowModal(false);
+      load();
+    } catch { toast.error('Error guardando'); }
+    finally { setSaving(false); }
   };
 
-  const resetForm = () => {
-    setFormData({
-      tipo_documento: 'RUC',
-      numero_documento: '',
-      nombre: '',
-      nombre_comercial: '',
-      direccion: '',
-      telefono: '',
-      email: '',
-      terminos_pago_dias: 30,
-      es_proveedor: true
-    });
-    setEditingId(null);
+  const handleDelete = async (p) => {
+    if (!window.confirm(`Desactivar "${p.nombre}"?`)) return;
+    try { await deleteTercero(p.id); toast.success('Proveedor desactivado'); load(); }
+    catch { toast.error('Error'); }
   };
 
   return (
-    <div data-testid="proveedores-page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Proveedores</h1>
-          <p className="page-subtitle">{proveedores.length} proveedores registrados</p>
-        </div>
-        <button 
-          className="btn btn-primary"
-          onClick={() => { resetForm(); setShowModal(true); }}
-          data-testid="nuevo-proveedor-btn"
-        >
-          <Plus size={18} />
-          Nuevo Proveedor
+    <div style={{ padding: '1.5rem', maxWidth: '1100px' }} data-testid="proveedores-page">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Proveedores</h1>
+        <button className="btn btn-primary btn-sm" onClick={openNew} data-testid="nuevo-proveedor-btn">
+          <Plus size={16} /> Nuevo Proveedor
         </button>
       </div>
 
-      <div className="page-content">
-        {/* Search */}
-        <div className="filters-bar">
-          <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
-            <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Buscar por nombre o RUC..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ paddingLeft: '2.5rem' }}
-            />
-          </div>
-        </div>
-
-        {/* Tabla */}
-        <div className="card">
-          <div className="data-table-wrapper">
-            {loading ? (
-              <div className="loading">
-                <div className="loading-spinner"></div>
-              </div>
-            ) : proveedores.length === 0 ? (
-              <div className="empty-state">
-                <Users className="empty-state-icon" />
-                <div className="empty-state-title">No hay proveedores</div>
-                <div className="empty-state-description">Agrega tu primer proveedor</div>
-                <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-                  <Plus size={18} />
-                  Agregar proveedor
-                </button>
-              </div>
-            ) : (
-              <table className="data-table" data-testid="proveedores-table">
-                <thead>
-                  <tr>
-                    <th>RUC/DNI</th>
-                    <th>Nombre</th>
-                    <th>Nombre Comercial</th>
-                    <th>Teléfono</th>
-                    <th>Email</th>
-                    <th>Términos</th>
-                    <th className="text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {proveedores.map((proveedor) => (
-                    <tr key={proveedor.id}>
-                      <td style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                        {proveedor.numero_documento || '-'}
-                      </td>
-                      <td style={{ fontWeight: 500 }}>{proveedor.nombre}</td>
-                      <td>{proveedor.nombre_comercial || '-'}</td>
-                      <td>{proveedor.telefono || '-'}</td>
-                      <td>{proveedor.email || '-'}</td>
-                      <td>{proveedor.terminos_pago_dias || 0} días</td>
-                      <td className="text-center">
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <button 
-                            className="btn btn-outline btn-sm btn-icon"
-                            onClick={() => handleEdit(proveedor)}
-                            title="Editar"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button 
-                            className="btn btn-outline btn-sm btn-icon"
-                            onClick={() => handleDelete(proveedor.id)}
-                            title="Eliminar"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+      <div style={{ marginBottom: '1rem', position: 'relative', maxWidth: '320px' }}>
+        <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+        <input type="text" className="form-input" placeholder="Buscar por nombre o RUC..."
+          value={search} onChange={(e) => setSearch(e.target.value)}
+          style={{ paddingLeft: '2.25rem', fontSize: '0.8125rem' }} data-testid="proveedor-search" />
       </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>Cargando...</div>
+      ) : proveedores.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+          <p>No hay proveedores registrados</p>
+          <button className="btn btn-primary btn-sm" onClick={openNew} style={{ marginTop: '0.5rem' }}>
+            <Plus size={14} /> Registrar proveedor
+          </button>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+          <table className="data-table" style={{ fontSize: '0.8125rem' }} data-testid="proveedores-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>RUC / Doc.</th>
+                <th>Telefono</th>
+                <th>Email</th>
+                <th style={{ width: '80px' }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {proveedores.map(p => (
+                <tr key={p.id}>
+                  <td style={{ fontWeight: 500 }}>{p.nombre}</td>
+                  <td>{p.numero_documento ? `${p.tipo_documento || ''} ${p.numero_documento}` : '-'}</td>
+                  <td>{p.telefono || '-'}</td>
+                  <td>{p.email || '-'}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      <button className="action-btn" onClick={() => openEdit(p)} title="Editar" style={{ width: '28px', height: '28px' }}>
+                        <Pencil size={13} />
+                      </button>
+                      <button className="action-btn action-danger" onClick={() => handleDelete(p)} title="Desactivar" style={{ width: '28px', height: '28px' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
-              <h2 className="modal-title">
-                {editingId ? 'Editar Proveedor' : 'Nuevo Proveedor'}
-              </h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>
-                <X size={20} />
-              </button>
+              <h2 className="modal-title">{editing ? 'Editar Proveedor' : 'Nuevo Proveedor'}</h2>
+              <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
             </div>
-            
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSave}>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Nombre / Razon Social *</label>
+                  <input type="text" className="form-input" value={form.nombre} autoFocus
+                    onChange={e => setForm({ ...form, nombre: e.target.value })} required data-testid="prov-nombre" />
+                </div>
+                <div className="form-grid form-grid-2" style={{ marginTop: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Tipo Doc.</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.tipo_documento}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tipo_documento: e.target.value }))}
-                    >
+                    <select className="form-input form-select" value={form.tipo_documento}
+                      onChange={e => setForm({ ...form, tipo_documento: e.target.value })}>
                       <option value="RUC">RUC</option>
                       <option value="DNI">DNI</option>
                       <option value="CE">CE</option>
+                      <option value="OTRO">Otro</option>
                     </select>
                   </div>
-                  
                   <div className="form-group">
-                    <label className="form-label required">Número Documento</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={formData.numero_documento}
-                      onChange={(e) => setFormData(prev => ({ ...prev, numero_documento: e.target.value }))}
-                      required
-                    />
+                    <label className="form-label">N Documento (RUC)</label>
+                    <input type="text" className="form-input" value={form.numero_documento}
+                      onChange={e => setForm({ ...form, numero_documento: e.target.value })}
+                      placeholder="20123456789" data-testid="prov-ruc" />
                   </div>
                 </div>
-
-                <div className="form-group">
-                  <label className="form-label required">Razón Social / Nombre</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Nombre Comercial</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formData.nombre_comercial}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nombre_comercial: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Dirección</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formData.direccion}
-                    onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-grid form-grid-2" style={{ marginTop: '0.5rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Teléfono</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={formData.telefono}
-                      onChange={(e) => setFormData(prev => ({ ...prev, telefono: e.target.value }))}
-                    />
+                    <label className="form-label">Telefono</label>
+                    <input type="text" className="form-input" value={form.telefono}
+                      onChange={e => setForm({ ...form, telefono: e.target.value })} placeholder="987654321" />
                   </div>
-                  
                   <div className="form-group">
                     <label className="form-label">Email</label>
-                    <input
-                      type="email"
-                      className="form-input"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    />
+                    <input type="email" className="form-input" value={form.email}
+                      onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contacto@empresa.com" />
                   </div>
                 </div>
-
-                <div className="form-group">
-                  <label className="form-label">Términos de Pago (días)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={formData.terminos_pago_dias}
-                    onChange={(e) => setFormData(prev => ({ ...prev, terminos_pago_dias: parseInt(e.target.value) || 0 }))}
-                  />
+                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                  <label className="form-label">Direccion</label>
+                  <input type="text" className="form-input" value={form.direccion}
+                    onChange={e => setForm({ ...form, direccion: e.target.value })} placeholder="Opcional" />
+                </div>
+                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                  <label className="form-label">Notas</label>
+                  <textarea className="form-input" rows={2} value={form.notas}
+                    onChange={e => setForm({ ...form, notas: e.target.value })} placeholder="Opcional" />
                 </div>
               </div>
-
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Crear')}
+                <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Guardando...' : (editing ? 'Guardar' : 'Crear Proveedor')}
                 </button>
               </div>
             </form>
@@ -329,6 +186,4 @@ export const Proveedores = () => {
       )}
     </div>
   );
-};
-
-export default Proveedores;
+}

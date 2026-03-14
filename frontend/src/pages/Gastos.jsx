@@ -13,7 +13,8 @@ import {
   getCuentasFinancieras,
   generarAsiento,
   getCategoriasGasto,
-  getMarcas
+  getMarcas,
+  createTercero
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import SearchableSelect from '../components/SearchableSelect';
@@ -82,6 +83,27 @@ export default function Gastos() {
   });
   const [fechaContableManual, setFechaContableManual] = useState(false);
   const [showSunat, setShowSunat] = useState(false);
+
+  // Quick-create proveedor
+  const [showQuickProv, setShowQuickProv] = useState(false);
+  const [quickProvForm, setQuickProvForm] = useState({ nombre: '', tipo_documento: 'RUC', numero_documento: '' });
+  const [savingProv, setSavingProv] = useState(false);
+
+  const handleQuickCreateProv = async (e) => {
+    e.preventDefault();
+    if (!quickProvForm.nombre.trim()) { toast.error('Nombre obligatorio'); return; }
+    setSavingProv(true);
+    try {
+      const res = await createTercero({ ...quickProvForm, es_proveedor: true, es_cliente: false, es_personal: false, activo: true });
+      const newProv = res.data;
+      setProveedores(prev => [...prev, newProv]);
+      setFormData(prev => ({ ...prev, proveedor_id: newProv.id, beneficiario_nombre: '' }));
+      setShowQuickProv(false);
+      setQuickProvForm({ nombre: '', tipo_documento: 'RUC', numero_documento: '' });
+      toast.success(`Proveedor "${newProv.nombre}" creado`);
+    } catch { toast.error('Error creando proveedor'); }
+    finally { setSavingProv(false); }
+  };
   
   // Line items
   const [lineasGasto, setLineasGasto] = useState([{
@@ -699,7 +721,8 @@ export default function Gastos() {
                     <label className="form-label">Proveedor</label>
                     <SearchableSelect options={proveedores} value={formData.proveedor_id}
                       onChange={(value) => setFormData({ ...formData, proveedor_id: value, beneficiario_nombre: '' })}
-                      placeholder="Seleccionar proveedor..." searchPlaceholder="Buscar..." displayKey="nombre" valueKey="id" clearable />
+                      placeholder="Seleccionar proveedor..." searchPlaceholder="Buscar..." displayKey="nombre" valueKey="id" clearable
+                      onCreateNew={() => setShowQuickProv(true)} createNewLabel="Crear proveedor" />
                   </div>
                   <div className="form-group">
                     <label className="form-label">O Beneficiario (texto libre)</label>
@@ -1106,6 +1129,51 @@ export default function Gastos() {
           </div>
         </div>
       )}
+
+      {/* Quick-create Proveedor modal */}
+      {showQuickProv && (
+        <div className="modal-overlay" onClick={() => setShowQuickProv(false)} style={{ zIndex: 1100 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Crear Proveedor</h2>
+              <button className="modal-close" onClick={() => setShowQuickProv(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleQuickCreateProv}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Nombre / Razon Social *</label>
+                  <input type="text" className="form-input" value={quickProvForm.nombre} autoFocus
+                    onChange={e => setQuickProvForm({ ...quickProvForm, nombre: e.target.value })} required data-testid="quick-prov-nombre" />
+                </div>
+                <div className="form-grid form-grid-2" style={{ marginTop: '0.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Tipo Doc.</label>
+                    <select className="form-input form-select" value={quickProvForm.tipo_documento}
+                      onChange={e => setQuickProvForm({ ...quickProvForm, tipo_documento: e.target.value })}>
+                      <option value="RUC">RUC</option>
+                      <option value="DNI">DNI</option>
+                      <option value="CE">CE</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">N Documento</label>
+                    <input type="text" className="form-input" value={quickProvForm.numero_documento}
+                      onChange={e => setQuickProvForm({ ...quickProvForm, numero_documento: e.target.value })}
+                      placeholder="20123456789" data-testid="quick-prov-ruc" />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={() => setShowQuickProv(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={savingProv}>
+                  {savingProv ? 'Creando...' : 'Crear y Seleccionar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -25,13 +25,13 @@ import Pagos from './pages/Pagos';
 import FlujoCaja from './pages/FlujoCaja';
 import ReportesSimplificados from './pages/ReportesSimplificados';
 import RentabilidadLinea from './pages/RentabilidadLinea';
+import Proveedores from './pages/Proveedores';
 import LibroAnalitico from './pages/LibroAnalitico';
 import ValorizacionInventario from './pages/ValorizacionInventario';
 import CategoriasGasto from './pages/CategoriasGasto';
 import LineasNegocio from './pages/LineasNegocio';
 import CentrosCosto from './pages/CentrosCosto';
 import Marcas from './pages/Marcas';
-import Proveedores from './pages/Proveedores';
 import Empresas from './pages/Empresas';
 import { Clientes } from './pages/PlaceholderPages';
 
@@ -150,6 +150,7 @@ function App() {
             <Route path="/ventas-pos" element={<VentasPOS />} />
             <Route path="/cxc" element={<CxC />} />
             <Route path="/gastos" element={<Gastos />} />
+            <Route path="/proveedores" element={<Proveedores />} />
             <Route path="/prorrateo" element={<ProrrateoGastos />} />
             <Route path="/facturas-proveedor" element={<FacturasProveedor />} />
             <Route path="/cxp" element={<CxP />} />
