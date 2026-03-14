@@ -78,12 +78,10 @@ export default function Gastos() {
     notas: '',
     impuestos_incluidos: true,
     categoria_gasto_id: '',
-    tipo_asignacion: 'directo',
-    centro_costo_id: '',
-    marca_id: '',
-    linea_negocio_id: ''
+    marca_id: ''
   });
   const [fechaContableManual, setFechaContableManual] = useState(false);
+  const [showSunat, setShowSunat] = useState(false);
   
   // Line items
   const [lineasGasto, setLineasGasto] = useState([{
@@ -214,12 +212,10 @@ export default function Gastos() {
       notas: '',
       impuestos_incluidos: true,
       categoria_gasto_id: '',
-      tipo_asignacion: 'directo',
-      centro_costo_id: '',
-      marca_id: '',
-      linea_negocio_id: ''
+      marca_id: ''
     });
     setFechaContableManual(false);
+    setShowSunat(false);
     setLineasGasto([{
       categoria_id: '',
       descripcion: '',
@@ -312,16 +308,22 @@ export default function Gastos() {
     
     setSubmitting(true);
     try {
+      // Auto-determine tipo_asignacion and header-level fields from lines
+      const lineasValidas = lineasGasto.filter(l => l.importe > 0);
+      const hayLineaNegocio = lineasValidas.some(l => l.linea_negocio_id);
+      const tipoAsignacion = hayLineaNegocio ? 'directo' : 'no_asignado';
+      const primeraLineaConLinea = lineasValidas.find(l => l.linea_negocio_id);
+      const primeraLineaConCentro = lineasValidas.find(l => l.centro_costo_id);
+
       const payload = {
         ...formData,
         proveedor_id: formData.proveedor_id || null,
         tipo_cambio: formData.tipo_cambio ? parseFloat(formData.tipo_cambio) : null,
         categoria_gasto_id: formData.categoria_gasto_id ? parseInt(formData.categoria_gasto_id) : null,
-        tipo_asignacion: formData.tipo_asignacion || 'directo',
-        centro_costo_id: formData.centro_costo_id ? parseInt(formData.centro_costo_id) : null,
+        tipo_asignacion: tipoAsignacion,
+        centro_costo_id: primeraLineaConCentro ? parseInt(primeraLineaConCentro.centro_costo_id) : null,
         marca_id: formData.marca_id ? parseInt(formData.marca_id) : null,
-        linea_negocio_id: formData.tipo_asignacion === 'directo' && formData.linea_negocio_id 
-          ? parseInt(formData.linea_negocio_id) : null,
+        linea_negocio_id: primeraLineaConLinea ? parseInt(primeraLineaConLinea.linea_negocio_id) : null,
         base_gravada: totales.base_gravada,
         igv_sunat: totales.igv_sunat,
         base_no_gravada: totales.base_no_gravada,
@@ -652,74 +654,20 @@ export default function Gastos() {
             
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
-                {/* Header Info */}
+                {/* === CABECERA: Datos del documento === */}
                 <div className="form-grid form-grid-4">
                   <div className="form-group">
                     <label className="form-label">Fecha *</label>
-                    <input
-                      type="date"
-                      className="form-input"
-                      value={formData.fecha}
+                    <input type="date" className="form-input" value={formData.fecha}
                       onChange={(e) => {
-                        const newFecha = e.target.value;
-                        const updates = { fecha: newFecha };
-                        if (!fechaContableManual) updates.fecha_contable = newFecha;
-                        setFormData(prev => ({ ...prev, ...updates }));
-                      }}
-                      required
-                    />
+                        const nf = e.target.value;
+                        setFormData(prev => ({ ...prev, fecha: nf, ...(!fechaContableManual ? { fecha_contable: nf } : {}) }));
+                      }} required />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Fecha Contable</label>
-                    <input
-                      type="date"
-                      className="form-input"
-                      value={formData.fecha_contable}
-                      onChange={(e) => { setFechaContableManual(true); setFormData(prev => ({ ...prev, fecha_contable: e.target.value })); }}
-                      data-testid="gasto-fecha-contable"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Moneda</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.moneda_id}
-                      onChange={(e) => {
-                        const selMoneda = monedas.find(m => m.id === parseInt(e.target.value));
-                        setFormData(prev => ({
-                          ...prev,
-                          moneda_id: e.target.value,
-                          tipo_cambio: selMoneda?.codigo === 'PEN' ? '1' : prev.tipo_cambio || ''
-                        }));
-                      }}
-                    >
-                      {monedas.map(m => (
-                        <option key={m.id} value={m.id}>{m.nombre} ({m.simbolo})</option>
-                      ))}
-                    </select>
-                  </div>
-                  {monedas.find(m => m.id === parseInt(formData.moneda_id))?.codigo === 'USD' && (
-                    <div className="form-group">
-                      <label className="form-label required">T.C.</label>
-                      <input
-                        type="number"
-                        step="0.001"
-                        className="form-input"
-                        placeholder="Ej: 3.72"
-                        value={formData.tipo_cambio}
-                        onChange={(e) => setFormData(prev => ({ ...prev, tipo_cambio: e.target.value }))}
-                        data-testid="gasto-tipo-cambio-input"
-                        required
-                      />
-                    </div>
-                  )}
                   <div className="form-group">
                     <label className="form-label">Tipo Doc.</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.tipo_documento}
-                      onChange={(e) => setFormData({ ...formData, tipo_documento: e.target.value })}
-                    >
+                    <select className="form-input form-select" value={formData.tipo_documento}
+                      onChange={(e) => setFormData({ ...formData, tipo_documento: e.target.value })}>
                       <option value="boleta">Boleta</option>
                       <option value="factura">Factura</option>
                       <option value="recibo">Recibo</option>
@@ -728,309 +676,195 @@ export default function Gastos() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Nº Documento</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={formData.numero_documento}
+                    <label className="form-label">N Doc.</label>
+                    <input type="text" className="form-input" value={formData.numero_documento}
                       onChange={(e) => setFormData({ ...formData, numero_documento: e.target.value })}
-                      placeholder="001-00001"
-                    />
+                      placeholder="001-00001" />
                   </div>
-                  <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.25rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, userSelect: 'none' }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.impuestos_incluidos}
-                        onChange={(e) => setFormData({ ...formData, impuestos_incluidos: e.target.checked })}
-                        data-testid="gasto-igv-incluido"
-                        style={{ width: '18px', height: '18px', accentColor: '#1B4D3E' }}
-                      />
-                      IGV Incluido
-                    </label>
+                  <div className="form-group">
+                    <label className="form-label">Moneda</label>
+                    <select className="form-input form-select" value={formData.moneda_id}
+                      onChange={(e) => {
+                        const sel = monedas.find(m => m.id === parseInt(e.target.value));
+                        setFormData(prev => ({ ...prev, moneda_id: e.target.value, tipo_cambio: sel?.codigo === 'PEN' ? '1' : prev.tipo_cambio || '' }));
+                      }}>
+                      {monedas.map(m => <option key={m.id} value={m.id}>{m.nombre} ({m.simbolo})</option>)}
+                    </select>
                   </div>
                 </div>
 
                 {/* Proveedor / Beneficiario */}
-                <div className="form-grid form-grid-2">
+                <div className="form-grid form-grid-2" style={{ marginTop: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Proveedor</label>
-                    <SearchableSelect
-                      options={proveedores}
-                      value={formData.proveedor_id}
+                    <SearchableSelect options={proveedores} value={formData.proveedor_id}
                       onChange={(value) => setFormData({ ...formData, proveedor_id: value, beneficiario_nombre: '' })}
-                      placeholder="Seleccionar proveedor..."
-                      searchPlaceholder="Buscar..."
-                      displayKey="nombre"
-                      valueKey="id"
-                    />
+                      placeholder="Seleccionar proveedor..." searchPlaceholder="Buscar..." displayKey="nombre" valueKey="id" />
                   </div>
                   <div className="form-group">
                     <label className="form-label">O Beneficiario (texto libre)</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={formData.beneficiario_nombre}
+                    <input type="text" className="form-input" value={formData.beneficiario_nombre}
                       onChange={(e) => setFormData({ ...formData, beneficiario_nombre: e.target.value, proveedor_id: '' })}
-                      placeholder="Nombre del beneficiario"
-                      disabled={!!formData.proveedor_id}
-                    />
+                      placeholder="Nombre del beneficiario" disabled={!!formData.proveedor_id} />
                   </div>
                 </div>
 
-                {/* SUNAT Doc Type and Tax Breakdown (auto-calculated) */}
-                <div className="form-grid form-grid-4" style={{ marginTop: '0.75rem' }}>
-                  <div className="form-group">
-                    <label className="form-label required">Categoría de Gasto</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.categoria_gasto_id}
-                      onChange={(e) => setFormData({ ...formData, categoria_gasto_id: e.target.value })}
-                      required
-                      data-testid="gasto-categoria-gasto"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {categoriasGasto.map(c => (
-                        <option key={c.id} value={c.id}>{c.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label required">Tipo Asignación</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.tipo_asignacion}
-                      onChange={(e) => setFormData({ ...formData, tipo_asignacion: e.target.value })}
-                      data-testid="gasto-tipo-asignacion"
-                    >
-                      <option value="directo">Directo</option>
-                      <option value="comun">Común</option>
-                      <option value="no_asignado">No asignado</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Centro de Costo</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.centro_costo_id}
-                      onChange={(e) => setFormData({ ...formData, centro_costo_id: e.target.value })}
-                      data-testid="gasto-centro-costo"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {centros.map(c => (
-                        <option key={c.id} value={c.id}>{c.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Marca</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.marca_id}
-                      onChange={(e) => setFormData({ ...formData, marca_id: e.target.value })}
-                      data-testid="gasto-marca"
-                    >
-                      <option value="">-</option>
-                      {marcas.map(m => (
-                        <option key={m.id} value={m.id}>{m.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {formData.tipo_asignacion === 'directo' && (
-                  <div className="form-grid form-grid-4" style={{ marginTop: '0.75rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">Línea de Negocio</label>
-                      <select
-                        className="form-input form-select"
-                        value={formData.linea_negocio_id}
-                        onChange={(e) => setFormData({ ...formData, linea_negocio_id: e.target.value })}
-                        data-testid="gasto-linea-negocio"
-                      >
-                        <option value="">-</option>
-                        {lineas.map(l => (
-                          <option key={l.id} value={l.id}>{l.nombre}</option>
-                        ))}
-                      </select>
+                {/* Opciones secundarias (colapsable) */}
+                <div style={{ marginTop: '0.75rem' }}>
+                  <button type="button" onClick={() => setShowSunat(!showSunat)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem 0' }}>
+                    <span style={{ transform: showSunat ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.15s', display: 'inline-block' }}>&#9654;</span>
+                    Datos adicionales (SUNAT, fecha contable, categoria gasto, marca)
+                  </button>
+                  {showSunat && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div className="form-grid form-grid-4">
+                        <div className="form-group">
+                          <label className="form-label">Fecha Contable</label>
+                          <input type="date" className="form-input" value={formData.fecha_contable}
+                            onChange={(e) => { setFechaContableManual(true); setFormData(prev => ({ ...prev, fecha_contable: e.target.value })); }} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Doc SUNAT</label>
+                          <select className="form-input form-select" value={formData.tipo_comprobante_sunat}
+                            onChange={(e) => setFormData({ ...formData, tipo_comprobante_sunat: e.target.value })}>
+                            <option value="">--</option>
+                            <option value="01">01 - Factura</option>
+                            <option value="03">03 - Boleta</option>
+                            <option value="07">07 - Nota Credito</option>
+                            <option value="08">08 - Nota Debito</option>
+                            <option value="14">14 - Serv. Publico</option>
+                            <option value="02">02 - Recibo Hon.</option>
+                            <option value="12">12 - Ticket</option>
+                            <option value="00">00 - Otros</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Categoria de Gasto</label>
+                          <select className="form-input form-select" value={formData.categoria_gasto_id}
+                            onChange={(e) => setFormData({ ...formData, categoria_gasto_id: e.target.value })}>
+                            <option value="">-</option>
+                            {categoriasGasto.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Marca</label>
+                          <select className="form-input form-select" value={formData.marca_id}
+                            onChange={(e) => setFormData({ ...formData, marca_id: e.target.value })}>
+                            <option value="">-</option>
+                            {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-grid form-grid-4" style={{ marginTop: '0.5rem' }}>
+                        <div className="form-group">
+                          <label className="form-label">Base Gravada</label>
+                          <input type="text" className="form-input" value={totales.base_gravada.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">IGV</label>
+                          <input type="text" className="form-input" value={totales.igv_sunat.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">No Gravada</label>
+                          <input type="text" className="form-input" value={totales.base_no_gravada.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">ISC</label>
+                          <input type="number" step="0.01" min="0" className="form-input" value={formData.isc}
+                            onChange={(e) => setFormData({ ...formData, isc: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                      </div>
+                      {monedas.find(m => m.id === parseInt(formData.moneda_id))?.codigo === 'USD' && (
+                        <div className="form-grid form-grid-4" style={{ marginTop: '0.5rem' }}>
+                          <div className="form-group">
+                            <label className="form-label required">Tipo de Cambio</label>
+                            <input type="number" step="0.001" className="form-input" placeholder="Ej: 3.72"
+                              value={formData.tipo_cambio}
+                              onChange={(e) => setFormData(prev => ({ ...prev, tipo_cambio: e.target.value }))} required />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-
-                {formData.tipo_asignacion === 'comun' && (
-                  <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#fef9c3', borderRadius: '6px', fontSize: '0.8125rem', color: '#854d0e' }}>
-                    Este gasto se marcará como <strong>común</strong> y pasará al módulo de prorrateo para distribuirse entre líneas de negocio.
-                  </div>
-                )}
-
-                {/* SUNAT Doc Type and Tax Breakdown */}
-                <div className="form-grid form-grid-4" style={{ marginTop: '0.75rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Doc SUNAT</label>
-                    <select
-                      className="form-input form-select"
-                      value={formData.tipo_comprobante_sunat}
-                      onChange={(e) => setFormData({ ...formData, tipo_comprobante_sunat: e.target.value })}
-                      data-testid="gasto-tipo-sunat"
-                    >
-                      <option value="">--</option>
-                      <option value="01">01 - Factura</option>
-                      <option value="03">03 - Boleta</option>
-                      <option value="07">07 - Nota Crédito</option>
-                      <option value="08">08 - Nota Débito</option>
-                      <option value="14">14 - Serv. Público</option>
-                      <option value="02">02 - Recibo Hon.</option>
-                      <option value="12">12 - Ticket</option>
-                      <option value="00">00 - Otros</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Base Gravada</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={totales.base_gravada.toFixed(2)}
-                      readOnly
-                      style={{ background: '#f1f5f9' }}
-                      data-testid="gasto-base-gravada"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">IGV</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={totales.igv_sunat.toFixed(2)}
-                      readOnly
-                      style={{ background: '#f1f5f9' }}
-                      data-testid="gasto-igv-sunat"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">No Gravada</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={totales.base_no_gravada.toFixed(2)}
-                      readOnly
-                      style={{ background: '#f1f5f9' }}
-                      data-testid="gasto-base-no-gravada"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">ISC</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="form-input"
-                      value={formData.isc}
-                      onChange={(e) => setFormData({ ...formData, isc: parseFloat(e.target.value) || 0 })}
-                      data-testid="gasto-isc"
-                    />
-                  </div>
+                  )}
                 </div>
 
-                {/* Line Items */}
-                <div style={{ marginTop: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Detalle del Gasto</h3>
-                    <button type="button" className="btn btn-outline btn-sm" onClick={handleAddLinea}>
-                      <Plus size={14} /> Agregar línea
-                    </button>
+                {/* === DETALLE: Clasificacion analitica === */}
+                <div style={{ marginTop: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>Detalle del Gasto</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, userSelect: 'none', color: '#475569' }}>
+                        <input type="checkbox" checked={formData.impuestos_incluidos}
+                          onChange={(e) => setFormData({ ...formData, impuestos_incluidos: e.target.checked })}
+                          style={{ width: '16px', height: '16px', accentColor: '#1B4D3E' }} />
+                        IGV Incluido
+                      </label>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={handleAddLinea}>
+                        <Plus size={14} /> Linea
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="items-table-wrapper">
-                    <table className="data-table items-table">
+                    <table className="data-table items-table" data-testid="gasto-detalle-table">
                       <thead>
                         <tr>
-                          <th style={{ width: '180px' }}>Categoría</th>
-                          <th>Descripción</th>
-                          <th style={{ width: '140px' }}>Línea Negocio</th>
-                          <th style={{ width: '140px' }}>Centro Costo</th>
+                          <th style={{ width: '170px' }}>Categoria</th>
+                          <th>Descripcion</th>
+                          <th style={{ width: '140px' }}>Linea Negocio</th>
+                          <th style={{ width: '130px' }}>Centro Costo</th>
                           <th style={{ width: '100px' }}>Importe</th>
-                          <th style={{ width: '60px' }}>IGV</th>
-                          <th style={{ width: '40px' }}></th>
+                          <th style={{ width: '45px' }}>IGV</th>
+                          <th style={{ width: '36px' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {lineasGasto.map((linea, index) => (
                           <tr key={index}>
                             <td>
-                              <select
-                                className="form-input form-select"
-                                value={linea.categoria_id}
+                              <select className="form-input form-select" value={linea.categoria_id}
                                 onChange={(e) => handleLineaChange(index, 'categoria_id', e.target.value)}
-                                style={{ fontSize: '0.8125rem' }}
-                              >
+                                style={{ fontSize: '0.8125rem' }}>
                                 <option value="">Seleccionar...</option>
-                                {categorias.map(c => (
-                                  <option key={c.id} value={c.id}>{c.nombre_completo || c.nombre}</option>
-                                ))}
+                                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre_completo || c.nombre}</option>)}
                               </select>
                             </td>
                             <td>
-                              <input
-                                type="text"
-                                className="form-input"
-                                value={linea.descripcion}
+                              <input type="text" className="form-input" value={linea.descripcion}
                                 onChange={(e) => handleLineaChange(index, 'descripcion', e.target.value)}
-                                placeholder="Descripción..."
-                                style={{ fontSize: '0.8125rem' }}
-                              />
+                                placeholder="Descripcion..." style={{ fontSize: '0.8125rem' }} />
                             </td>
                             <td>
-                              <select
-                                className="form-input form-select"
-                                value={linea.linea_negocio_id}
+                              <select className="form-input form-select" value={linea.linea_negocio_id}
                                 onChange={(e) => handleLineaChange(index, 'linea_negocio_id', e.target.value)}
-                                style={{ fontSize: '0.8125rem' }}
-                              >
+                                style={{ fontSize: '0.8125rem' }}>
                                 <option value="">-</option>
-                                {lineas.map(l => (
-                                  <option key={l.id} value={l.id}>{l.nombre}</option>
-                                ))}
+                                {lineas.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
                               </select>
                             </td>
                             <td>
-                              <select
-                                className="form-input form-select"
-                                value={linea.centro_costo_id}
+                              <select className="form-input form-select" value={linea.centro_costo_id}
                                 onChange={(e) => handleLineaChange(index, 'centro_costo_id', e.target.value)}
-                                style={{ fontSize: '0.8125rem' }}
-                              >
+                                style={{ fontSize: '0.8125rem' }}>
                                 <option value="">-</option>
-                                {centros.map(c => (
-                                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                                ))}
+                                {centros.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                               </select>
                             </td>
                             <td>
-                              <input
-                                type="number"
-                                step="0.01"
-                                className="form-input text-right"
-                                value={linea.importe}
+                              <input type="number" step="0.01" className="form-input text-right" value={linea.importe}
                                 onChange={(e) => handleLineaChange(index, 'importe', e.target.value)}
-                                style={{ fontSize: '0.8125rem', fontFamily: "'JetBrains Mono', monospace" }}
-                              />
+                                style={{ fontSize: '0.8125rem', fontFamily: "'JetBrains Mono', monospace" }} />
                             </td>
                             <td className="text-center">
-                              <input
-                                type="checkbox"
-                                checked={linea.igv_aplica}
-                                onChange={(e) => handleLineaChange(index, 'igv_aplica', e.target.checked)}
-                              />
+                              <input type="checkbox" checked={linea.igv_aplica}
+                                onChange={(e) => handleLineaChange(index, 'igv_aplica', e.target.checked)} />
                             </td>
                             <td>
                               {lineasGasto.length > 1 && (
-                                <button
-                                  type="button"
-                                  className="action-btn action-danger"
-                                  onClick={() => handleRemoveLinea(index)}
-                                  style={{ width: '28px', height: '28px' }}
-                                >
-                                  <Trash2 size={14} />
+                                <button type="button" className="action-btn action-danger"
+                                  onClick={() => handleRemoveLinea(index)} style={{ width: '26px', height: '26px' }}>
+                                  <Trash2 size={13} />
                                 </button>
                               )}
                             </td>
@@ -1039,22 +873,22 @@ export default function Gastos() {
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan={4} className="text-right" style={{ fontWeight: 500 }}>Subtotal:</td>
-                          <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                          <td colSpan={4} className="text-right" style={{ fontWeight: 500, fontSize: '0.8125rem' }}>Subtotal:</td>
+                          <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8125rem' }}>
                             {formatCurrency(totales.subtotal, monedaActual?.simbolo)}
                           </td>
                           <td colSpan={2}></td>
                         </tr>
                         <tr>
-                          <td colSpan={4} className="text-right" style={{ fontWeight: 500 }}>IGV (18%):</td>
-                          <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                          <td colSpan={4} className="text-right" style={{ fontWeight: 500, fontSize: '0.8125rem' }}>IGV (18%):</td>
+                          <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8125rem' }}>
                             {formatCurrency(totales.igv, monedaActual?.simbolo)}
                           </td>
                           <td colSpan={2}></td>
                         </tr>
                         <tr style={{ background: '#f8fafc' }}>
-                          <td colSpan={4} className="text-right" style={{ fontWeight: 600, fontSize: '1rem' }}>TOTAL:</td>
-                          <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, fontSize: '1rem', color: '#1B4D3E' }}>
+                          <td colSpan={4} className="text-right" style={{ fontWeight: 700, fontSize: '0.9375rem' }}>TOTAL:</td>
+                          <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.9375rem', color: '#1B4D3E' }}>
                             {formatCurrency(totales.total, monedaActual?.simbolo)}
                           </td>
                           <td colSpan={2}></td>
@@ -1064,92 +898,62 @@ export default function Gastos() {
                   </div>
                 </div>
 
-                {/* Payments Section */}
-                <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <DollarSign size={18} />
-                      Pagos (obligatorio)
+                {/* === PAGOS === */}
+                <div style={{ marginTop: '1.25rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #86efac' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                      <DollarSign size={16} /> Pagos
                     </h3>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button type="button" className="btn btn-outline btn-sm" onClick={handleDistribuirPago}>
-                        Distribuir igual
-                      </button>
-                      <button type="button" className="btn btn-outline btn-sm" onClick={handleAddPago}>
-                        <Plus size={14} /> Agregar pago
+                    <div style={{ display: 'flex', gap: '0.375rem' }}>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={handleDistribuirPago} style={{ fontSize: '0.75rem' }}>Distribuir</button>
+                      <button type="button" className="btn btn-outline btn-sm" onClick={handleAddPago} style={{ fontSize: '0.75rem' }}>
+                        <Plus size={13} /> Pago
                       </button>
                     </div>
                   </div>
-                  
-                  <table className="data-table" style={{ background: '#fff' }}>
+                  <table className="data-table" style={{ background: '#fff', fontSize: '0.8125rem' }}>
                     <thead>
                       <tr>
                         <th style={{ width: '200px' }}>Cuenta *</th>
-                        <th style={{ width: '140px' }}>Medio</th>
-                        <th style={{ width: '120px' }}>Monto *</th>
+                        <th style={{ width: '130px' }}>Medio</th>
+                        <th style={{ width: '110px' }}>Monto *</th>
                         <th>Referencia</th>
-                        <th style={{ width: '40px' }}></th>
+                        <th style={{ width: '36px' }}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {pagos.map((pago, index) => (
                         <tr key={index}>
                           <td>
-                            <select
-                              className="form-input form-select"
-                              value={pago.cuenta_financiera_id}
+                            <select className="form-input form-select" value={pago.cuenta_financiera_id}
                               onChange={(e) => handlePagoChange(index, 'cuenta_financiera_id', e.target.value)}
-                              style={{ fontSize: '0.8125rem' }}
-                              required
-                            >
+                              style={{ fontSize: '0.8125rem' }} required>
                               <option value="">Seleccionar...</option>
-                              {cuentas.map(c => (
-                                <option key={c.id} value={c.id}>{c.nombre} ({formatCurrency(c.saldo_actual)})</option>
-                              ))}
+                              {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre} ({formatCurrency(c.saldo_actual)})</option>)}
                             </select>
                           </td>
                           <td>
-                            <select
-                              className="form-input form-select"
-                              value={pago.medio_pago}
+                            <select className="form-input form-select" value={pago.medio_pago}
                               onChange={(e) => handlePagoChange(index, 'medio_pago', e.target.value)}
-                              style={{ fontSize: '0.8125rem' }}
-                            >
-                              {MEDIOS_PAGO.map(m => (
-                                <option key={m.value} value={m.value}>{m.label}</option>
-                              ))}
+                              style={{ fontSize: '0.8125rem' }}>
+                              {MEDIOS_PAGO.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                             </select>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-input text-right"
-                              value={pago.monto}
+                            <input type="number" step="0.01" className="form-input text-right" value={pago.monto}
                               onChange={(e) => handlePagoChange(index, 'monto', e.target.value)}
-                              style={{ fontSize: '0.8125rem', fontFamily: "'JetBrains Mono', monospace" }}
-                              required
-                            />
+                              style={{ fontSize: '0.8125rem', fontFamily: "'JetBrains Mono', monospace" }} required />
                           </td>
                           <td>
-                            <input
-                              type="text"
-                              className="form-input"
-                              value={pago.referencia}
+                            <input type="text" className="form-input" value={pago.referencia}
                               onChange={(e) => handlePagoChange(index, 'referencia', e.target.value)}
-                              placeholder="Nº operación..."
-                              style={{ fontSize: '0.8125rem' }}
-                            />
+                              placeholder="N operacion..." style={{ fontSize: '0.8125rem' }} />
                           </td>
                           <td>
                             {pagos.length > 1 && (
-                              <button
-                                type="button"
-                                className="action-btn action-danger"
-                                onClick={() => handleRemovePago(index)}
-                                style={{ width: '28px', height: '28px' }}
-                              >
-                                <Trash2 size={14} />
+                              <button type="button" className="action-btn action-danger"
+                                onClick={() => handleRemovePago(index)} style={{ width: '26px', height: '26px' }}>
+                                <Trash2 size={13} />
                               </button>
                             )}
                           </td>
@@ -1159,11 +963,8 @@ export default function Gastos() {
                     <tfoot>
                       <tr style={{ background: totalPagos !== totales.total ? '#fef2f2' : '#f0fdf4' }}>
                         <td colSpan={2} className="text-right" style={{ fontWeight: 600 }}>Total Pagos:</td>
-                        <td className="text-right" style={{ 
-                          fontFamily: "'JetBrains Mono', monospace", 
-                          fontWeight: 600,
-                          color: Math.abs(totalPagos - totales.total) > 0.01 ? '#dc2626' : '#15803d'
-                        }}>
+                        <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+                          color: Math.abs(totalPagos - totales.total) > 0.01 ? '#dc2626' : '#15803d' }}>
                           {formatCurrency(totalPagos, monedaActual?.simbolo)}
                         </td>
                         <td colSpan={2}>
@@ -1179,15 +980,11 @@ export default function Gastos() {
                 </div>
 
                 {/* Notas */}
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Notas</label>
-                  <textarea
-                    className="form-input"
-                    rows={2}
-                    value={formData.notas}
+                <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                  <label className="form-label">Glosa / Observaciones</label>
+                  <textarea className="form-input" rows={2} value={formData.notas}
                     onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                    placeholder="Observaciones adicionales..."
-                  />
+                    placeholder="Observaciones adicionales..." />
                 </div>
               </div>
 
@@ -1217,8 +1014,7 @@ export default function Gastos() {
               <h2 className="modal-title">Gasto {selectedGasto.numero}</h2>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button className="btn btn-outline btn-sm" onClick={() => handleDownloadPDF(selectedGasto)} title="Descargar PDF">
-                  <Download size={16} />
-                  PDF
+                  <Download size={16} /> PDF
                 </button>
                 <button className="modal-close" onClick={() => setShowViewModal(false)}>
                   <X size={20} />
@@ -1226,7 +1022,8 @@ export default function Gastos() {
               </div>
             </div>
             <div className="modal-body">
-              <div className="form-grid form-grid-3" style={{ marginBottom: '1rem' }}>
+              {/* Cabecera: datos del documento */}
+              <div className="form-grid form-grid-4" style={{ marginBottom: '1rem' }}>
                 <div>
                   <label className="form-label">Fecha</label>
                   <p style={{ fontWeight: 500 }}>{formatDate(selectedGasto.fecha)}</p>
@@ -1239,50 +1036,24 @@ export default function Gastos() {
                   <label className="form-label">Documento</label>
                   <p style={{ fontWeight: 500 }}>
                     {selectedGasto.tipo_documento && selectedGasto.numero_documento 
-                      ? `${selectedGasto.tipo_documento.toUpperCase()} ${selectedGasto.numero_documento}`
-                      : '-'}
+                      ? `${selectedGasto.tipo_documento.toUpperCase()} ${selectedGasto.numero_documento}` : '-'}
                   </p>
                 </div>
-              </div>
-              <div className="form-grid form-grid-4" style={{ marginBottom: '1rem' }}>
                 <div>
-                  <label className="form-label">Categoría Gasto</label>
-                  <p style={{ fontWeight: 500 }}>{selectedGasto.categoria_gasto_nombre || '-'}</p>
-                </div>
-                <div>
-                  <label className="form-label">Tipo Asignación</label>
-                  <span style={{
-                    display: 'inline-block',
-                    padding: '2px 10px',
-                    borderRadius: '12px',
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
-                    background: selectedGasto.tipo_asignacion === 'directo' ? '#dbeafe' 
-                      : selectedGasto.tipo_asignacion === 'comun' ? '#fef9c3' : '#f1f5f9',
-                    color: selectedGasto.tipo_asignacion === 'directo' ? '#1e40af' 
-                      : selectedGasto.tipo_asignacion === 'comun' ? '#854d0e' : '#64748b'
-                  }}>
-                    {selectedGasto.tipo_asignacion || 'no_asignado'}
-                  </span>
-                </div>
-                <div>
-                  <label className="form-label">Centro de Costo</label>
-                  <p style={{ fontWeight: 500 }}>{selectedGasto.centro_costo_nombre || '-'}</p>
-                </div>
-                <div>
-                  <label className="form-label">Línea / Marca</label>
-                  <p style={{ fontWeight: 500 }}>
-                    {selectedGasto.linea_negocio_nombre || '-'} / {selectedGasto.marca_nombre || '-'}
-                  </p>
+                  <label className="form-label">Moneda</label>
+                  <p style={{ fontWeight: 500 }}>{selectedGasto.moneda_codigo || 'PEN'}</p>
                 </div>
               </div>
 
-              <h4 style={{ margin: '1rem 0 0.5rem', fontSize: '0.875rem' }}>Detalle</h4>
+              {/* Detalle: clasificacion analitica */}
+              <h4 style={{ margin: '0.75rem 0 0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Detalle del Gasto</h4>
               <table className="data-table" style={{ fontSize: '0.8125rem' }}>
                 <thead>
                   <tr>
-                    <th>Categoría</th>
-                    <th>Descripción</th>
+                    <th>Categoria</th>
+                    <th>Descripcion</th>
+                    <th>Linea Negocio</th>
+                    <th>Centro Costo</th>
                     <th className="text-right">Importe</th>
                   </tr>
                 </thead>
@@ -1292,10 +1063,11 @@ export default function Gastos() {
                       <td>
                         {linea.categoria_padre_nombre 
                           ? <span><span style={{ color: 'var(--text-muted)' }}>{linea.categoria_padre_nombre}</span> &gt; {linea.categoria_nombre}</span>
-                          : (linea.categoria_nombre || '-')
-                        }
+                          : (linea.categoria_nombre || '-')}
                       </td>
                       <td>{linea.descripcion || '-'}</td>
+                      <td>{linea.linea_negocio_nombre || '-'}</td>
+                      <td>{linea.centro_costo_nombre || '-'}</td>
                       <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                         {formatCurrency(linea.importe)}
                       </td>
@@ -1304,19 +1076,19 @@ export default function Gastos() {
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={2} className="text-right">Subtotal:</td>
+                    <td colSpan={4} className="text-right">Subtotal:</td>
                     <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                       {formatCurrency(selectedGasto.subtotal)}
                     </td>
                   </tr>
                   <tr>
-                    <td colSpan={2} className="text-right">IGV:</td>
+                    <td colSpan={4} className="text-right">IGV:</td>
                     <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                       {formatCurrency(selectedGasto.igv)}
                     </td>
                   </tr>
                   <tr style={{ fontWeight: 600 }}>
-                    <td colSpan={2} className="text-right">TOTAL:</td>
+                    <td colSpan={4} className="text-right">TOTAL:</td>
                     <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", color: '#1B4D3E' }}>
                       {formatCurrency(selectedGasto.total)}
                     </td>
@@ -1324,17 +1096,28 @@ export default function Gastos() {
                 </tfoot>
               </table>
 
+              {/* Tipo asignacion auto-derivado */}
+              {selectedGasto.tipo_asignacion && (
+                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8125rem', color: '#64748b' }}>
+                  <span>Asignacion: <span style={{
+                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 500,
+                    background: selectedGasto.tipo_asignacion === 'directo' ? '#dbeafe' : selectedGasto.tipo_asignacion === 'comun' ? '#fef9c3' : '#f1f5f9',
+                    color: selectedGasto.tipo_asignacion === 'directo' ? '#1e40af' : selectedGasto.tipo_asignacion === 'comun' ? '#854d0e' : '#64748b'
+                  }}>{selectedGasto.tipo_asignacion}</span></span>
+                  {selectedGasto.categoria_gasto_nombre && <span>Cat. Gasto: {selectedGasto.categoria_gasto_nombre}</span>}
+                  {selectedGasto.marca_nombre && <span>Marca: {selectedGasto.marca_nombre}</span>}
+                </div>
+              )}
+
               {selectedGasto.notas && (
-                <div style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Notas</label>
-                  <p style={{ color: '#64748b' }}>{selectedGasto.notas}</p>
+                <div style={{ marginTop: '0.75rem' }}>
+                  <label className="form-label">Observaciones</label>
+                  <p style={{ color: '#64748b', fontSize: '0.875rem' }}>{selectedGasto.notas}</p>
                 </div>
               )}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setShowViewModal(false)}>
-                Cerrar
-              </button>
+              <button className="btn btn-outline" onClick={() => setShowViewModal(false)}>Cerrar</button>
             </div>
           </div>
         </div>
