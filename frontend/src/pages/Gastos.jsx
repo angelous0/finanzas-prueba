@@ -699,7 +699,7 @@ export default function Gastos() {
                     <label className="form-label">Proveedor</label>
                     <SearchableSelect options={proveedores} value={formData.proveedor_id}
                       onChange={(value) => setFormData({ ...formData, proveedor_id: value, beneficiario_nombre: '' })}
-                      placeholder="Seleccionar proveedor..." searchPlaceholder="Buscar..." displayKey="nombre" valueKey="id" />
+                      placeholder="Seleccionar proveedor..." searchPlaceholder="Buscar..." displayKey="nombre" valueKey="id" clearable />
                   </div>
                   <div className="form-group">
                     <label className="form-label">O Beneficiario (texto libre)</label>

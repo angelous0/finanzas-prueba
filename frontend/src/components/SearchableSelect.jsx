@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Plus, Search } from 'lucide-react';
+import { ChevronDown, Plus, Search, X } from 'lucide-react';
 
 export const SearchableSelect = ({
   options = [],
@@ -11,6 +11,7 @@ export const SearchableSelect = ({
   valueKey = 'id',
   onCreateNew,
   createNewLabel = 'Crear nuevo',
+  clearable = false,
   disabled = false,
   className = '',
   'data-testid': testId
@@ -82,9 +83,20 @@ export const SearchableSelect = ({
         disabled={disabled}
       >
         {displayValue ? (
-          <span className="value">{displayValue}</span>
+          <span className="value" style={{ flex: 1 }}>{displayValue}</span>
         ) : (
-          <span className="placeholder">{placeholder}</span>
+          <span className="placeholder" style={{ flex: 1 }}>{placeholder}</span>
+        )}
+        {clearable && value && !disabled && (
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onChange(''); }}
+            style={{ padding: '2px', borderRadius: '50%', display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#9ca3af', marginRight: '2px' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
+          >
+            <X size={14} />
+          </span>
         )}
         <ChevronDown size={16} className="chevron" />
       </button>
