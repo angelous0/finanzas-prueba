@@ -236,7 +236,7 @@ const FacturaFormModal = ({
         </div>
 
         <form onSubmit={(e) => { if (readOnly) { e.preventDefault(); return; } handleSubmit(e, false); }}>
-          <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <fieldset disabled={readOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'auto' }}>
           <div className="factura-modal-body">
             {/* Proveedor row */}
             <div className="form-row">
