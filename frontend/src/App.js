@@ -100,6 +100,46 @@ function EmpresaGuard({ children }) {
   return children;
 }
 
+function AppRoutes() {
+  const { empresaActual } = useEmpresa();
+  return (
+    <div key={empresaActual?.id}>
+      <Routes>
+        {/* === CORE === */}
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/ventas-pos" element={<VentasPOS />} />
+        <Route path="/cxc" element={<CxC />} />
+        <Route path="/gastos" element={<Gastos />} />
+        <Route path="/proveedores" element={<Proveedores />} />
+        <Route path="/prorrateo" element={<ProrrateoGastos />} />
+        <Route path="/facturas-proveedor" element={<FacturasProveedor />} />
+        <Route path="/cxp" element={<CxP />} />
+        <Route path="/tesoreria" element={<Tesoreria />} />
+        <Route path="/cuentas-bancarias" element={<CuentasBancarias />} />
+        <Route path="/pagos" element={<Pagos />} />
+        <Route path="/flujo-caja" element={<FlujoCaja />} />
+        <Route path="/reportes-simplificados" element={<ReportesSimplificados />} />
+        <Route path="/rentabilidad-linea" element={<RentabilidadLinea />} />
+        <Route path="/libro-analitico" element={<LibroAnalitico />} />
+        <Route path="/valorizacion-inventario" element={<ValorizacionInventario />} />
+        <Route path="/lineas-negocio" element={<LineasNegocio />} />
+        <Route path="/marcas" element={<Marcas />} />
+        <Route path="/centros-costo" element={<CentrosCosto />} />
+        <Route path="/categorias-gasto" element={<CategoriasGasto />} />
+        <Route path="/clientes" element={<Clientes />} />
+        <Route path="/empresas" element={<Empresas />} />
+
+        {/* === REVISAR — pendiente decisión Fase 2 === */}
+        <Route path="/ordenes-compra" element={<OrdenesCompra />} />
+        <Route path="/pagar-facturas" element={<PagarFacturas />} />
+        <Route path="/letras" element={<Letras />} />
+        <Route path="/conciliacion" element={<ConciliacionBancaria />} />
+        <Route path="/historial-conciliaciones" element={<HistorialConciliaciones />} />
+      </Routes>
+    </div>
+  );
+}
+
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -144,39 +184,7 @@ function App() {
           >
             <Menu size={24} />
           </button>
-          <Routes>
-            {/* === CORE === */}
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/ventas-pos" element={<VentasPOS />} />
-            <Route path="/cxc" element={<CxC />} />
-            <Route path="/gastos" element={<Gastos />} />
-            <Route path="/proveedores" element={<Proveedores />} />
-            <Route path="/prorrateo" element={<ProrrateoGastos />} />
-            <Route path="/facturas-proveedor" element={<FacturasProveedor />} />
-            <Route path="/cxp" element={<CxP />} />
-            <Route path="/tesoreria" element={<Tesoreria />} />
-            <Route path="/cuentas-bancarias" element={<CuentasBancarias />} />
-            <Route path="/pagos" element={<Pagos />} />
-            <Route path="/flujo-caja" element={<FlujoCaja />} />
-            <Route path="/reportes-simplificados" element={<ReportesSimplificados />} />
-            <Route path="/rentabilidad-linea" element={<RentabilidadLinea />} />
-            <Route path="/libro-analitico" element={<LibroAnalitico />} />
-            <Route path="/valorizacion-inventario" element={<ValorizacionInventario />} />
-            <Route path="/lineas-negocio" element={<LineasNegocio />} />
-            <Route path="/marcas" element={<Marcas />} />
-            <Route path="/centros-costo" element={<CentrosCosto />} />
-            <Route path="/categorias-gasto" element={<CategoriasGasto />} />
-            <Route path="/proveedores" element={<Proveedores />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/empresas" element={<Empresas />} />
-
-            {/* === REVISAR — pendiente decisión Fase 2 === */}
-            <Route path="/ordenes-compra" element={<OrdenesCompra />} />
-            <Route path="/pagar-facturas" element={<PagarFacturas />} />
-            <Route path="/letras" element={<Letras />} />
-            <Route path="/conciliacion" element={<ConciliacionBancaria />} />
-            <Route path="/historial-conciliaciones" element={<HistorialConciliaciones />} />
-          </Routes>
+          <AppRoutes />
         </main>
         </div>
         <Toaster position="top-right" richColors />
