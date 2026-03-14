@@ -115,6 +115,20 @@ Los pagos de letras vinculadas a una factura no generaban distribuciones analiti
 - Corregido: Vendedor ahora usa `vendedor_id`/`vendedor_name` de Odoo (personas: Jaqueline, Luz, Julissa) en vez de `user_id` (tiendas: S. Barranca, Gamarra)
 - Referencia de pago auto-llena con numero de comprobante (B014-04862, B014-04862-2, etc.)
 
+## Bug Fix - Pagos Asociados en Ventas Credito - COMPLETADO (2026-03-14)
+### Problema
+Cuando se hacia un pago parcial de una venta a credito via CxC, la pestaña Ventas POS > Credito mostraba "Pago Asociado" como S/ 0.00 y no habia forma de ver el historial de pagos.
+### Causa
+La query de listado en pos_crud.py solo consultaba `cont_pago_aplicacion` (pagos de ventas confirmadas), pero los pagos de credito se registran en `cont_cxc_abono` a traves de la CxC vinculada.
+### Solucion
+- Backend: Agregados subqueries `pagos_cxc` y `num_pagos_cxc` en pos_crud.py que suman desde cont_cxc_abono -> cont_cxc -> venta
+- Backend: Nuevo endpoint GET /api/ventas-pos/{order_id}/pagos-credito que retorna abonos y info CxC
+- Frontend: Columna "Pagos Asoc." ahora muestra el monto correcto para ventas a credito
+- Frontend: Boton "Ver Pagos" (ojo) abre modal con detalle completo: monto original, cobrado, saldo pendiente, estado CxC, tabla de abonos
+### Testing
+- Backend: 4/4 tests passed
+- Frontend: 6/6 UI tests passed
+
 ## Libro Analitico - COMPLETADO (2026-03-13)
 Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - Linea de Negocio, Marca, Centro de Costo, Categoria
