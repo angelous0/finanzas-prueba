@@ -714,7 +714,7 @@ export default function Gastos() {
                   <button type="button" onClick={() => setShowSunat(!showSunat)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem 0' }}>
                     <span style={{ transform: showSunat ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.15s', display: 'inline-block' }}>&#9654;</span>
-                    Datos adicionales (SUNAT, fecha contable, categoria gasto, marca)
+                    Datos adicionales (SUNAT, fecha contable)
                   </button>
                   {showSunat && (
                     <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -740,24 +740,6 @@ export default function Gastos() {
                           </select>
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Categoria de Gasto</label>
-                          <select className="form-input form-select" value={formData.categoria_gasto_id}
-                            onChange={(e) => setFormData({ ...formData, categoria_gasto_id: e.target.value })}>
-                            <option value="">-</option>
-                            {categoriasGasto.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Marca</label>
-                          <select className="form-input form-select" value={formData.marca_id}
-                            onChange={(e) => setFormData({ ...formData, marca_id: e.target.value })}>
-                            <option value="">-</option>
-                            {marcas.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="form-grid form-grid-4" style={{ marginTop: '0.5rem' }}>
-                        <div className="form-group">
                           <label className="form-label">Base Gravada</label>
                           <input type="text" className="form-input" value={totales.base_gravada.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} />
                         </div>
@@ -765,6 +747,8 @@ export default function Gastos() {
                           <label className="form-label">IGV</label>
                           <input type="text" className="form-input" value={totales.igv_sunat.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} />
                         </div>
+                      </div>
+                      <div className="form-grid form-grid-4" style={{ marginTop: '0.5rem' }}>
                         <div className="form-group">
                           <label className="form-label">No Gravada</label>
                           <input type="text" className="form-input" value={totales.base_no_gravada.toFixed(2)} readOnly style={{ background: '#f1f5f9' }} />
