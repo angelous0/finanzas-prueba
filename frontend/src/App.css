@@ -1284,6 +1284,22 @@ input[type="number"] {
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.factura-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.factura-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.factura-modal-body::-webkit-scrollbar-thumb {
+  background-color: #94a3b8;
+  border-radius: 4px;
+}
+.factura-modal-body::-webkit-scrollbar-thumb:hover {
+  background-color: #64748b;
 }
 
 .factura-modal-footer {
