@@ -1,74 +1,76 @@
 <analysis>**original_problem_statement:**
-The user, acting as a Senior ERP Architect, requested a multi-phase technical audit and cleanup of the Finanzas Gerenciales application. The goal is to improve maintainability, reduce complexity, and formally separate CORE, business-critical modules from LEGACY, unused features.
+The user, acting as a Senior ERP Architect, requested a multi-phase technical audit and cleanup of the Finanzas Gerenciales application to improve maintainability and separate CORE modules from LEGACY ones.
 
-PRODUCT REQUIREMENTS (for the cleanup):
-1.  **Audit & Classify:** Analyze the entire codebase (frontend and backend) to identify active CORE modules, unused LEGACY modules, duplicate routes/components, and large, monolithic files.
-2.  **Phase 1 (Frontend Cleanup):** Remove dead code, unused imports, and legacy routes. Simplify the main navigation () to only show CORE features.
-3.  **Phase 2 (Backend Cleanup):** De-register unused LEGACY routers from the main FastAPI application () without breaking CORE functionality.
-4.  **Phase 3 (Decoupling):** For legacy routers that contain essential functions used by CORE modules, extract only the required CORE logic into new, separate, lean routers.
-5.  **Phase 4 (Physical Separation):** Move all confirmed LEGACY files into dedicated  directories.
-6.  **Phase 5 (Split Large Files):** Systematically break down the largest, most complex files into smaller, single-responsibility modules.
-7.  **New Requirement (Prorated Analytics):** When an invoice is paid, the payment amount must be prorated across the invoice's detail lines, linking the payment to the analytical accounts of each line (business line, category, cost center). If the invoice's classification is edited later, all linked payment distributions must be automatically recalculated to reflect the change.
+PRODUCT REQUIREMENTS:
+1.  **Audit & Classify:** Analyze the codebase to identify CORE vs. LEGACY modules.
+2.  **Phase 1 (Frontend Cleanup):** Remove dead code and simplify navigation.
+3.  **Phase 2 (Backend Cleanup):** De-register unused LEGACY routers.
+4.  **Phase 3 (Decoupling):** Extract essential functions from legacy routers into new CORE routers.
+5.  **Phase 4 (Physical Separation):** Move LEGACY files to  directories.
+6.  **Phase 5 (Split Large Files):** Break down monolithic files into smaller modules.
+7.  **New Requirement (Prorated Analytics):** When an invoice is paid, the payment amount must be prorated across the invoice's detail lines, linking the payment to the analytical accounts of each line. If the invoice's classification is edited later, all linked payment distributions must be automatically recalculated.
+8.  **New Requirement (Cash-Basis Reporting):** All dashboards and financial reports must reflect **only actual money movements**. Revenue from sales should only be recognized when the cash is collected, not when the sale is confirmed or marked as credit.
+9.  **New Feature (Analytical Ledger):** Create a view to see a complete history of all financial entries (income and expenses) for any selected analytical dimension (e.g., business line, cost center), with links to the source documents.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The agent has successfully completed a massive, critical refactoring of the application's payment system. The two separate payment tables ( and ) have been unified into  as the single source of truth, resolving major data inconsistencies.
+The application is largely stable after a series of critical bug fixes and feature implementations. The core payment system has been unified, and a robust prorated analytical distribution system is in place.
 
-Following this, the agent implemented several user-requested features and fixes:
-*   **Prorated Analytical Distribution:** A core business logic feature where payments are prorated across invoice lines. This data is now correctly reflected in dashboards and reports. The system also supports automatic recalculation if the source invoice's classification is edited.
-*   **UI/UX Enhancements:** Added a Numero Unico field to the Letras module, implemented read-only and partial-edit modes for paid/exchanged invoices, and fixed several UI bugs, including a modal scroll issue.
-*   **Business Logic Rules:** Enforced the rule that an invoice exchanged for Letras can only be paid via the Letras module, not from the general Cuentas por Pagar screen.
-
-The application is now in a stable, functional state.
+In this session, the agent successfully:
+- Implemented a new Libro Analítico (Analytical Ledger) feature, allowing users to view a detailed history of income and expenses for any analytical account.
+- Corrected the entire revenue reporting logic to be strictly cash-basis, meaning sales on credit are no longer counted as revenue until they are actually collected. This fixed multiple bugs related to inflated revenue figures.
+- Fixed a critical bug where payments for invoices exchanged for Letras were not generating the correct analytical distributions due to an incorrect Foreign Key and a logic error.
+- Fixed a bug where the Vendedor (Salesperson) column in the POS sales view was showing the store name instead of the actual salesperson's name by correcting the Odoo data synchronization logic.
+- Implemented a user request to auto-fill payment references with the invoice number and a suffix for subsequent payments (e.g., ).
 
 **Last working item**:
-The agent was fixing a user-reported bug where classification changes on a paid/exchanged invoice were not being saved.
+The user reported that after making a partial payment of 50 soles on a credit sale of 78 soles, the Ventas POS credit tab still shows Pago Asociado (Associated Payment) as 0, and there is no way to view the payment history for that sale.
 
-- **Last item agent was working:** The agent identified the bug's root cause: in , the line items being loaded into the form state were missing their uid=0(root) gid=0(root) groups=0(root). This caused the backend to ignore the updates as it couldn't identify which lines to modify. The agent added the uid=0(root) gid=0(root) groups=0(root) to the form state initialization in the  function.
-- **Status:** USER VERIFICATION PENDING
-- **Agent Testing Done:** Y (Agent performed debugging and code fix)
-- **Which testing method agent to use?** manual testing by curl. The agent should ask the user to verify the fix from the frontend. A screenshot showing the successful save after modification would be sufficient.
+- **Last item agent was working:** The agent was investigating why the partial payment, while correctly reducing the account receivable balance, was not being linked back to the original credit sale document. The root cause appears to be that the payment process for Cuentas por Cobrar (CxC) does not create the necessary  or  record to link the payment () to the receivable ().
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** both. First, the backend agent needs to fix the logic in  to correctly link payments to receivables. After that, the frontend agent needs to implement a UI (likely a modal) in  to display the list of associated payments.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Verify fix for saving classification changes on paid invoices (P0)**
-    - The fix has been implemented. The next step is to confirm with the user that they can now successfully edit fields like Línea de negocio on a paid/canjeada invoice and save the changes.
+- **Issue 1: Pagos Asociados not showing for credit sales (P0)**
+  - **Description:** When a partial payment is made on a credit sale via the Cuentas por Cobrar module, the Ventas POS credit tab doesn't reflect this payment. The Pago Asociado column shows 0, and there's no action to view the payment history.
+  - **Attempted fixes:** None. The agent was in the debugging phase.
+  - **Next debug checklist:**
+    1.  **Backend:** Modify the  endpoint in  to create a  record that links the payment () to the receivable ().
+    2.  **Backend:** Modify the  endpoint in . The query for  must be updated to correctly SUM the amounts from the  table for the given sale.
+    3.  **Frontend:** In , add a Ver Pagos (View Payments) button/icon to the Acciones column.
+    4.  **Frontend:** Create a new modal component that takes a  as a prop, fetches the associated payments from a new API endpoint, and displays them in a table.
+  - **Why fix this issue?** This is a critical accounting function. Users cannot track the payment status of credit sales, leading to incorrect collection management.
+  - **Status:** IN PROGRESS
+  - **Is recurring issue?** N
+  - **Should Test frontend/backend/both after fix?** Both
+  - **Blocked on other issue:** None
 
 **In progress Task List**:
 - None.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **P1: Continue with File Splitting (Phase 5):** Once the user confirms the latest fix, propose to continue with splitting the remaining large files as prioritized in the initial plan:
-        - 
-        - 
-        - 
-        - 
-    - **P2: Decide Fate of In-Review Modules:** An audit is needed for  and  to decide if they are CORE or should be moved to LEGACY.
+  - **P1: Continue with File Splitting (Phase 5):**
+    - 
+    - 
+    - 
+    - 
+  - **P2: Decide Fate of In-Review Modules:** Audit  and  to decide if they are CORE or LEGACY.
 
 - **Future Tasks:**
-    - **Complete Simplified Reports:** Implement the remaining 4 out of 12 reports requested by the user in a previous session.
-    - **Legacy Backlog:** Re-evaluate and potentially re-implement paused features like Proyectos, Capital & ROI, and Presupuesto vs Real.
+  - **Complete Simplified Reports:** Implement the remaining 4 out of 12 reports.
+  - **Legacy Backlog:** Re-evaluate and potentially re-implement paused features like Proyectos, Capital & ROI, and Presupuesto vs Real.
 
 **Completed work in this session**
-- **Critical - Unified Payment System:** Completed the major architectural refactor to unify  and  into a single master table. This fixed core data inconsistency issues. The entire CRUD flow for payments was rewritten.
-- **Critical - Prorated Analytical Distribution:**
-  - Created  to handle prorated allocation of payments across invoice lines.
-  - Integrated this service into payment creation () and invoice updates () to ensure analytical data is always in sync.
-- **Dashboard & Report Enhancement:** Updated backend endpoints (, ) and frontend components (, ) to include supplier costs from the new analytical distributions.
-- **Business Logic Fix (CxP vs Letras):**
-  - Added backend validation in  to prevent direct payment of invoices already exchanged for Letras.
-  - Updated frontend in  to hide the Pagar button for such invoices.
-- **Feature - Letras Module:**
-  - Added a  field to the  table and implemented a full UI flow (modal, column, API endpoint) for editing it in  and .
-  - Added date and text search filters to the  page.
-- **Feature - Facturas Proveedor UI/UX:**
-  - Implemented a read-only view mode for paid/canjeada invoices in .
-  - Implemented a partial-edit mode for classification fields (e.g., Linea de negocio, Categoria) on paid/canjeada invoices, locking all financial fields.
-- **Bug Fixes:**
-  - **Save classification:** Fixed a critical bug where editing the classification of a paid invoice didn't save because line item uid=0(root) gid=0(root) groups=0(root)s were missing from the form state.
-  - **Modal Scroll:** Fixed a CSS issue in  that prevented scrolling on long forms.
+- **Feature - Analytical Ledger:** Implemented a new Libro Analítico page () with backend () and frontend () components for viewing detailed financial history by analytical dimension.
+- **Critical Fix - Cash-Basis Accounting:** Reworked all dashboard and reporting endpoints (, ) to recognize revenue only when cash is collected (), not on sale confirmation.
+- **Critical Fix - Letras Analytics:** Fixed a bug in  where payments via Letras were not generating analytical data due to an incorrect FK and a premature  statement.
+- **Bug Fix - Salesperson Sync:** Corrected the Odoo sync logic in  to use  (the actual salesperson) instead of  (the store location).
+- **Bug Fix - Revenue Double Counting:** Fixed logic in  and  that was adding revenue from a sale twice.
+- **Feature - Payment Reference Suffix:** Implemented logic in  to automatically append suffixes (, ) to payment references for multiple payments against the same document.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -80,79 +82,79 @@ The agent was fixing a user-reported bug where classification changes on a paid/
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Python, Pydantic
-- **Frontend:** React, Shadcn UI, Recharts
-- **Database:** PostgreSQL
-- **Prorated Calculations:** A key logic pattern was implemented to distribute a total amount (payment) proportionally across several items (invoice lines) based on their individual values.
-- **Automatic Recalculation:** A trigger-like pattern was implemented in the application layer: updating a parent entity () causes a service to be called that re-calculates all related child entities ().
+- **Cash-Basis Accounting:** The application's reporting was fundamentally changed from accrual to cash-basis for revenue. Revenue is now recognized only upon receipt of cash via  or  distributions.
+- **Data Synchronization:** Corrected data mapping logic during synchronization from an external Odoo database in .
+- **Foreign Key Constraint Management:** A critical bug was resolved by identifying an incorrect FK and applying a database migration using .
 
 **key DB schema**
-- ****: Master table for all financial transactions.
-- ****: **[MODIFIED]** Added  (VARCHAR).
-- ****: **[MODIFIED]** Added  (INTEGER, FK to ). This table is now the single source of truth for analytical expense reporting for both direct expenses () and supplier invoice payments.
+- ****: **[MODIFIED]** The foreign key for  was corrected to reference .
+- ****: **[MODIFIED]** The data population for  and  was corrected to use the proper fields from the Odoo sync.
+- ****: **[NEEDS IMPLEMENTATION]** This table or similar logic needs to be correctly populated when a CxC payment is made to link the payment to the receivable.
 
 **changes in tech stack**
 - None.
 
 **All files of reference**
-- **Backend (Modified/Created):**
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-- **Frontend (Modified/Created):**
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+- **Backend:**
+  -  (New)
+  -  (Investigated for bug, needs fix)
+  -  (Modified for cash-basis and sync logic)
+  -  (Modified for cash-basis)
+  -  (Modified for cash-basis)
+  -  (Fixed)
+  -  (Fixed)
+  -  (Modified for FK fix)
+- **Frontend:**
+  -  (New)
+  -  (Needs modification)
+  -  (Modified for new route)
+  -  (Modified for new route)
+  -  (Modified for new endpoint)
 
 **Areas that need refactoring**:
-- The user's prioritized backlog of large files to be split (, , etc.) remains pending.
+- The prioritized backlog of large files to be split (, , etc.) remains pending.
 
 **key api endpoints**
-- : Updates the new unique number for a Letra.
-- : Now handles partial updates for classification fields on paid/canjeada invoices and triggers analytical recalculation.
-- : Rewritten to use the unified table and trigger analytical distribution.
+- **NEW:** 
+- **MODIFIED:**
+  - 
+  - 
+  - 
+  - 
+- **UNDER INVESTIGATION:** 
 
 **Critical Info for New Agent**
-- **Confirm the Fix:** Your first action should be to confirm with the user that the save classification bug is resolved. Explain what was fixed (the missing line uid=0(root) gid=0(root) groups=0(root) during form population) and ask them to test again.
-- **Re-align on Priorities:** After confirmation, the major planned work is the Phase 5 file splitting. Propose the next file to tackle from the list (, , etc.) and get user approval before starting.
-- **The Core is Stable:** The application's core data model for payments and analytics is now stable and robust. Avoid making changes to this logic unless explicitly requested. The focus should shift back to the planned refactoring and feature enhancements.
+- **Your immediate priority is the P0 bug:** Payments on credit sales are not being linked or displayed in the Ventas POS credit tab. You need to fix the backend logic in  to create the link and then update the frontend to display this information.
+- **The Golden Rule:** The user has firmly established that all financial reporting must be **cash-basis**. Revenue is only recognized when money is collected. Do not implement any logic that counts uncollected credit sales as revenue.
+- The user is technically savvy and often provides precise bug reports and feature logic. Pay close attention to their descriptions.
 
 **documents and test reports created in this job**
--  (Passed with a minor auto-fix by the testing agent)
--  (Updated with the new analytical requirements)
+-  (Updated multiple times)
+-  (Passed, for Libro Analitico feature)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** ok pero yo veo igual los dashboard o reportes (Ok, but I see the dashboards/reports the same way).
-2.  **Agent:** Investigated and confirmed reports were not reading from the new  table for supplier payments.
-3.  **Agent:** Implemented a full-stack fix to include supplier costs in dashboards and reports.
-4.  **Agent:** Showed a screenshot of the updated dashboard with new KPIs.
-5.  **User:** modifique la linea de negocio pongo guardar y no guarda (I modified the business line, hit save, and it doesn't save). Provided a screenshot.
-6.  **Agent:** Reproduced the issue and debugged the frontend flow.
-7.  **Agent:** Identified the bug: line item uid=0(root) gid=0(root) groups=0(root)s were missing in the form state, preventing the backend from updating them.
-8.  **Agent:** Implemented the fix in  by adding the uid=0(root) gid=0(root) groups=0(root) to the  function.
-9.  **Agent:** Was in the process of verifying the fix when the session ended.
-10. **(No new messages)**
+1.  **User:** My sales report shows S/184.74 for a S/100 sale. Why?
+2.  **Agent:** Fixed a double-counting bug and incorrect use of pre-tax values.
+3.  **User:** I want a feature to see a full history of income/expenses for a business line.
+4.  **Agent:** Implemented the Libro Analítico (Analytical Ledger) feature.
+5.  **User:** The Actualizar button in Ventas POS doesn't seem to do anything.
+6.  **User:** Also, for Boleta B014-04862, is the business line updated?
+7.  **Agent:** Confirmed the sync works but had no new data, and confirmed the business line for the specific boleta was correct.
+8.  **User:** The S/78 credit sale (B014-04862) is showing up in my revenue, but it shouldn't. Reports should only be for actual money movements.
+9.  **Agent:** Re-architected all reporting to be strictly cash-basis, removing uncollected credit sales from revenue totals.
+10. **User:** In Ventas POS, the vendedor is wrong, and I want payment references to auto-fill with suffixes.
+11. **Agent:** Fixed the Odoo sync to use the correct  and implemented the payment reference auto-fill.
+12. **User:** For a credit sale, I paid 50 soles, but Pago Asociado shows 0, and I can't see the payments.
 
 **Project Health Check:**
-- **Broken:** NO
+- **Broken:** NO. The core application is functional, but there is a significant bug in tracking payments for credit sales.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Odoo Data Source:** A read-only dependency on a user-provided PostgreSQL database containing synced Odoo data, accessed via the  service.
+- **Odoo Data Source:** A read-only dependency on a user-provided PostgreSQL database, accessed via the  service.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES, the payment system unification was fully tested by the agent.
+- **Testing agent used after significant changes:** YES, for the Libro Analítico feature.
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** []
 - **Known regressions:** None.
@@ -161,4 +163,4 @@ The agent was fixing a user-reported bug where classification changes on a paid/
 - Credentials can be found in .
 
 **What agent forgot to execute**
-- Nothing. The agent was actively debugging a user-reported issue and implemented a fix right before the session ended. The logical next step is user verification.</analysis>
+- The agent was actively working on the user's latest bug report when the session ended. Nothing was forgotten.</analysis>

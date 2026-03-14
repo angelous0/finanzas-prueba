@@ -77,7 +77,7 @@
   "test_credentials": {
     "empresa_id": 6,
     "empresa_name": "Ambission Industries SAC",
-    "api_base_url": "https://erp-audit-refactor-1.preview.emergentagent.com"
+    "api_base_url": "https://cash-basis-ledger.preview.emergentagent.com"
   },
   "test_data_verified": {
     "tesoreria_movement": {

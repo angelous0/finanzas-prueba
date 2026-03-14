@@ -4,7 +4,7 @@ import {
   marcarCreditoVentaPOS, descartarVentaPOS,
   getPagosVentaPOS, getPagosOficialesVentaPOS, addPagoVentaPOS, updatePagoVentaPOS, deletePagoVentaPOS,
   getCuentasFinancieras, getLineasVentaPOS, syncLocalVentasPOS,
-  getOdooCompanyMap, setOdooCompanyMap
+  getOdooCompanyMap, setOdooCompanyMap, getPagosCreditoVentaPOS
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import { Check, CreditCard, X, ShoppingCart, Download, Plus, Trash2, Eye, RotateCcw, Search, Edit, ChevronLeft, ChevronRight, Settings, RefreshCw } from 'lucide-react';
@@ -225,6 +225,11 @@ export const VentasPOS = () => {
   const [showLineasModal, setShowLineasModal] = useState(false);
   const [lineasProductos, setLineasProductos] = useState([]);
   const [loadingLineas, setLoadingLineas] = useState(false);
+
+  // Modal pagos credito (CxC abonos)
+  const [showPagosCreditoModal, setShowPagosCreditoModal] = useState(false);
+  const [pagosCreditoData, setPagosCreditoData] = useState({ abonos: [], cxc: null });
+  const [loadingPagosCredito, setLoadingPagosCredito] = useState(false);
 
   const loadVentas = useCallback(async () => {
     try {
@@ -513,6 +518,27 @@ export const VentasPOS = () => {
     setLineasProductos([]);
   };
 
+  // ===== PAGOS CREDITO MODAL =====
+  const verPagosCredito = async (venta) => {
+    setVentaSeleccionada(venta);
+    setShowPagosCreditoModal(true);
+    setLoadingPagosCredito(true);
+    try {
+      const response = await getPagosCreditoVentaPOS(venta.id);
+      setPagosCreditoData(response.data);
+    } catch (error) {
+      toast.error('Error al cargar pagos de credito');
+    } finally {
+      setLoadingPagosCredito(false);
+    }
+  };
+
+  const closePagosCreditoModal = () => {
+    setShowPagosCreditoModal(false);
+    setVentaSeleccionada(null);
+    setPagosCreditoData({ abonos: [], cxc: null });
+  };
+
   // KPIs - only confirmed sales
   const ventasConfirmadas = ventas.filter(v => v.estado_local === 'confirmada');
   const totalVentas = ventasConfirmadas.length;
@@ -720,6 +746,15 @@ export const VentasPOS = () => {
                             <button className="btn btn-sm btn-primary" onClick={() => openPagosModal(venta)} title="Asignar pagos" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
                               <Plus size={11} /> S/ {venta.pagos_asignados ? parseFloat(venta.pagos_asignados).toFixed(2) : '0.00'}
                             </button>
+                          ) : venta.estado_local === 'credito' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ color: venta.pagos_cxc > 0 ? '#059669' : '#9ca3af', fontSize: '0.8rem', fontWeight: 600 }}>
+                                S/ {venta.pagos_cxc ? parseFloat(venta.pagos_cxc).toFixed(2) : '0.00'}
+                              </span>
+                              <button className="btn btn-sm btn-outline" onClick={() => verPagosCredito(venta)} title="Ver pagos de credito" data-testid={`ver-pagos-credito-${venta.id}`} style={{ padding: '2px', fontSize: '0.65rem' }}>
+                                <Eye size={11} />
+                              </button>
+                            </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                               <span style={{ color: '#059669', fontSize: '0.8rem', fontWeight: 600 }}>
@@ -1075,6 +1110,97 @@ export const VentasPOS = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Ver Pagos de Credito (CxC Abonos) */}
+      {showPagosCreditoModal && ventaSeleccionada && (
+        <div className="modal-overlay" onClick={closePagosCreditoModal} style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', backgroundColor: '#ffffff' }}>
+            <div className="modal-header" style={{ borderBottom: '2px solid #f3f4f6', paddingBottom: '1rem' }}>
+              <div>
+                <h2 className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827' }}>Pagos de Credito</h2>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>{ventaSeleccionada.name} - {ventaSeleccionada.partner_name}</p>
+              </div>
+              <button className="modal-close" onClick={closePagosCreditoModal} style={{ fontSize: '1.75rem', color: '#9ca3af' }}>x</button>
+            </div>
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              {/* CxC Info */}
+              {pagosCreditoData.cxc && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem', padding: '1.25rem', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', borderRadius: '12px', color: 'white' }}>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Monto Original</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.125rem' }}>{formatCurrency(pagosCreditoData.cxc.monto_original)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Cobrado</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.125rem', color: '#a7f3d0' }}>
+                      {formatCurrency(pagosCreditoData.abonos.reduce((sum, a) => sum + parseFloat(a.monto || 0), 0))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Saldo Pendiente</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.125rem', color: '#fca5a5' }}>{formatCurrency(pagosCreditoData.cxc.saldo_pendiente)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado CxC</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', textTransform: 'capitalize' }}>{pagosCreditoData.cxc.estado}</div>
+                    {pagosCreditoData.cxc.fecha_vencimiento && (
+                      <div style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '0.125rem' }}>Vence: {new Date(pagosCreditoData.cxc.fecha_vencimiento).toLocaleDateString('es-PE')}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {loadingPagosCredito ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}><div className="loading loading-spinner loading-lg"></div><p style={{ marginTop: '1rem', color: '#6b7280' }}>Cargando pagos...</p></div>
+              ) : pagosCreditoData.abonos.length === 0 ? (
+                <div data-testid="no-pagos-credito" style={{ textAlign: 'center', padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                  <CreditCard size={40} style={{ color: '#d1d5db', margin: '0 auto 1rem' }} />
+                  <p style={{ color: '#6b7280', fontWeight: 500 }}>No hay pagos registrados para esta venta a credito</p>
+                  <p style={{ color: '#9ca3af', fontSize: '0.8rem', marginTop: '0.5rem' }}>Los pagos se registran desde el modulo de Cuentas por Cobrar (CxC)</p>
+                </div>
+              ) : (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
+                  <table className="table table-zebra" style={{ marginBottom: 0 }} data-testid="pagos-credito-table">
+                    <thead style={{ backgroundColor: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ fontWeight: 600 }}>Fecha</th>
+                        <th style={{ fontWeight: 600 }}>Forma de Pago</th>
+                        <th style={{ fontWeight: 600 }}>Cuenta</th>
+                        <th style={{ fontWeight: 600 }}>Referencia</th>
+                        <th style={{ fontWeight: 600 }}>Notas</th>
+                        <th className="text-right" style={{ fontWeight: 600 }}>Monto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagosCreditoData.abonos.map((abono) => (
+                        <tr key={abono.id} data-testid={`abono-row-${abono.id}`}>
+                          <td>{abono.fecha ? new Date(abono.fecha).toLocaleDateString('es-PE') : '-'}</td>
+                          <td><span style={{ padding: '0.25rem 0.75rem', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 500 }}>{abono.forma_pago || '-'}</span></td>
+                          <td style={{ fontSize: '0.875rem', color: '#6b7280' }}>{abono.cuenta_nombre || '-'}</td>
+                          <td style={{ fontSize: '0.875rem', color: '#6b7280' }}>{abono.referencia || '-'}</td>
+                          <td style={{ fontSize: '0.8rem', color: '#9ca3af', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{abono.notas || '-'}</td>
+                          <td className="text-right" style={{ fontWeight: 600, color: '#059669' }}>{formatCurrency(abono.monto)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot style={{ backgroundColor: '#f9fafb', borderTop: '2px solid #e5e7eb' }}>
+                      <tr>
+                        <td colSpan="5" style={{ fontWeight: 600, fontSize: '0.9375rem' }}>TOTAL COBRADO</td>
+                        <td className="text-right" style={{ fontWeight: 700, fontSize: '1.125rem', color: '#059669' }}>
+                          {formatCurrency(pagosCreditoData.abonos.reduce((sum, a) => sum + parseFloat(a.monto || 0), 0))}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer" style={{ borderTop: '2px solid #f3f4f6', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-outline" onClick={closePagosCreditoModal} style={{ padding: '0.625rem 1.25rem', borderRadius: '8px' }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Modal Editar Pago */}
       {showEditPagoModal && pagoEditando && (

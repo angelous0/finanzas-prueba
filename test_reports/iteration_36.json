@@ -1,0 +1,98 @@
+{
+  "iteration": 36,
+  "date": "2026-03-13",
+  "feature": "Ventas POS Credit Payments (CxC Abonos) - P0 Bug Fix",
+  "summary": "Complete testing of P0 bug fix: Credit sales now correctly display 'Pago Asociado' amounts (pagos_cxc) and provide payment history visibility via new /pagos-credito endpoint. All backend and frontend tests passed.",
+  
+  "features_tested": {
+    "Backend_pagos_cxc_subquery": {
+      "description": "GET /api/ventas-pos?estado=credito returns pagos_cxc and num_pagos_cxc fields",
+      "status": "PASSED",
+      "details": "Order 146699 correctly shows pagos_cxc=50.0 and num_pagos_cxc=1"
+    },
+    "Backend_pagos_credito_endpoint": {
+      "description": "GET /api/ventas-pos/{order_id}/pagos-credito returns CxC abonos",
+      "status": "PASSED",
+      "details": "Returns cxc info (monto_original=78, saldo_pendiente=28, estado=parcial) and 1 abono of S/50 with forma_pago=transferencia, cuenta=BCP"
+    },
+    "Backend_pagos_credito_nonexistent": {
+      "description": "GET /api/ventas-pos/999999/pagos-credito returns empty for non-existent order",
+      "status": "PASSED",
+      "details": "Returns {abonos: [], cxc: null} as expected"
+    },
+    "Frontend_credito_tab_pagos_display": {
+      "description": "Credito tab shows S/ 50.00 in Pagos Asoc column (not 0.00)",
+      "status": "PASSED",
+      "details": "Credit sale row displays S/ 50.00 in green text - bug fixed"
+    },
+    "Frontend_ver_pagos_button": {
+      "description": "Eye icon button opens Pagos de Credito modal",
+      "status": "PASSED",
+      "details": "Button with data-testid='ver-pagos-credito-146699' works correctly"
+    },
+    "Frontend_modal_cxc_info": {
+      "description": "Modal shows correct CxC info cards",
+      "status": "PASSED",
+      "details": "Displays Monto Original S/ 78.00, Total Cobrado S/ 50.00, Saldo Pendiente S/ 28.00, Estado Parcial, Vence 12/4/2026"
+    },
+    "Frontend_modal_payment_row": {
+      "description": "Modal shows payment details in table",
+      "status": "PASSED",
+      "details": "Shows 1 payment row with fecha=13/3/2026, forma_pago=transferencia, cuenta=BCP, monto=S/ 50.00"
+    },
+    "Frontend_modal_close": {
+      "description": "Modal Cerrar button closes the modal",
+      "status": "PASSED",
+      "details": "Clicking Cerrar button successfully closes the modal"
+    }
+  },
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "test_report_links": [
+    "/app/backend/tests/test_ventas_pos_pagos_credito.py",
+    "/app/test_reports/pytest/pytest_ventas_pos_pagos_credito_iter36.xml"
+  ],
+  
+  "tests_executed": [
+    {"name": "test_credit_sales_list_includes_pagos_cxc", "status": "PASSED"},
+    {"name": "test_get_pagos_credito_existing_order", "status": "PASSED"},
+    {"name": "test_get_pagos_credito_nonexistent_order", "status": "PASSED"},
+    {"name": "test_credit_sale_cxc_id_populated", "status": "PASSED"},
+    {"name": "Frontend: Navigate to Credito tab", "status": "PASSED"},
+    {"name": "Frontend: Verify S/ 50.00 in Pagos Asoc column", "status": "PASSED"},
+    {"name": "Frontend: Click eye icon to open modal", "status": "PASSED"},
+    {"name": "Frontend: Verify modal CxC info", "status": "PASSED"},
+    {"name": "Frontend: Verify modal payment table", "status": "PASSED"},
+    {"name": "Frontend: Close modal with Cerrar button", "status": "PASSED"}
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [],
+  
+  "updated_files": [
+    "/app/backend/tests/test_ventas_pos_pagos_credito.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (4/4 tests passed)",
+    "frontend": "100% (6/6 UI tests passed)"
+  },
+  
+  "test_credentials": "empresa_id=7 (X-Empresa-Id header), order_id=146699 for credit sale with partial payment",
+  "seed_data_creation": "No seed data created - used existing order 146699 with CxC abono",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "P0 bug fix verified: Credit sales in Ventas POS > Credito tab now correctly show CxC abono totals (pagos_cxc field) in the Pagos Asoc column. The eye button opens a modal with full payment history from cont_cxc_abono table. Test order 146699 has 1 partial payment of S/50 against S/78 total.",
+  "overall_status": "ALL_PASSED"
+}

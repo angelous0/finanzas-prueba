@@ -151,6 +151,7 @@ export const deletePagoVentaPOS = (ventaId, pagoId) => api.delete(`/ventas-pos/$
 export const getLineasVentaPOS = (ventaId) => api.get(`/ventas-pos/${ventaId}/lineas`);
 export const syncLocalVentasPOS = (params) => api.post('/ventas-pos/sync-local', null, { params });
 export const getDistribucionAnalitica = (ventaId) => api.get(`/ventas-pos/${ventaId}/distribucion-analitica`);
+export const getPagosCreditoVentaPOS = (ventaId) => api.get(`/ventas-pos/${ventaId}/pagos-credito`);
 
 // Config - Odoo Company Map
 export const getOdooCompanyMap = () => api.get('/config/odoo-company-map');

@@ -17,7 +17,7 @@ import os
 # Get BASE_URL from environment variable - CRITICAL: no default URL
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://erp-audit-refactor-1.preview.emergentagent.com"
+    BASE_URL = "https://cash-basis-ledger.preview.emergentagent.com"
 
 
 class TestDashboardFinancieroAPI:

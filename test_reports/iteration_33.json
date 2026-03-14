@@ -84,7 +84,7 @@
     "cuenta_financiera_id": 10,
     "moneda_id": 9,
     "proveedor_id": 46,
-    "api_base_url": "https://erp-audit-refactor-1.preview.emergentagent.com"
+    "api_base_url": "https://cash-basis-ledger.preview.emergentagent.com"
   },
   "seed_data_creation": "Test creates and cleans up test facturas, pagos, and letras during lifecycle tests",
   "retest_needed": false,

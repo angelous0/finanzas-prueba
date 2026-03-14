@@ -139,7 +139,17 @@ async def _list_from_odoo(conn, empresa_id, company_key,
                 (SELECT COUNT(*) FROM finanzas2.cont_pago_aplicacion pa
                  WHERE pa.tipo_documento = 'venta_pos_odoo' AND pa.documento_id = v.odoo_id
                    AND pa.empresa_id = {empresa_id}), 0
-            ) AS num_pagos_oficiales
+            ) AS num_pagos_oficiales,
+            COALESCE(
+                (SELECT SUM(ab.monto) FROM finanzas2.cont_cxc_abono ab
+                 JOIN finanzas2.cont_cxc cxc ON cxc.id = ab.cxc_id
+                 WHERE cxc.odoo_order_id = v.odoo_id AND cxc.empresa_id = {empresa_id}), 0
+            ) AS pagos_cxc,
+            COALESCE(
+                (SELECT COUNT(*) FROM finanzas2.cont_cxc_abono ab
+                 JOIN finanzas2.cont_cxc cxc ON cxc.id = ab.cxc_id
+                 WHERE cxc.odoo_order_id = v.odoo_id AND cxc.empresa_id = {empresa_id}), 0
+            ) AS num_pagos_cxc
         {from_clause}
         ORDER BY v.date_order DESC
         LIMIT {page_size} OFFSET {offset}
@@ -169,6 +179,8 @@ async def _list_from_odoo(conn, empresa_id, company_key,
             "num_pagos": r['num_pagos'],
             "pagos_oficiales": float(r['pagos_oficiales']),
             "num_pagos_oficiales": r['num_pagos_oficiales'],
+            "pagos_cxc": float(r['pagos_cxc']),
+            "num_pagos_cxc": r['num_pagos_cxc'],
             "cxc_id": r['cxc_id'],
             "name": f"POS-{r['odoo_order_id']}",
             "source": "odoo",
@@ -230,3 +242,52 @@ async def get_lineas_venta_pos(order_id: int, empresa_id: int = Depends(get_empr
                 "odoo_linea_negocio_id": r['odoo_linea_negocio_id'],
             })
         return result
+
+
+# =====================
+# VENTAS POS — PAGOS CREDITO (CxC Abonos)
+# =====================
+@router.get("/ventas-pos/{order_id}/pagos-credito")
+async def get_pagos_credito(order_id: int, empresa_id: int = Depends(get_empresa_id)):
+    """Returns CxC abonos linked to a credit sale's receivable."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+
+        cxc_info = await conn.fetchrow("""
+            SELECT id, monto_original, saldo_pendiente, estado, fecha_vencimiento
+            FROM cont_cxc
+            WHERE odoo_order_id = $1 AND empresa_id = $2
+            LIMIT 1
+        """, order_id, empresa_id)
+
+        if not cxc_info:
+            return {"abonos": [], "cxc": None}
+
+        rows = await conn.fetch("""
+            SELECT ab.id, ab.fecha, ab.monto, ab.forma_pago, ab.referencia, ab.notas,
+                   cf.nombre as cuenta_nombre
+            FROM cont_cxc_abono ab
+            LEFT JOIN cont_cuenta_financiera cf ON cf.id = ab.cuenta_financiera_id
+            WHERE ab.cxc_id = $1 AND ab.empresa_id = $2
+            ORDER BY ab.fecha DESC, ab.id DESC
+        """, cxc_info['id'], empresa_id)
+
+        return {
+            "abonos": [{
+                "id": r['id'],
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "monto": float(r['monto']),
+                "forma_pago": r['forma_pago'],
+                "referencia": r['referencia'],
+                "notas": r['notas'],
+                "cuenta_nombre": r['cuenta_nombre'],
+            } for r in rows],
+            "cxc": {
+                "id": cxc_info['id'],
+                "monto_original": float(cxc_info['monto_original']),
+                "saldo_pendiente": float(cxc_info['saldo_pendiente']),
+                "estado": cxc_info['estado'],
+                "fecha_vencimiento": cxc_info['fecha_vencimiento'].isoformat() if cxc_info['fecha_vencimiento'] else None,
+            }
+        }
