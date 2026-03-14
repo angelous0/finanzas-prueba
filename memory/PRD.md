@@ -129,6 +129,22 @@ La query de listado en pos_crud.py solo consultaba `cont_pago_aplicacion` (pagos
 - Backend: 4/4 tests passed
 - Frontend: 6/6 UI tests passed
 
+## Feature - Rentabilidad x Linea (5 Reportes) - COMPLETADO (2026-03-14)
+### Descripcion
+Modulo completo de control de dinero por linea de negocio con 5 reportes:
+1. **Dinero por Linea** (consolidado): ventas, cobranzas, CxC pendiente, gastos, saldo neto
+2. **Ventas por Linea**: ventas confirmadas, tickets, ticket promedio
+3. **Cobranza por Linea**: vendido, cobrado, pendiente, % cobrado
+4. **Cruce Linea x Marca**: desglose de marcas dentro de cada linea con barras de %
+5. **Gastos Directos por Linea**: gastos, facturas proveedor, total egresos
+### Implementacion
+- Backend: `backend/routers/reportes_linea.py` (5 endpoints GET /api/reportes/*)
+- Frontend: `frontend/src/pages/RentabilidadLinea.jsx` con 5 pestanas, KPIs y export Excel
+- Navegacion: Sidebar > Reportes > "Rentabilidad x Linea"
+### Testing
+- Backend: 19/19 tests passed
+- Frontend: 8/8 UI tests passed
+
 ## Libro Analitico - COMPLETADO (2026-03-13)
 Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - Linea de Negocio, Marca, Centro de Costo, Categoria
