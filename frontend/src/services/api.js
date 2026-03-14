@@ -246,6 +246,13 @@ export const getReporteGastosPorCategoria = (params) => api.get('/reportes/gasto
 export const getReporteGastosPorCentro = (params) => api.get('/reportes/gastos-por-centro-costo', { params });
 export const getReporteUtilidadPorLinea = (params) => api.get('/reportes/utilidad-por-linea', { params });
 
+// Reportes por Linea de Negocio
+export const getReporteVentasPorLinea = (params) => api.get('/reportes/ventas-por-linea', { params });
+export const getReporteCobranzaPorLinea2 = (params) => api.get('/reportes/cobranza-por-linea', { params });
+export const getReporteCruceLineaMarca = (params) => api.get('/reportes/cruce-linea-marca', { params });
+export const getReporteGastosDirectosPorLinea = (params) => api.get('/reportes/gastos-directos-por-linea', { params });
+export const getReporteDineroPorLinea = (params) => api.get('/reportes/dinero-por-linea', { params });
+
 // Libro Analitico
 export const getLibroAnalitico = (params) => api.get('/libro-analitico', { params });
 export const exportLibroAnalitico = (params) => api.get('/libro-analitico/export', { params, responseType: 'blob' });

@@ -24,6 +24,7 @@ import CuentasBancarias from './pages/CuentasBancarias';
 import Pagos from './pages/Pagos';
 import FlujoCaja from './pages/FlujoCaja';
 import ReportesSimplificados from './pages/ReportesSimplificados';
+import RentabilidadLinea from './pages/RentabilidadLinea';
 import LibroAnalitico from './pages/LibroAnalitico';
 import ValorizacionInventario from './pages/ValorizacionInventario';
 import CategoriasGasto from './pages/CategoriasGasto';
@@ -157,6 +158,7 @@ function App() {
             <Route path="/pagos" element={<Pagos />} />
             <Route path="/flujo-caja" element={<FlujoCaja />} />
             <Route path="/reportes-simplificados" element={<ReportesSimplificados />} />
+            <Route path="/rentabilidad-linea" element={<RentabilidadLinea />} />
             <Route path="/libro-analitico" element={<LibroAnalitico />} />
             <Route path="/valorizacion-inventario" element={<ValorizacionInventario />} />
             <Route path="/lineas-negocio" element={<LineasNegocio />} />

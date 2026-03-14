@@ -48,6 +48,7 @@ const navSections = [
     title: 'Reportes',
     items: [
       { icon: ClipboardList, label: 'Reportes', path: '/reportes-simplificados' },
+      { icon: GitBranch, label: 'Rentabilidad x Linea', path: '/rentabilidad-linea' },
       { icon: BookOpen, label: 'Libro Analitico', path: '/libro-analitico' },
       { icon: Package, label: 'Valorización Inventario', path: '/valorizacion-inventario' },
     ]

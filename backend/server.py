@@ -32,6 +32,7 @@ from routers.valorizacion import router as valorizacion_router
 from routers.categorias_gasto import router as categorias_gasto_router
 from routers.prorrateo import router as prorrateo_router
 from routers.reportes_simplificados import router as reportes_simplificados_router
+from routers.reportes_linea import router as reportes_linea_router
 from routers.libro_analitico import router as libro_analitico_router
 
 # LEGACY routers — desregistrados en Fase 2 (archivos conservados para /legacy/ futuro):
@@ -87,6 +88,7 @@ api_router.include_router(valorizacion_router)
 api_router.include_router(categorias_gasto_router)
 api_router.include_router(prorrateo_router)
 api_router.include_router(reportes_simplificados_router)
+api_router.include_router(reportes_linea_router)
 api_router.include_router(libro_analitico_router)
 
 # LEGACY (Fase 2+3): planillas, presupuestos, proyectos, capital_linea,

@@ -1,0 +1,128 @@
+{
+  "iteration": 37,
+  "date": "2026-03-14",
+  "feature": "Rentabilidad x Linea - 5 Reports Module",
+  "summary": "Complete testing of new 'Rentabilidad x Linea' module with 5 report tabs. All 5 backend APIs passed (19/19 tests). All frontend tabs render correctly with KPI cards, tables, and Excel export. Data verified: Element Premium line shows S/178 ventas, S/150 cobrado.",
+
+  "features_tested": {
+    "Backend_ventas_por_linea": {
+      "endpoint": "GET /api/reportes/ventas-por-linea",
+      "status": "PASSED",
+      "details": "Returns data with linea, ventas, tickets, ticket_promedio and totales"
+    },
+    "Backend_cobranza_por_linea": {
+      "endpoint": "GET /api/reportes/cobranza-por-linea",
+      "status": "PASSED",
+      "details": "Returns data with linea, vendido, cobrado, pendiente, pct_cobrado and totales"
+    },
+    "Backend_cruce_linea_marca": {
+      "endpoint": "GET /api/reportes/cruce-linea-marca",
+      "status": "PASSED",
+      "details": "Returns array of lineas with nested marcas (marca, ventas, tickets, pct)"
+    },
+    "Backend_gastos_directos_por_linea": {
+      "endpoint": "GET /api/reportes/gastos-directos-por-linea",
+      "status": "PASSED",
+      "details": "Returns data with linea, total_gastos, total_facturas, total_egresos and totales"
+    },
+    "Backend_dinero_por_linea": {
+      "endpoint": "GET /api/reportes/dinero-por-linea",
+      "status": "PASSED",
+      "details": "Returns data with linea, ventas, cobranzas, cxc_pendiente, gastos, saldo_neto and totales"
+    },
+    "Frontend_sidebar_navigation": {
+      "status": "PASSED",
+      "details": "Sidebar link 'Rentabilidad x Linea' under REPORTES section navigates correctly to /rentabilidad-linea"
+    },
+    "Frontend_tab_dinero_por_linea": {
+      "status": "PASSED",
+      "details": "Default tab shows 5 KPI cards (Ventas, Cobranzas, CxC, Gastos, Saldo Neto) and table with line breakdown"
+    },
+    "Frontend_tab_ventas_por_linea": {
+      "status": "PASSED",
+      "details": "Shows 3 KPI cards and table with columns: Linea, Ventas Confirmadas, Tickets, Ticket Promedio"
+    },
+    "Frontend_tab_cobranza_por_linea": {
+      "status": "PASSED",
+      "details": "Shows 4 KPI cards and table with columns: Linea, Vendido, Cobrado, Pendiente, % Cobrado"
+    },
+    "Frontend_tab_linea_x_marca": {
+      "status": "PASSED",
+      "details": "Shows grouped display with marca breakdown per linea including percentage bars"
+    },
+    "Frontend_tab_gastos_por_linea": {
+      "status": "PASSED",
+      "details": "Shows 3 KPI cards and table with columns: Linea, Gastos, Facturas Prov, Total Egresos"
+    },
+    "Frontend_excel_export": {
+      "status": "PASSED",
+      "details": "Excel export button works without error"
+    }
+  },
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_reportes_linea.py",
+    "/app/test_reports/pytest/pytest_reportes_linea_iter37.xml"
+  ],
+
+  "tests_executed": [
+    {"name": "test_ventas_por_linea_status_code", "status": "PASSED"},
+    {"name": "test_ventas_por_linea_structure", "status": "PASSED"},
+    {"name": "test_ventas_por_linea_fields", "status": "PASSED"},
+    {"name": "test_ventas_por_linea_has_data", "status": "PASSED"},
+    {"name": "test_cobranza_por_linea_status_code", "status": "PASSED"},
+    {"name": "test_cobranza_por_linea_structure", "status": "PASSED"},
+    {"name": "test_cobranza_por_linea_fields", "status": "PASSED"},
+    {"name": "test_cruce_linea_marca_status_code", "status": "PASSED"},
+    {"name": "test_cruce_linea_marca_structure", "status": "PASSED"},
+    {"name": "test_cruce_linea_marca_marca_fields", "status": "PASSED"},
+    {"name": "test_gastos_directos_por_linea_status_code", "status": "PASSED"},
+    {"name": "test_gastos_directos_por_linea_structure", "status": "PASSED"},
+    {"name": "test_gastos_directos_por_linea_fields", "status": "PASSED"},
+    {"name": "test_dinero_por_linea_status_code", "status": "PASSED"},
+    {"name": "test_dinero_por_linea_structure", "status": "PASSED"},
+    {"name": "test_dinero_por_linea_fields", "status": "PASSED"},
+    {"name": "test_dinero_por_linea_has_data", "status": "PASSED"},
+    {"name": "test_empty_date_range", "status": "PASSED"},
+    {"name": "test_default_date_range", "status": "PASSED"},
+    {"name": "Frontend: Navigate to Rentabilidad x Linea", "status": "PASSED"},
+    {"name": "Frontend: Verify 5 tabs visible", "status": "PASSED"},
+    {"name": "Frontend: Dinero por Linea tab content", "status": "PASSED"},
+    {"name": "Frontend: Ventas por Linea tab content", "status": "PASSED"},
+    {"name": "Frontend: Cobranza por Linea tab content", "status": "PASSED"},
+    {"name": "Frontend: Linea x Marca tab content", "status": "PASSED"},
+    {"name": "Frontend: Gastos por Linea tab content", "status": "PASSED"},
+    {"name": "Frontend: Excel export button", "status": "PASSED"}
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_reportes_linea.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (19/19 tests passed)",
+    "frontend": "100% (8/8 UI tests passed)"
+  },
+
+  "test_credentials": "empresa_id=7, date_range=2026-03-01 to 2026-03-14",
+  "seed_data_creation": "No seed data created - used existing Element Premium line data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Rentabilidad x Linea module fully functional. 5 tabs: Dinero por Linea (default), Ventas por Linea, Cobranza por Linea, Linea x Marca, Gastos por Linea. Test data: Element Premium has S/178 ventas, S/150 cobrado. CxC Pendiente shows S/0.00 because CxC table doesn't have linea_negocio_id mapped for all entries (expected per user requirements - linea is optional).",
+  "overall_status": "ALL_PASSED"
+}
