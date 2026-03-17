@@ -148,7 +148,7 @@ export default function OrdenesCompra() {
       setOrdenes(ordenesRes.data);
       setProveedores(provRes.data);
       setMonedas(monRes.data);
-      setArticulos(artRes.data);
+      setArticulos(artRes.data.filter(a => a.categoria !== 'PT'));
       setEmpresas(empRes.data);
       
       if (monRes.data.length > 0 && !formData.moneda_id) {

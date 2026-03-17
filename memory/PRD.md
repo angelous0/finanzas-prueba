@@ -167,6 +167,10 @@ Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - RESUELTO: Letras -> CORE (reactivado 2026-03-13)
 - RESUELTO: Conciliacion Bancaria -> CORE (reactivado 2026-03-13)
 
+## Filtro PT en Ordenes de Compra - COMPLETADO (2026-03-17)
+- El dropdown de artículos en Órdenes de Compra ahora excluye artículos con categoría 'PT' (Producto Terminado)
+- Cambio mínimo: filtro frontend en OrdenesCompra.jsx línea 150
+
 ### P1 - Reportes Faltantes
 - Ventas por cruce linea x marca
 - Gastos directos por linea
