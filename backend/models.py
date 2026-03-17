@@ -316,6 +316,8 @@ class OCUpdate(BaseModel):
     moneda_id: Optional[int] = None
     estado: Optional[str] = None
     notas: Optional[str] = None
+    lineas: Optional[List[OCLineaCreate]] = None
+    igv_incluido: Optional[bool] = None
 
 class OC(OCBase):
     id: int

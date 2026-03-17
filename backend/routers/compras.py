@@ -180,19 +180,65 @@ async def update_orden_compra(id: int, data: OCUpdate, empresa_id: int = Depends
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
-        updates = []
-        values = []
-        idx = 1
-        for field, value in data.model_dump(exclude_unset=True).items():
-            updates.append(f"{field} = ${idx}"); values.append(value); idx += 1
-        if not updates:
-            raise HTTPException(400, "No fields to update")
-        values.append(id)
-        query = f"UPDATE finanzas2.cont_oc SET {', '.join(updates)}, updated_at = NOW() WHERE id = ${idx} RETURNING id"
-        row = await conn.fetchrow(query, *values)
-        if not row:
+        oc = await conn.fetchrow("SELECT * FROM finanzas2.cont_oc WHERE id = $1 AND empresa_id = $2", id, empresa_id)
+        if not oc:
             raise HTTPException(404, "Orden de compra not found")
-        return await get_orden_compra(id)
+        if oc['estado'] != 'borrador':
+            raise HTTPException(400, "Solo se pueden editar órdenes en estado borrador")
+
+        async with conn.transaction():
+            data_dict = data.model_dump(exclude_unset=True)
+            lineas_data = data_dict.pop('lineas', None)
+            igv_incluido = data_dict.pop('igv_incluido', None)
+
+            # Update header fields
+            updates = []
+            values = []
+            idx = 1
+            for field, value in data_dict.items():
+                updates.append(f"{field} = ${idx}"); values.append(value); idx += 1
+
+            if updates:
+                values.append(id)
+                query = f"UPDATE finanzas2.cont_oc SET {', '.join(updates)}, updated_at = NOW() WHERE id = ${idx}"
+                await conn.execute(query, *values)
+
+            # Replace lines if provided
+            if lineas_data is not None:
+                await conn.execute("DELETE FROM finanzas2.cont_oc_linea WHERE oc_id = $1", id)
+                use_igv_incluido = igv_incluido if igv_incluido is not None else False
+                subtotal = 0
+                igv = 0
+                for linea in lineas_data:
+                    if use_igv_incluido and linea.get('igv_aplica', True):
+                        base = linea['cantidad'] * linea['precio_unitario'] / 1.18
+                        linea_igv = linea['cantidad'] * linea['precio_unitario'] - base
+                        subtotal += base
+                        igv += linea_igv
+                        linea_subtotal = base
+                    else:
+                        linea_subtotal = linea['cantidad'] * linea['precio_unitario']
+                        subtotal += linea_subtotal
+                        if linea.get('igv_aplica', True):
+                            igv += linea_subtotal * 0.18
+                    articulo_id_value = None
+                    if linea.get('articulo_id'):
+                        try:
+                            articulo_id_value = int(linea['articulo_id'])
+                        except (ValueError, TypeError):
+                            pass
+                    await conn.execute("""
+                        INSERT INTO finanzas2.cont_oc_linea
+                        (empresa_id, oc_id, articulo_id, descripcion, cantidad, precio_unitario, igv_aplica, subtotal)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    """, empresa_id, id, articulo_id_value, linea.get('descripcion'),
+                        linea['cantidad'], linea['precio_unitario'], linea.get('igv_aplica', True), linea_subtotal)
+                total = subtotal + igv
+                await conn.execute("""
+                    UPDATE finanzas2.cont_oc SET subtotal = $1, igv = $2, total = $3, updated_at = NOW() WHERE id = $4
+                """, subtotal, igv, total, id)
+
+        return await get_orden_compra(id, empresa_id)
 
 
 @router.delete("/ordenes-compra/{id}")

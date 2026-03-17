@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { 
   getOrdenesCompra, 
   createOrdenCompra,
+  updateOrdenCompra,
   deleteOrdenCompra,
   generarFacturaDesdeOC,
   getProveedores, 
@@ -343,14 +344,19 @@ export default function OrdenesCompra() {
         }))
       };
       
-      await createOrdenCompra(payload);
-      toast.success('Orden de compra creada');
+      if (editingOC) {
+        await updateOrdenCompra(editingOC.id, payload);
+        toast.success('Orden de compra actualizada');
+      } else {
+        await createOrdenCompra(payload);
+        toast.success('Orden de compra creada');
+      }
       setShowModal(false);
       resetForm();
       loadData();
     } catch (error) {
-      console.error('Error creating OC:', error);
-      toast.error(getErrorMessage(error, 'Error al crear orden de compra'));
+      console.error('Error saving OC:', error);
+      toast.error(getErrorMessage(error, 'Error al guardar orden de compra'));
     } finally {
       setSubmitting(false);
     }
