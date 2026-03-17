@@ -314,7 +314,7 @@ async def generar_factura_desde_oc(id: int, empresa_id: int = Depends(get_empres
 # =====================
 # FACTURAS PROVEEDOR
 # =====================
-@router.get("/facturas-proveedor", response_model=List[FacturaProveedor])
+@router.get("/facturas-proveedor")
 async def list_facturas_proveedor(
     estado: Optional[str] = None,
     proveedor_id: Optional[int] = None,
@@ -347,7 +347,7 @@ async def list_facturas_proveedor(
         rows = await conn.fetch(query, *params)
         result = []
         for row in rows:
-            fp_dict = dict(row)
+            fp_dict = {k: (v.isoformat() if isinstance(v, (date, datetime)) else (float(v) if isinstance(v, __import__('decimal').Decimal) else v)) for k, v in dict(row).items()}
             lineas = await conn.fetch("""
                 SELECT fpl.*, c.nombre as categoria_nombre, c.padre_id as categoria_padre_id,
                        cp.nombre as categoria_padre_nombre,
@@ -359,7 +359,7 @@ async def list_facturas_proveedor(
                 LEFT JOIN finanzas2.cont_centro_costo cc ON fpl.centro_costo_id = cc.id
                 WHERE fpl.factura_id = $1 ORDER BY fpl.id
             """, row['id'])
-            fp_dict['lineas'] = [dict(l) for l in lineas]
+            fp_dict['lineas'] = [{k: (v.isoformat() if isinstance(v, (date, datetime)) else (float(v) if isinstance(v, __import__('decimal').Decimal) else v)) for k, v in dict(l).items()} for l in lineas]
             # Add vinculacion summary
             vinc_summary = await conn.fetch("""
                 SELECT factura_linea_id, SUM(cantidad_aplicada) as total_vinculado
