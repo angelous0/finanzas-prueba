@@ -440,7 +440,8 @@ export default function OrdenesCompra() {
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; }
+          html, body { background-color: #ffffff !important; }
+          body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: #ffffff; }
           .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #1B4D3E; }
           .company-info { }
           .company-name { font-size: 1.5rem; font-weight: 700; color: #1B4D3E; }
