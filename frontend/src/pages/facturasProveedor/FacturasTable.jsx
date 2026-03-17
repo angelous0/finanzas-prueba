@@ -88,6 +88,7 @@ const FacturasTable = ({
                   <th className="text-right">Total</th>
                   <th className="text-right">Pagado</th>
                   <th>Estado</th>
+                  <th className="text-center">Ingresos</th>
                   <th className="text-right">Saldo CxP</th>
                   <th className="text-center" style={{ minWidth: '200px' }}>Acciones</th>
                 </tr>
@@ -121,6 +122,15 @@ const FacturasTable = ({
                         <span className={estadoBadge(factura.estado)} style={{ cursor: estaCanjeado ? 'pointer' : 'default' }} onClick={() => estaCanjeado && onVerLetras(factura)} title={estaCanjeado ? 'Ver letras vinculadas' : ''}>
                           {factura.estado}
                         </span>
+                      </td>
+                      <td className="text-center">
+                        {(() => {
+                          const v = factura.vinculacion_resumen;
+                          if (!v || v.estado === 'na') return <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>-</span>;
+                          if (v.estado === 'completo') return <span style={{ background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600 }} title={`${v.total_vinculado}/${v.total_cantidad}`}>Completo</span>;
+                          if (v.estado === 'parcial') return <span style={{ background: '#fef9c3', color: '#ca8a04', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600 }} title={`${v.total_vinculado}/${v.total_cantidad}`}>{v.total_vinculado}/{v.total_cantidad}</span>;
+                          return <span style={{ background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600 }}>Pendiente</span>;
+                        })()}
                       </td>
                       <td className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace", color: saldo > 0 ? '#EF4444' : '#22C55E', fontWeight: 500 }}>
                         {formatCurrency(saldo, factura.moneda_simbolo)}

@@ -360,6 +360,31 @@ async def list_facturas_proveedor(
                 WHERE fpl.factura_id = $1 ORDER BY fpl.id
             """, row['id'])
             fp_dict['lineas'] = [dict(l) for l in lineas]
+            # Add vinculacion summary
+            vinc_summary = await conn.fetch("""
+                SELECT factura_linea_id, SUM(cantidad_aplicada) as total_vinculado
+                FROM finanzas2.cont_factura_ingreso_mp
+                WHERE factura_id = $1
+                GROUP BY factura_linea_id
+            """, row['id'])
+            vinc_map = {v['factura_linea_id']: float(v['total_vinculado']) for v in vinc_summary}
+            has_art_lines = False
+            total_art_cant = 0
+            total_vinculado = 0
+            for l in fp_dict['lineas']:
+                if l.get('articulo_id'):
+                    has_art_lines = True
+                    cant = float(l.get('cantidad') or 0)
+                    total_art_cant += cant
+                    vinc = vinc_map.get(l['id'], 0)
+                    total_vinculado += vinc
+                    l['cantidad_vinculada'] = vinc
+            fp_dict['vinculacion_resumen'] = {
+                'tiene_articulos': has_art_lines,
+                'total_cantidad': total_art_cant,
+                'total_vinculado': total_vinculado,
+                'estado': 'completo' if has_art_lines and total_art_cant > 0 and total_vinculado >= total_art_cant else ('parcial' if total_vinculado > 0 else ('pendiente' if has_art_lines else 'na'))
+            }
             result.append(fp_dict)
         return result
 
