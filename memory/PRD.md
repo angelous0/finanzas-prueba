@@ -171,6 +171,13 @@ Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - El dropdown de artículos en Órdenes de Compra ahora excluye artículos con categoría 'PT' (Producto Terminado)
 - Cambio mínimo: filtro frontend en OrdenesCompra.jsx línea 150
 
+## Vinculación Factura Proveedor ↔ Ingresos MP - COMPLETADO (2026-03-17)
+- Tabla puente: `finanzas2.cont_factura_ingreso_mp` (factura_linea_id, ingreso_id, articulo_id, cantidad_aplicada)
+- Backend: 4 endpoints (vinculaciones, ingresos-disponibles, vincular, desvincular)
+- Frontend: Modal `VincularIngresosModal.jsx` accesible desde botón Link2 en tabla de facturas
+- Validaciones: no exceder cantidad facturada, no exceder cantidad del ingreso, artículo debe coincidir
+- Relación many-to-many por detalle y artículo
+
 ## Bug Fix - Editar OC creaba duplicado + Artículo vacío - COMPLETADO (2026-03-17)
 ### Problema 1 - Editar creaba nueva OC
 - `handleSubmit` siempre llamaba `createOrdenCompra()` sin verificar modo edición

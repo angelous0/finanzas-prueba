@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatCurrency, formatDate, estadoBadge } from './helpers';
-import { Plus, Trash2, Search, X, FileText, Edit2, Eye, DollarSign, FileSpreadsheet, History, Download } from 'lucide-react';
+import { Plus, Trash2, Search, X, FileText, Edit2, Eye, DollarSign, FileSpreadsheet, History, Download, Link2 } from 'lucide-react';
 import { } from '../../services/api';
 import { toast } from 'sonner';
 import SearchableSelect from '../../components/SearchableSelect';
@@ -10,7 +10,7 @@ const FacturasTable = ({
   filtroNumero, setFiltroNumero, filtroProveedorId, setFiltroProveedorId,
   filtroFecha, setFiltroFecha, filtroEstado, setFiltroEstado,
   onOpenPago, onOpenLetras, onVerPagos, onVerLetras, onView, onEdit, onDelete, onDownloadPDF,
-  onNewFactura
+  onNewFactura, onVincularIngresos
 }) => {
   const facturasFiltradas = filtroNumero
     ? facturas.filter(f => f.numero?.toLowerCase().includes(filtroNumero.toLowerCase()))
@@ -139,6 +139,7 @@ const FacturasTable = ({
                           {tienePagos && !estaCanjeado && (
                             <button className="action-btn" onClick={() => onVerPagos(factura)} title="Ver pagos" data-testid={`ver-pagos-${factura.id}`}><History size={15} /></button>
                           )}
+                          <button className="action-btn" onClick={() => onVincularIngresos(factura)} title="Vincular Ingresos MP" data-testid={`vincular-ingresos-${factura.id}`}><Link2 size={15} /></button>
                           <button className="action-btn" onClick={() => onView(factura)} title="Ver" data-testid={`ver-factura-${factura.id}`}><Eye size={15} /></button>
                           <button className="action-btn" onClick={() => onDownloadPDF(factura)} title="Descargar PDF" data-testid={`pdf-factura-${factura.id}`}><Download size={15} /></button>
                           {factura.estado !== 'anulada' && (

@@ -606,3 +606,157 @@ async def deshacer_canje_letras(id: int, empresa_id: int = Depends(get_empresa_i
                 WHERE id = $1
             """, id)
             return {"message": "Canje reversed successfully"}
+
+
+# =====================
+# VINCULACION FACTURA ↔ INGRESOS MP
+# =====================
+
+@router.get("/facturas-proveedor/{factura_id}/vinculaciones")
+async def get_vinculaciones_factura(factura_id: int, empresa_id: int = Depends(get_empresa_id)):
+    """Get all vinculaciones for a factura, grouped by linea"""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        rows = await conn.fetch("""
+            SELECT v.id, v.factura_linea_id, v.ingreso_id, v.articulo_id, v.cantidad_aplicada, v.created_at,
+                   i.fecha as ingreso_fecha, i.numero_documento as ingreso_ref, i.cantidad as ingreso_cantidad,
+                   i.proveedor as ingreso_proveedor,
+                   inv.nombre as articulo_nombre, inv.codigo as articulo_codigo
+            FROM finanzas2.cont_factura_ingreso_mp v
+            LEFT JOIN produccion.prod_inventario_ingresos i ON v.ingreso_id = i.id
+            LEFT JOIN produccion.prod_inventario inv ON v.articulo_id = inv.id
+            WHERE v.factura_id = $1 AND v.empresa_id = $2
+            ORDER BY v.factura_linea_id, v.created_at
+        """, factura_id, empresa_id)
+        return [dict(r) for r in rows]
+
+
+@router.get("/facturas-proveedor/{factura_id}/linea/{linea_id}/ingresos-disponibles")
+async def get_ingresos_disponibles(factura_id: int, linea_id: int, empresa_id: int = Depends(get_empresa_id)):
+    """Get compatible ingresos for a specific factura line (same articulo_id)"""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        # Get the articulo_id of this line
+        linea = await conn.fetchrow("""
+            SELECT articulo_id, cantidad, descripcion FROM finanzas2.cont_factura_proveedor_linea
+            WHERE id = $1 AND factura_id = $2
+        """, linea_id, factura_id)
+        if not linea:
+            raise HTTPException(404, "Línea de factura no encontrada")
+        if not linea['articulo_id']:
+            return {"linea": dict(linea), "ingresos": [], "message": "Esta línea no tiene artículo asignado"}
+
+        articulo_id = linea['articulo_id']
+
+        # Get cantidad already linked for this line
+        ya_vinculado_linea = await conn.fetchval("""
+            SELECT COALESCE(SUM(cantidad_aplicada), 0) FROM finanzas2.cont_factura_ingreso_mp
+            WHERE factura_linea_id = $1
+        """, linea_id) or 0
+
+        # Get compatible ingresos with their available (unlinked) quantities
+        ingresos = await conn.fetch("""
+            SELECT i.id, i.item_id, i.cantidad, i.costo_unitario, i.proveedor, i.numero_documento,
+                   i.fecha, inv.nombre as articulo_nombre, inv.codigo as articulo_codigo,
+                   COALESCE(vinc.total_vinculado, 0) as total_vinculado
+            FROM produccion.prod_inventario_ingresos i
+            LEFT JOIN produccion.prod_inventario inv ON i.item_id = inv.id
+            LEFT JOIN (
+                SELECT ingreso_id, SUM(cantidad_aplicada) as total_vinculado
+                FROM finanzas2.cont_factura_ingreso_mp
+                GROUP BY ingreso_id
+            ) vinc ON i.id = vinc.ingreso_id
+            WHERE i.item_id = $1 AND i.empresa_id = $2
+            ORDER BY i.fecha DESC
+        """, articulo_id, empresa_id)
+
+        result_ingresos = []
+        for ing in ingresos:
+            d = dict(ing)
+            d['saldo_disponible'] = float(d['cantidad']) - float(d['total_vinculado'])
+            result_ingresos.append(d)
+
+        return {
+            "linea": {
+                "id": linea_id,
+                "articulo_id": articulo_id,
+                "cantidad": float(linea['cantidad'] or 0),
+                "descripcion": linea['descripcion'],
+                "ya_vinculado": float(ya_vinculado_linea)
+            },
+            "ingresos": result_ingresos
+        }
+
+
+@router.post("/facturas-proveedor/{factura_id}/linea/{linea_id}/vincular-ingreso")
+async def vincular_ingreso(factura_id: int, linea_id: int, empresa_id: int = Depends(get_empresa_id), body: dict = {}):
+    """Link an ingreso to a factura line"""
+    ingreso_id = body.get('ingreso_id')
+    cantidad = body.get('cantidad_aplicada')
+    if not ingreso_id or not cantidad or float(cantidad) <= 0:
+        raise HTTPException(400, "ingreso_id y cantidad_aplicada son requeridos (cantidad > 0)")
+    cantidad = float(cantidad)
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+
+        # Validate line exists and get articulo
+        linea = await conn.fetchrow("""
+            SELECT articulo_id, cantidad FROM finanzas2.cont_factura_proveedor_linea
+            WHERE id = $1 AND factura_id = $2
+        """, linea_id, factura_id)
+        if not linea:
+            raise HTTPException(404, "Línea de factura no encontrada")
+        if not linea['articulo_id']:
+            raise HTTPException(400, "Esta línea no tiene artículo asignado")
+
+        # Validate ingreso exists and articulo matches
+        ingreso = await conn.fetchrow("""
+            SELECT id, item_id, cantidad FROM produccion.prod_inventario_ingresos
+            WHERE id = $1 AND empresa_id = $2
+        """, ingreso_id, empresa_id)
+        if not ingreso:
+            raise HTTPException(404, "Ingreso no encontrado")
+        if ingreso['item_id'] != linea['articulo_id']:
+            raise HTTPException(400, "El artículo del ingreso no coincide con el de la línea")
+
+        # Validate: don't exceed factura line quantity
+        ya_vinculado_linea = await conn.fetchval("""
+            SELECT COALESCE(SUM(cantidad_aplicada), 0) FROM finanzas2.cont_factura_ingreso_mp
+            WHERE factura_linea_id = $1
+        """, linea_id) or 0
+        if float(ya_vinculado_linea) + cantidad > float(linea['cantidad']):
+            raise HTTPException(400, f"Excede cantidad facturada. Facturado: {linea['cantidad']}, ya vinculado: {ya_vinculado_linea}, intentando: {cantidad}")
+
+        # Validate: don't exceed ingreso total quantity
+        ya_vinculado_ingreso = await conn.fetchval("""
+            SELECT COALESCE(SUM(cantidad_aplicada), 0) FROM finanzas2.cont_factura_ingreso_mp
+            WHERE ingreso_id = $1
+        """, ingreso_id) or 0
+        if float(ya_vinculado_ingreso) + cantidad > float(ingreso['cantidad']):
+            raise HTTPException(400, f"Excede cantidad del ingreso. Ingreso: {ingreso['cantidad']}, ya vinculado: {ya_vinculado_ingreso}, intentando: {cantidad}")
+
+        row = await conn.fetchrow("""
+            INSERT INTO finanzas2.cont_factura_ingreso_mp
+            (empresa_id, factura_id, factura_linea_id, ingreso_id, articulo_id, cantidad_aplicada)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, factura_linea_id, ingreso_id, articulo_id, cantidad_aplicada, created_at
+        """, empresa_id, factura_id, linea_id, ingreso_id, linea['articulo_id'], cantidad)
+        return dict(row)
+
+
+@router.delete("/facturas-proveedor/vinculacion/{vinculacion_id}")
+async def desvincular_ingreso(vinculacion_id: int, empresa_id: int = Depends(get_empresa_id)):
+    """Remove a vinculacion"""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        row = await conn.fetchrow("""
+            DELETE FROM finanzas2.cont_factura_ingreso_mp WHERE id = $1 AND empresa_id = $2 RETURNING id
+        """, vinculacion_id, empresa_id)
+        if not row:
+            raise HTTPException(404, "Vinculación no encontrada")
+        return {"message": "Vinculación eliminada"}

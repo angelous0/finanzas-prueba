@@ -112,6 +112,13 @@ export const updateLetraNumeroUnico = (id, data) => api.put(`/letras/${id}/numer
 export const getLetrasDeFactura = (facturaId) => api.get(`/facturas-proveedor/${facturaId}/letras`);
 export const deshacerCanjeLetras = (facturaId) => api.post(`/facturas-proveedor/${facturaId}/deshacer-canje`);
 
+// Vinculaciones Factura ↔ Ingresos MP
+export const getVinculacionesFactura = (facturaId) => api.get(`/facturas-proveedor/${facturaId}/vinculaciones`);
+export const getIngresosDisponibles = (facturaId, lineaId) => api.get(`/facturas-proveedor/${facturaId}/linea/${lineaId}/ingresos-disponibles`);
+export const vincularIngreso = (facturaId, lineaId, data) => api.post(`/facturas-proveedor/${facturaId}/linea/${lineaId}/vincular-ingreso`, data);
+export const desvincularIngreso = (vinculacionId) => api.delete(`/facturas-proveedor/vinculacion/${vinculacionId}`);
+
+
 // Gastos
 export const getGastos = (params) => api.get('/gastos', { params });
 export const getGasto = (id) => api.get(`/gastos/${id}`);

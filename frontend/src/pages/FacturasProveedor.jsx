@@ -31,6 +31,7 @@ import VerPagosModal from './facturasProveedor/VerPagosModal';
 import VerLetrasModal from './facturasProveedor/VerLetrasModal';
 import ExportModal from './facturasProveedor/ExportModal';
 import ProveedorModal from './facturasProveedor/ProveedorModal';
+import VincularIngresosModal from './facturasProveedor/VincularIngresosModal';
 
 export const FacturasProveedor = () => {
   const { empresaActual } = useEmpresa();
@@ -68,6 +69,8 @@ export const FacturasProveedor = () => {
   const [facturaParaVerLetras, setFacturaParaVerLetras] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showProveedorModal, setShowProveedorModal] = useState(false);
+  const [showVincularModal, setShowVincularModal] = useState(false);
+  const [facturaParaVincular, setFacturaParaVincular] = useState(null);
 
   useEffect(() => { loadData(); }, [filtroEstado, filtroProveedorId, filtroFecha, empresaActual]);
 
@@ -190,6 +193,7 @@ export const FacturasProveedor = () => {
           onDelete={handleDelete}
           onDownloadPDF={(f) => generatePDFAndPrint(f, proveedores, monedas)}
           onNewFactura={handleNewFactura}
+          onVincularIngresos={(f) => { setFacturaParaVincular(f); setShowVincularModal(true); }}
         />
       </div>
 
@@ -247,6 +251,13 @@ export const FacturasProveedor = () => {
         show={showProveedorModal}
         onClose={() => setShowProveedorModal(false)}
         onCreated={(newProv) => { setProveedores(prev => [...prev, newProv]); setShowProveedorModal(false); }}
+      />
+
+      <VincularIngresosModal
+        show={showVincularModal}
+        factura={facturaParaVincular}
+        onClose={() => { setShowVincularModal(false); setFacturaParaVincular(null); }}
+        onDataChanged={loadData}
       />
     </div>
   );
