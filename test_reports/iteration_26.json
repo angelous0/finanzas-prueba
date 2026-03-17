@@ -59,7 +59,7 @@
   "test_credentials": {
     "empresa_id": "6 (Ambission Industries SAC) - has test data",
     "empresa_id_1": "1 (empty - no lineas_negocio or CxC)",
-    "api_base_url": "https://cash-basis-ledger.preview.emergentagent.com"
+    "api_base_url": "https://linea-reports.preview.emergentagent.com"
   },
   "test_data_observed": {
     "lineas_negocio_empresa_6": [

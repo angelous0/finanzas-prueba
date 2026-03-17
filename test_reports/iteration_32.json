@@ -129,7 +129,7 @@
   },
   "test_credentials": {
     "empresa": "Ambission Industries SAC",
-    "api_base_url": "https://cash-basis-ledger.preview.emergentagent.com"
+    "api_base_url": "https://linea-reports.preview.emergentagent.com"
   },
   "seed_data_creation": "No new seed data - used existing factura FP-2026-00025",
   "retest_needed": false,
