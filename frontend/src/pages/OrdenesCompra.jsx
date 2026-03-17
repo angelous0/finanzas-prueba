@@ -461,9 +461,9 @@ export default function OrdenesCompra() {
           .text-center { text-align: center; }
           .currency { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
           .totals { margin-top: 24px; display: flex; justify-content: flex-end; }
-          .totals-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 24px; min-width: 280px; }
-          .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9375rem; }
-          .totals-row.total { border-top: 2px solid #1B4D3E; margin-top: 8px; padding-top: 12px; font-weight: 700; font-size: 1.125rem; }
+          .totals-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 24px; min-width: 320px; }
+          .totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9375rem; gap: 24px; }
+          .totals-row.total { border-top: 2px solid #1B4D3E; margin-top: 8px; padding-top: 12px; font-weight: 700; font-size: 1.25rem; }
           .totals-row .currency { color: #1B4D3E; }
           .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #64748b; font-size: 0.75rem; }
         </style>
@@ -505,12 +505,12 @@ export default function OrdenesCompra() {
           <table>
             <thead>
               <tr>
-                <th style="width: 40px">#</th>
+                <th style="width: 36px">#</th>
                 <th>Descripción</th>
-                <th class="text-center" style="width: 80px">Cant.</th>
-                <th class="text-center" style="width: 60px">Und.</th>
-                <th class="text-right" style="width: 100px">P. Unit.</th>
-                <th class="text-right" style="width: 110px">Subtotal</th>
+                <th class="text-center" style="width: 70px">Cant.</th>
+                <th class="text-center" style="width: 55px">Und.</th>
+                <th class="text-right" style="width: 130px">P. Unit.</th>
+                <th class="text-right" style="width: 140px">Subtotal</th>
               </tr>
             </thead>
             <tbody>
