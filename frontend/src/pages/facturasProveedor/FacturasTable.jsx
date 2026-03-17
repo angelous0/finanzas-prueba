@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatCurrency, formatDate, estadoBadge } from './helpers';
-import { Plus, Trash2, Search, X, FileText, Edit2, Eye, DollarSign, FileSpreadsheet, History, Download, BookOpen } from 'lucide-react';
-import { generarAsiento } from '../../services/api';
+import { Plus, Trash2, Search, X, FileText, Edit2, Eye, DollarSign, FileSpreadsheet, History, Download } from 'lucide-react';
+import { } from '../../services/api';
 import { toast } from 'sonner';
 import SearchableSelect from '../../components/SearchableSelect';
 
@@ -147,12 +147,6 @@ const FacturasTable = ({
                           {factura.estado === 'pendiente' && (
                             <button className="action-btn action-danger" onClick={() => onDelete(factura.id)} title="Eliminar" data-testid={`delete-factura-${factura.id}`}><Trash2 size={15} /></button>
                           )}
-                          <button className="action-btn" onClick={async () => {
-                            try {
-                              await generarAsiento({ origen_tipo: 'FPROV', origen_id: factura.id });
-                              toast.success('Asiento generado');
-                            } catch (e) { toast.error(e.response?.data?.detail || 'Error generando asiento'); }
-                          }} title="Generar Asiento" data-testid={`generar-asiento-${factura.id}`}><BookOpen size={15} /></button>
                         </div>
                       </td>
                     </tr>
