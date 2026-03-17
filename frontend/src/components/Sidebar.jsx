@@ -29,6 +29,7 @@ const navSections = [
       { icon: Wallet, label: 'Gastos', path: '/gastos' },
       { icon: Layers, label: 'Prorrateo', path: '/prorrateo' },
       { icon: Receipt, label: 'Factura Proveedor', path: '/facturas-proveedor' },
+      { icon: ShoppingCart, label: 'Ordenes de Compra', path: '/ordenes-compra' },
       { icon: Clock, label: 'CxP', path: '/cxp' },
       { icon: FileSpreadsheet, label: 'Letras', path: '/letras' },
     ]
