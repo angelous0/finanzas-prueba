@@ -147,16 +147,19 @@ const FacturaFormModal = ({
             centro_costo_id: l.centro_costo_id ? parseInt(l.centro_costo_id) : null,
             importe: parseFloat(l.importe) || 0
           })),
-          ...formData.articulos.map(art => ({
-            articulo_id: art.articulo_id ? parseInt(art.articulo_id) : null,
-            modelo_corte_id: art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
-            linea_negocio_id: art.linea_negocio_id ? parseInt(art.linea_negocio_id) : null,
-            descripcion: art.unidad || null,
-            cantidad: parseFloat(art.cantidad) || 0,
-            precio_unitario: parseFloat(art.precio) || 0,
-            importe: (parseFloat(art.cantidad) || 0) * (parseFloat(art.precio) || 0),
-            igv_aplica: art.igv_aplica !== false
-          }))
+          ...formData.articulos.map(art => {
+            const selectedArticulo = inventario.find(inv => inv.id === art.articulo_id);
+            return {
+              articulo_id: art.articulo_id || null,
+              modelo_corte_id: art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
+              linea_negocio_id: art.linea_negocio_id ? parseInt(art.linea_negocio_id) : null,
+              descripcion: selectedArticulo ? `${selectedArticulo.codigo || ''} ${selectedArticulo.nombre}`.trim() : (art.descripcion || art.unidad || null),
+              cantidad: parseFloat(art.cantidad) || 0,
+              precio_unitario: parseFloat(art.precio) || 0,
+              importe: (parseFloat(art.cantidad) || 0) * (parseFloat(art.precio) || 0),
+              igv_aplica: art.igv_aplica !== false
+            };
+          })
         ]
       };
       delete dataToSend.articulos;
