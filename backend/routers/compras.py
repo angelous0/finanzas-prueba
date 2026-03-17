@@ -149,18 +149,11 @@ async def create_orden_compra(data: OCCreate, empresa_id: int = Depends(get_empr
                     linea_subtotal = linea.cantidad * linea.precio_unitario / 1.18
                 else:
                     linea_subtotal = linea.cantidad * linea.precio_unitario
-                articulo_id_value = None
-                if linea.articulo_id:
-                    try:
-                        articulo_id_value = int(linea.articulo_id)
-                    except (ValueError, TypeError):
-                        if not linea.descripcion:
-                            linea.descripcion = f"Articulo UUID: {linea.articulo_id}"
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_oc_linea
                     (empresa_id, oc_id, articulo_id, descripcion, cantidad, precio_unitario, igv_aplica, subtotal)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                """, empresa_id, oc_id, articulo_id_value, linea.descripcion, linea.cantidad,
+                """, empresa_id, oc_id, linea.articulo_id or None, linea.descripcion, linea.cantidad,
                     linea.precio_unitario, linea.igv_aplica, linea_subtotal)
             oc_row = await conn.fetchrow("""
                 SELECT oc.*, t.nombre as proveedor_nombre, m.codigo as moneda_codigo
@@ -221,12 +214,7 @@ async def update_orden_compra(id: int, data: OCUpdate, empresa_id: int = Depends
                         subtotal += linea_subtotal
                         if linea.get('igv_aplica', True):
                             igv += linea_subtotal * 0.18
-                    articulo_id_value = None
-                    if linea.get('articulo_id'):
-                        try:
-                            articulo_id_value = int(linea['articulo_id'])
-                        except (ValueError, TypeError):
-                            pass
+                    articulo_id_value = linea.get('articulo_id') or None
                     await conn.execute("""
                         INSERT INTO finanzas2.cont_oc_linea
                         (empresa_id, oc_id, articulo_id, descripcion, cantidad, precio_unitario, igv_aplica, subtotal)

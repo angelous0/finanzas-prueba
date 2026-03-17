@@ -171,6 +171,19 @@ Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - El dropdown de artículos en Órdenes de Compra ahora excluye artículos con categoría 'PT' (Producto Terminado)
 - Cambio mínimo: filtro frontend en OrdenesCompra.jsx línea 150
 
+## Bug Fix - Editar OC creaba duplicado + Artículo vacío - COMPLETADO (2026-03-17)
+### Problema 1 - Editar creaba nueva OC
+- `handleSubmit` siempre llamaba `createOrdenCompra()` sin verificar modo edición
+- Fix: Condicionó submit para llamar `updateOrdenCompra()` cuando `editingOC` existe
+### Problema 2 - Backend PUT no soportaba líneas
+- `OCUpdate` solo aceptaba campos header, no líneas de detalle
+- Fix: Reescrito PUT para soportar reemplazo completo de líneas con recálculo de totales
+### Problema 3 - articulo_id se perdía (UUID vs integer)
+- `cont_oc_linea.articulo_id` era integer pero `prod_inventario.id` es varchar (UUID)
+- Backend intentaba `int(uuid)` que fallaba silenciosamente, guardando NULL
+- Fix: ALTER TABLE para cambiar columna a text, eliminando FK obsoleta a cont_articulo_ref
+- Mismo cambio aplicado a `cont_factura_proveedor_linea.articulo_id`
+
 ### P1 - Reportes Faltantes
 - Ventas por cruce linea x marca
 - Gastos directos por linea
