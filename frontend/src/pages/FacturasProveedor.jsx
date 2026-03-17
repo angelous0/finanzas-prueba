@@ -97,7 +97,7 @@ export const FacturasProveedor = () => {
       setCategorias(categoriasRes.data);
       setLineasNegocio(lineasRes.data);
       setCentrosCosto(centrosRes.data);
-      setInventario(inventarioRes.data);
+      setInventario(inventarioRes.data.filter(a => a.categoria !== 'PT'));
       setModelosCortes(modelosRes.data);
       setCuentasFinancieras(cuentasRes.data);
 
