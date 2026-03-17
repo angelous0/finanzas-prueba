@@ -288,8 +288,8 @@ async def generar_factura_desde_oc(id: int, empresa_id: int = Depends(get_empres
                 INSERT INTO finanzas2.cont_cxp
                 (empresa_id, factura_id, proveedor_id, monto_original, saldo_pendiente, fecha_vencimiento, estado)
                 VALUES ($1, $2, $3, $4, $4, $5, 'pendiente')
-            """, factura_id, oc['proveedor_id'], oc['total'],
-                datetime.now().date() + timedelta(days=30), empresa_id)
+            """, empresa_id, factura_id, oc['proveedor_id'], oc['total'],
+                datetime.now().date() + timedelta(days=30))
             await conn.execute("""
                 UPDATE finanzas2.cont_oc SET estado = 'facturada', factura_generada_id = $1 WHERE id = $2 AND empresa_id = $3
             """, factura_id, id, empresa_id)

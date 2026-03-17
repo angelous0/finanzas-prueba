@@ -339,7 +339,7 @@ class OC(OCBase):
 # =====================
 class FacturaLineaBase(BaseModel):
     categoria_id: Optional[int] = None
-    articulo_id: Optional[int] = None
+    articulo_id: Optional[str] = None
     descripcion: Optional[str] = None
     linea_negocio_id: Optional[int] = None
     centro_costo_id: Optional[int] = None
