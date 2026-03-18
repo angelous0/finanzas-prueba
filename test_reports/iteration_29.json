@@ -87,7 +87,7 @@
   },
   "test_credentials": {
     "empresa_id": 6,
-    "api_base_url": "https://linea-reports.preview.emergentagent.com"
+    "api_base_url": "https://erp-auditor.preview.emergentagent.com"
   },
   "test_data_observed": {
     "ventas_pendientes": {"cantidad": 4072, "monto": "S/ 3,982,644.50"},

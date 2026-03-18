@@ -68,7 +68,7 @@
   "test_credentials": {
     "empresa_id": "6 (Ambission Industries SAC)",
     "linea_negocio_ids": "7 (Línea Principal), 8 (Línea Secundaria)",
-    "api_base_url": "https://linea-reports.preview.emergentagent.com"
+    "api_base_url": "https://erp-auditor.preview.emergentagent.com"
   },
   "test_data_observed": {
     "rentabilidad_linea": {

@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock,
   Tags, GitBranch, Target, X, ChevronLeft,
   Tag, Activity, ClipboardList,
-  Vault, Layers, Package, FileSpreadsheet, Link2, History, BookOpen
+  Vault, Layers, Package, FileSpreadsheet, Link2, History, BookOpen, PieChart
 } from 'lucide-react';
 
 const navSections = [
@@ -48,6 +48,7 @@ const navSections = [
   {
     title: 'Reportes',
     items: [
+      { icon: PieChart, label: 'Reportes Financieros', path: '/reportes-financieros' },
       { icon: ClipboardList, label: 'Reportes', path: '/reportes-simplificados' },
       { icon: GitBranch, label: 'Rentabilidad x Linea', path: '/rentabilidad-linea' },
       { icon: BookOpen, label: 'Libro Analitico', path: '/libro-analitico' },

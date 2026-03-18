@@ -1,76 +1,77 @@
 <analysis>**original_problem_statement:**
-The user, acting as a Senior ERP Architect, requested a multi-phase technical audit and cleanup of the Finanzas Gerenciales application to improve maintainability and separate CORE modules from LEGACY ones.
+The user, a Senior ERP Architect, initiated a project to audit and refactor the Finanzas Gerenciales application. The current focus is on building new features and improving UX, specifically around financial reporting and data traceability between finance and production modules.
 
-PRODUCT REQUIREMENTS:
-1.  **Audit & Classify:** Analyze the codebase to identify CORE vs. LEGACY modules.
-2.  **Phase 1 (Frontend Cleanup):** Remove dead code and simplify navigation.
-3.  **Phase 2 (Backend Cleanup):** De-register unused LEGACY routers.
-4.  **Phase 3 (Decoupling):** Extract essential functions from legacy routers into new CORE routers.
-5.  **Phase 4 (Physical Separation):** Move LEGACY files to  directories.
-6.  **Phase 5 (Split Large Files):** Break down monolithic files into smaller modules.
-7.  **New Requirement (Prorated Analytics):** When an invoice is paid, the payment amount must be prorated across the invoice's detail lines, linking the payment to the analytical accounts of each line. If the invoice's classification is edited later, all linked payment distributions must be automatically recalculated.
-8.  **New Requirement (Cash-Basis Reporting):** All dashboards and financial reports must reflect **only actual money movements**. Revenue from sales should only be recognized when the cash is collected, not when the sale is confirmed or marked as credit.
-9.  **New Feature (Analytical Ledger):** Create a view to see a complete history of all financial entries (income and expenses) for any selected analytical dimension (e.g., business line, cost center), with links to the source documents.
+Latest User Requirements:
+1.  **Consolidate Financial Reports:** Create a new section in the application to house four key financial reports: Balance General (Balance Sheet), Estado de Ganancias y Pérdidas (P&L), Flujo de Caja (Cash Flow), and Inventarios Valorizados. These reports should be filterable by company and date ranges and should prepare the ground for future analysis by línea de negocio.
+2.  **Traceability (Factura Proveedor ↔ Ingresos MP):** Implement a many-to-many linking mechanism between Supplier Invoice lines and Material Receipt lines from production. This should allow users to see which receipts are covered by which invoices, and vice-versa, directly from the Supplier Invoice UI.
+3.  **Refine Invoice Line Types:** Differentiate between Inventariable items and Servicio Producción on the supplier invoice detail lines. The UI should adapt based on the selected type, showing relevant fields for each (e.g., Registro / Corte for services).
+4.  **Detailed Service Invoicing:** Allow users to record fine-grained service details (e.g., 'Cerrado', 'Remallado') on an invoice line while linking it to a general parent service from the production module (e.g., 'Costura').
+5.  **Ongoing Bug Fixes & UX improvements:** Address bugs and UI inconsistencies as they are reported by the user, such as fixing PDF generation, correcting data saving logic, and improving visual indicators.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is largely stable after a series of critical bug fixes and feature implementations. The core payment system has been unified, and a robust prorated analytical distribution system is in place.
+The application is a PostgreSQL-backed ERP with a FastAPI backend and a React frontend. The agent has just completed a series of significant feature enhancements and bug fixes primarily within the Órdenes de Compra (Purchase Orders) and Facturas de Proveedor (Supplier Invoices) modules.
 
-In this session, the agent successfully:
-- Implemented a new Libro Analítico (Analytical Ledger) feature, allowing users to view a detailed history of income and expenses for any analytical account.
-- Corrected the entire revenue reporting logic to be strictly cash-basis, meaning sales on credit are no longer counted as revenue until they are actually collected. This fixed multiple bugs related to inflated revenue figures.
-- Fixed a critical bug where payments for invoices exchanged for Letras were not generating the correct analytical distributions due to an incorrect Foreign Key and a logic error.
-- Fixed a bug where the Vendedor (Salesperson) column in the POS sales view was showing the store name instead of the actual salesperson's name by correcting the Odoo data synchronization logic.
-- Implemented a user request to auto-fill payment references with the invoice number and a suffix for subsequent payments (e.g., ).
+Key functionalities implemented in this session include:
+-   A full many-to-many linking system between supplier invoices and production material receipts, complete with a new UI modal and visual status indicators.
+-   A sophisticated invoice detail form that now distinguishes between Inventariable and Servicio Producción line types, with a conditional UI that changes based on the selection.
+-   The ability to record fine-grained service details on invoices while linking them to a parent production service.
+-   Numerous critical bug fixes related to editing purchase orders, data type mismatches (UUID vs. Integer), PDF generation, and data persistence issues in forms.
 
 **Last working item**:
-The user reported that after making a partial payment of 50 soles on a credit sale of 78 soles, the Ventas POS credit tab still shows Pago Asociado (Associated Payment) as 0, and there is no way to view the payment history for that sale.
+The user requested the creation of four consolidated financial reports: Balance Sheet, P&L, Cash Flow, and Inventory Valuation.
 
-- **Last item agent was working:** The agent was investigating why the partial payment, while correctly reducing the account receivable balance, was not being linked back to the original credit sale document. The root cause appears to be that the payment process for Cuentas por Cobrar (CxC) does not create the necessary  or  record to link the payment () to the receivable ().
+- **Last item agent was working:** The agent began implementing this by creating a new, consolidated backend router  to house the logic for all four reports, replacing a legacy implementation. It was in the process of debugging the new endpoints. An  in the P&L endpoint ( vs. ) was identified and fixed.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** both. First, the backend agent needs to fix the logic in  to correctly link payments to receivables. After that, the frontend agent needs to implement a UI (likely a modal) in  to display the list of associated payments.
+- **Which testing method agent to use?** both. First, use  or  to test each of the 4 endpoints in  to ensure they return accurate, serializable JSON data for different date ranges and company IDs. Once the backend is confirmed, use the frontend testing agent to verify the new page and its tabbed UI.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Pagos Asociados not showing for credit sales (P0)**
-  - **Description:** When a partial payment is made on a credit sale via the Cuentas por Cobrar module, the Ventas POS credit tab doesn't reflect this payment. The Pago Asociado column shows 0, and there's no action to view the payment history.
-  - **Attempted fixes:** None. The agent was in the debugging phase.
+- **Issue 1: Consolidate Financial Reports (P0)**
+  - **Description:** Implement four key financial reports: Balance General, Estado de Ganancias y Pérdidas (EGyP), Flujo de Caja (Cash Flow), and Inventarios Valorizados.
+  - **Attempted fixes:**
+    -   A new backend router  was created, overwriting a legacy file.
+    -   The logic for the 4 reports was drafted.
+    -   A bug in the Balance General endpoint was fixed.
+    -   An  was fixed in the EGyP endpoint by changing a table name from  to .
   - **Next debug checklist:**
-    1.  **Backend:** Modify the  endpoint in  to create a  record that links the payment () to the receivable ().
-    2.  **Backend:** Modify the  endpoint in . The query for  must be updated to correctly SUM the amounts from the  table for the given sale.
-    3.  **Frontend:** In , add a Ver Pagos (View Payments) button/icon to the Acciones column.
-    4.  **Frontend:** Create a new modal component that takes a  as a prop, fetches the associated payments from a new API endpoint, and displays them in a table.
-  - **Why fix this issue?** This is a critical accounting function. Users cannot track the payment status of credit sales, leading to incorrect collection management.
+    1.  Continue debugging the backend endpoints in . The P&L, Cash Flow, and Inventory Valuation endpoints still need to be verified after the last fix.
+    2.  Create a new frontend page, e.g., .
+    3.  Implement a tabbed UI on this page, with one tab for each of the four reports.
+    4.  Add filters for date range and company ().
+    5.  For each tab, fetch data from the corresponding backend endpoint and display it in a clear, well-formatted, and easily understandable layout (e.g., using tables or summary cards).
+  - **Why fix this issue?** This is a high-priority user request to provide core financial visibility and is the culmination of much of the data work done previously.
   - **Status:** IN PROGRESS
   - **Is recurring issue?** N
-  - **Should Test frontend/backend/both after fix?** Both
-  - **Blocked on other issue:** None
+  - **Should Test frontend/backend/both after fix?** Both.
+  - **Blocked on other issue:** None directly, but will be more powerful once  is implemented (Upcoming Task).
 
 **In progress Task List**:
 - None.
 
 **Upcoming and Future Tasks**
+
 - **Upcoming Tasks:**
-  - **P1: Continue with File Splitting (Phase 5):**
-    - 
-    - 
-    - 
-    - 
-  - **P2: Decide Fate of In-Review Modules:** Audit  and  to decide if they are CORE or LEGACY.
+  - **P1: Add Línea de Negocio to Supplier Invoices:** This is a repeatedly postponed critical task. The  table and the corresponding form need a  field. This is essential for all financial reports to be analyzed by business line, a core user requirement. (Files: , ).
+  - **P2: File Splitting (Phase 5):** Continue breaking down large legacy files: , , .
+  - **P3: Audit PagarFacturas Module:** Decide if this legacy module is CORE or should be deprecated.
 
 - **Future Tasks:**
-  - **Complete Simplified Reports:** Implement the remaining 4 out of 12 reports.
-  - **Legacy Backlog:** Re-evaluate and potentially re-implement paused features like Proyectos, Capital & ROI, and Presupuesto vs Real.
+  - **Complete Simplified Reports:** Implement the remaining 4 out of 12 original reports from the legacy plan.
+  - **Legacy Backlog:** Re-evaluate paused features like Proyectos, Capital & ROI, and Presupuesto vs Real.
 
 **Completed work in this session**
-- **Feature - Analytical Ledger:** Implemented a new Libro Analítico page () with backend () and frontend () components for viewing detailed financial history by analytical dimension.
-- **Critical Fix - Cash-Basis Accounting:** Reworked all dashboard and reporting endpoints (, ) to recognize revenue only when cash is collected (), not on sale confirmation.
-- **Critical Fix - Letras Analytics:** Fixed a bug in  where payments via Letras were not generating analytical data due to an incorrect FK and a premature  statement.
-- **Bug Fix - Salesperson Sync:** Corrected the Odoo sync logic in  to use  (the actual salesperson) instead of  (the store location).
-- **Bug Fix - Revenue Double Counting:** Fixed logic in  and  that was adding revenue from a sale twice.
-- **Feature - Payment Reference Suffix:** Implemented logic in  to automatically append suffixes (, ) to payment references for multiple payments against the same document.
+- **Feature - Invoice ↔ Receipt Linking:** Implemented a many-to-many linking system between supplier invoices and production material receipts, with a new backend table (), API endpoints, and a frontend modal (). Added a visual status column (Ingresos) to the main invoice table.
+- **Feature - Differentiated Invoice Lines:** The invoice form now supports Inventariable and Servicio Producción line types with a conditional UI that shows/hides relevant fields ().
+- **Feature - Detailed Service Invoicing:** Enhanced service lines to capture a Servicio Padre (from Production) and a Detalle Servicio (free text), allowing for detailed financial recording without altering production data structures.
+- **Bug Fix - OC Edit creates duplicate:** Fixed logic in  and  to correctly use PUT for updates instead of POST.
+- **Bug Fix - Article empty on edit:** Resolved a critical data type mismatch where UUIDs for  were being incorrectly handled as integers. This required changing DB schema ( to ) and updating Pydantic models () and frontend logic.
+- **Bug Fix - Generate Invoice from OC fails:** Fixed incorrect parameter ordering in a backend SQL query and resolved another Pydantic  type mismatch.
+- **Bug Fix - PDF Generation:** Fixed issues where PDFs were rendered with a black background in dark mode and adjusted column widths for better readability.
+- **UX - Removed Generate Asiento Button:** Removed the journal entry button from the supplier invoice table as requested.
+- **UX - Filter 'PT' Items:** Excluded Producto Terminado items from the supplier invoice item dropdown.
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -82,85 +83,86 @@ The user reported that after making a partial payment of 50 soles on a credit sa
 
 
 **Key Technical Concepts**
-- **Cash-Basis Accounting:** The application's reporting was fundamentally changed from accrual to cash-basis for revenue. Revenue is now recognized only upon receipt of cash via  or  distributions.
-- **Data Synchronization:** Corrected data mapping logic during synchronization from an external Odoo database in .
-- **Foreign Key Constraint Management:** A critical bug was resolved by identifying an incorrect FK and applying a database migration using .
+- **UUID vs. Integer Mismatch:** A recurring core issue was the system trying to treat UUIDs from production tables as integers in finance tables. The fix involved altering table schemas (), dropping foreign key constraints, and updating Pydantic models and frontend  calls.
+- **Conditional UI:** The  now uses React state to dynamically render different inputs and table columns based on a line's  ('inventariable' vs. 'servicio'), creating a more intuitive user experience within a single component.
+- **Manual JSON Serialization:** A bug where data was being stripped from an API response was solved by removing the strict Pydantic  from the FastAPI endpoint decorator and manually creating a serializable dictionary, converting  and  objects to strings/floats.
+- **Many-to-Many Bridge Table:** A new table, , was created to correctly model the many-to-many relationship between invoice lines and material receipt lines.
 
 **key DB schema**
-- ****: **[MODIFIED]** The foreign key for  was corrected to reference .
-- ****: **[MODIFIED]** The data population for  and  was corrected to use the proper fields from the Odoo sync.
-- ****: **[NEEDS IMPLEMENTATION]** This table or similar logic needs to be correctly populated when a CxC payment is made to link the payment to the receivable.
+- ****:  data type changed from  to .
+- ****:  changed to . New columns added:  (varchar),  (varchar),  (varchar).
+- ** (New)**: Bridge table with schema .
 
 **changes in tech stack**
 - None.
 
 **All files of reference**
-- **Backend:**
-  -  (New)
-  -  (Investigated for bug, needs fix)
-  -  (Modified for cash-basis and sync logic)
-  -  (Modified for cash-basis)
-  -  (Modified for cash-basis)
-  -  (Fixed)
-  -  (Fixed)
-  -  (Modified for FK fix)
-- **Frontend:**
-  -  (New)
-  -  (Needs modification)
-  -  (Modified for new route)
-  -  (Modified for new route)
-  -  (Modified for new endpoint)
+-  (New/Replaced)
+-  (New)
+-  (Heavily Modified)
+-  (Modified)
+-  (Heavily Modified)
+-  (Heavily Modified)
+-  (Modified)
+-  (Modified)
+-  (Modified)
 
 **Areas that need refactoring**:
-- The prioritized backlog of large files to be split (, , etc.) remains pending.
+- The file-splitting initiative for large legacy files (, , ) remains pending.
 
 **key api endpoints**
-- **NEW:** 
+- **NEW / RE-IMPLEMENTED:**
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
 - **MODIFIED:**
   - 
   - 
   - 
   - 
-- **UNDER INVESTIGATION:** 
+  - 
 
 **Critical Info for New Agent**
-- **Your immediate priority is the P0 bug:** Payments on credit sales are not being linked or displayed in the Ventas POS credit tab. You need to fix the backend logic in  to create the link and then update the frontend to display this information.
-- **The Golden Rule:** The user has firmly established that all financial reporting must be **cash-basis**. Revenue is only recognized when money is collected. Do not implement any logic that counts uncollected credit sales as revenue.
-- The user is technically savvy and often provides precise bug reports and feature logic. Pay close attention to their descriptions.
+- **Immediate Priority (P0):** Finish the financial reports feature. The backend logic is drafted in  but requires thorough debugging. Afterwards, a new frontend page with a tabbed layout needs to be built.
+- **Don't Forget P1:** The task to add  to supplier invoice details is the highest priority *upcoming* task. It has been repeatedly postponed. It's a blocker for making the new financial reports truly powerful. Address this immediately after completing the current reports feature.
+- **Data Integrity:** Pay close attention to data types, especially when linking finance tables (which often used  IDs) with production tables (which use UUIDs stored as /). This has been a recurring source of bugs.
 
 **documents and test reports created in this job**
--  (Updated multiple times)
--  (Passed, for Libro Analitico feature)
+-  (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** My sales report shows S/184.74 for a S/100 sale. Why?
-2.  **Agent:** Fixed a double-counting bug and incorrect use of pre-tax values.
-3.  **User:** I want a feature to see a full history of income/expenses for a business line.
-4.  **Agent:** Implemented the Libro Analítico (Analytical Ledger) feature.
-5.  **User:** The Actualizar button in Ventas POS doesn't seem to do anything.
-6.  **User:** Also, for Boleta B014-04862, is the business line updated?
-7.  **Agent:** Confirmed the sync works but had no new data, and confirmed the business line for the specific boleta was correct.
-8.  **User:** The S/78 credit sale (B014-04862) is showing up in my revenue, but it shouldn't. Reports should only be for actual money movements.
-9.  **Agent:** Re-architected all reporting to be strictly cash-basis, removing uncollected credit sales from revenue totals.
-10. **User:** In Ventas POS, the vendedor is wrong, and I want payment references to auto-fill with suffixes.
-11. **Agent:** Fixed the Odoo sync to use the correct  and implemented the payment reference auto-fill.
-12. **User:** For a credit sale, I paid 50 soles, but Pago Asociado shows 0, and I can't see the payments.
+1.  **User:** I need to consolidate financial reports (Balance Sheet, P&L, Cash Flow, Inventory). (Request to start the last working item).
+2.  **User:** The DETALLE SERVICIO and REGISTRO / CORTE columns should only appear if there is at least one service line.
+3.  **Agent:** Implemented the conditional columns.
+4.  **User:** I need to record fine-grained service details (e.g., 'Cerrado') on invoice lines while linking them to a parent production service (e.g., 'Costura').
+5.  **Agent:** Implemented the feature by adding a 'servicio_detalle' field and adjusting the UI.
+6.  **User:** I need to differentiate between 'Inventariable' items and 'Servicio Producción' on invoice detail lines with a clear UI.
+7.  **Agent:** Implemented the feature with a 'Tipo línea' selector and a conditional UI in the invoice form.
+8.  **User:** The Ingresos column in the invoice table isn't showing anything.
+9.  **Agent:** Fixed a backend bug where the Pydantic response model was stripping the data.
+10. **User:** I want to see if an invoice is linked to a receipt directly from the main invoice table.
+11. **Agent:** Added a new Ingresos column with a visual status indicator.
 
 **Project Health Check:**
-- **Broken:** NO. The core application is functional, but there is a significant bug in tracking payments for credit sales.
+- **Broken:** No. The application is stable.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Odoo Data Source:** A read-only dependency on a user-provided PostgreSQL database, accessed via the  service.
+- **Odoo Data Source:** Read-only PostgreSQL connection for data synchronization.
+- **xlsx:** Frontend library for Excel export.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES, for the Libro Analítico feature.
+- **Testing agent used after significant changes:** NO (for the latest features). Agent used self-testing (, , ).
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** []
 - **Known regressions:** None.
 
 **Credentials to test flow:**
-- Credentials can be found in .
+- There is no authentication system. Direct access to the application is enabled.
 
 **What agent forgot to execute**
-- The agent was actively working on the user's latest bug report when the session ended. Nothing was forgotten.</analysis>
+- The agent has consistently postponed the **P1 task**: adding  to the detail lines of Supplier Invoices (). This was a high-priority upcoming task in the previous handoff and remains a high-priority upcoming task now. It is critical for the user's goal of analyzing financial reports by business line.</analysis>

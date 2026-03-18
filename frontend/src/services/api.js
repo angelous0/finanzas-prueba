@@ -264,6 +264,12 @@ export const getReporteCruceLineaMarca = (params) => api.get('/reportes/cruce-li
 export const getReporteGastosDirectosPorLinea = (params) => api.get('/reportes/gastos-directos-por-linea', { params });
 export const getReporteDineroPorLinea = (params) => api.get('/reportes/dinero-por-linea', { params });
 
+// Reportes Financieros Gerenciales
+export const getReporteBalanceGeneral = (params) => api.get('/reportes/balance-general', { params });
+export const getReporteEstadoResultados = (params) => api.get('/reportes/estado-resultados', { params });
+export const getReporteFlujoCaja = (params) => api.get('/reportes/flujo-caja', { params });
+export const getReporteInventarioValorizado = (params) => api.get('/reportes/inventario-valorizado', { params });
+
 // Libro Analitico
 export const getLibroAnalitico = (params) => api.get('/libro-analitico', { params });
 export const exportLibroAnalitico = (params) => api.get('/libro-analitico/export', { params, responseType: 'blob' });

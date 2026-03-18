@@ -107,7 +107,7 @@
   "test_credentials": {
     "empresa_id": 6,
     "moneda_id": 7,
-    "api_base_url": "https://linea-reports.preview.emergentagent.com"
+    "api_base_url": "https://erp-auditor.preview.emergentagent.com"
   },
   "test_data_observed": {
     "categorias_gasto": ["Marketing (MKT)"],
