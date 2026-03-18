@@ -111,6 +111,24 @@ async def refresh_ventas_pos(
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
+            # 1. Sync products first
+            products_synced = {"product_template": 0, "product_product": 0}
+            try:
+                prod_resp = await client.post(
+                    f"{odoo_url}/api/sync/products",
+                    json={"company_key": company_key},
+                    headers=headers)
+                if prod_resp.status_code == 200:
+                    prod_result = prod_resp.json()
+                    products_synced = {
+                        "product_template": prod_result.get("product_template", prod_result.get("templates", 0)),
+                        "product_product": prod_result.get("product_product", prod_result.get("variants", 0))
+                    }
+                    logger.info(f"Product sync OK: {products_synced}")
+            except Exception as prod_err:
+                logger.warning(f"Product sync skipped: {prod_err}")
+
+            # 2. Sync POS orders
             resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             result = resp.json()
@@ -130,7 +148,8 @@ async def refresh_ventas_pos(
                 "inserted": result.get("inserted_orders", result.get("inserted", 0)),
                 "updated": result.get("updated_orders", result.get("updated", 0)),
                 "last_sync_at": result.get("last_sync_at"),
-                "company_key": company_key
+                "company_key": company_key,
+                "products_synced": products_synced
             }
     except httpx.ConnectError:
         raise HTTPException(502, "No se pudo conectar con el modulo Odoo. Verifique ODOO_MODULE_BASE_URL.")
