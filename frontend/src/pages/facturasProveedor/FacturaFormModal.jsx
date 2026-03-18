@@ -180,6 +180,7 @@ const FacturaFormModal = ({
             const selectedArticulo = !isServicio ? inventario.find(inv => inv.id === art.articulo_id) : null;
             const selectedServicio = isServicio ? serviciosProduccion.find(s => s.id === art.servicio_id) : null;
             return {
+              id: art.id || undefined,
               tipo_linea: art.tipo_linea || 'inventariable',
               articulo_id: isServicio ? null : (art.articulo_id || null),
               servicio_id: isServicio ? (art.servicio_id || null) : null,
