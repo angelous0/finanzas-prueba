@@ -526,23 +526,48 @@ async def update_factura_proveedor(id: int, data: FacturaProveedorUpdate, empres
 
         if lineas_data is not None:
             LINEA_CLASS_FIELDS = {'categoria_id', 'descripcion', 'linea_negocio_id', 'centro_costo_id'}
+            LINEA_ALL_FIELDS = {'categoria_id', 'descripcion', 'linea_negocio_id', 'centro_costo_id',
+                                'articulo_id', 'servicio_id', 'servicio_detalle', 'tipo_linea',
+                                'modelo_corte_id', 'cantidad', 'precio_unitario', 'importe', 'igv_aplica'}
+            allowed_fields = LINEA_CLASS_FIELDS if is_locked else LINEA_ALL_FIELDS
             classification_changed = False
+
+            incoming_ids = set()
             for linea in lineas_data:
                 linea_id = linea.get('id')
-                if not linea_id:
-                    continue
-                lu = []
-                lv = []
-                li = 1
-                for lf in LINEA_CLASS_FIELDS:
-                    if lf in linea:
-                        lu.append(f"{lf} = ${li}"); lv.append(linea[lf]); li += 1
-                        if lf in ('linea_negocio_id', 'categoria_id', 'centro_costo_id'):
-                            classification_changed = True
-                if lu:
-                    lv.append(linea_id)
-                    await conn.execute(
-                        f"UPDATE finanzas2.cont_factura_proveedor_linea SET {', '.join(lu)} WHERE id = ${li}", *lv)
+                if linea_id:
+                    incoming_ids.add(linea_id)
+                    lu = []
+                    lv = []
+                    li = 1
+                    for lf in allowed_fields:
+                        if lf in linea:
+                            lu.append(f"{lf} = ${li}"); lv.append(linea[lf]); li += 1
+                            if lf in ('linea_negocio_id', 'categoria_id', 'centro_costo_id'):
+                                classification_changed = True
+                    if lu:
+                        lv.append(linea_id)
+                        await conn.execute(
+                            f"UPDATE finanzas2.cont_factura_proveedor_linea SET {', '.join(lu)} WHERE id = ${li}", *lv)
+                elif not is_locked:
+                    await conn.execute("""
+                        INSERT INTO finanzas2.cont_factura_proveedor_linea
+                        (empresa_id, factura_id, categoria_id, articulo_id, servicio_id, servicio_detalle, tipo_linea,
+                         descripcion, linea_negocio_id, centro_costo_id, importe, igv_aplica, cantidad, precio_unitario, modelo_corte_id)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                    """, empresa_id, id, linea.get('categoria_id'), linea.get('articulo_id'),
+                        linea.get('servicio_id'), linea.get('servicio_detalle'), linea.get('tipo_linea'),
+                        linea.get('descripcion'), linea.get('linea_negocio_id'), linea.get('centro_costo_id'),
+                        linea.get('importe', 0), linea.get('igv_aplica', True),
+                        linea.get('cantidad', 0), linea.get('precio_unitario', 0), linea.get('modelo_corte_id'))
+
+            if not is_locked and incoming_ids:
+                existing = await conn.fetch(
+                    "SELECT id FROM finanzas2.cont_factura_proveedor_linea WHERE factura_id = $1", id)
+                for row in existing:
+                    if row['id'] not in incoming_ids:
+                        await conn.execute(
+                            "DELETE FROM finanzas2.cont_factura_proveedor_linea WHERE id = $1", row['id'])
 
             if classification_changed:
                 await recalcular_distribuciones_factura(conn, empresa_id, id)
