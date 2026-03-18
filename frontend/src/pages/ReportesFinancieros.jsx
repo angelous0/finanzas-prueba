@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus, ChevronRight, ChevronDown } from 'lucide-react';
 import {
   getReporteBalanceGeneral, getReporteEstadoResultados,
   getReporteFlujoCaja, getReporteInventarioValorizado
@@ -127,8 +127,11 @@ export default function ReportesFinancieros() {
 
 /* ========== BALANCE GENERAL ========== */
 function BalanceGeneral({ data }) {
+  const [open, setOpen] = useState({});
   if (!data) return <Empty />;
   const { activos, pasivos, patrimonio } = data;
+
+  const toggle = (key) => setOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
   return (
     <div data-testid="balance-general-content">
@@ -143,19 +146,19 @@ function BalanceGeneral({ data }) {
         {/* ACTIVOS */}
         <div>
           <SectionCard title="ACTIVOS" total={activos.total} color="#22c55e">
-            <GroupHeader label="Caja y Bancos" total={activos.caja_bancos.total} />
-            <SimpleTable
-              headers={['Cuenta', 'Tipo', 'Saldo']}
-              rows={activos.caja_bancos.cuentas.map(c => [
-                c.nombre, c.tipo, { v: fmt(c.saldo_actual), color: '#22c55e', bold: true }
-              ])}
-              testId="balance-cuentas-table"
-            />
+            <CollapsibleRow label="Caja y Bancos" total={activos.caja_bancos.total} isOpen={open.caja} onToggle={() => toggle('caja')} testId="bg-caja">
+              <SimpleTable
+                headers={['Cuenta', 'Tipo', 'Saldo']}
+                rows={activos.caja_bancos.cuentas.map(c => [
+                  c.nombre, c.tipo, { v: fmt(c.saldo_actual), color: '#22c55e', bold: true }
+                ])}
+                testId="balance-cuentas-table"
+              />
+            </CollapsibleRow>
 
-            <GroupHeader label="Cuentas por Cobrar" total={activos.cuentas_por_cobrar} />
+            <CollapsibleRow label="Cuentas por Cobrar" total={activos.cuentas_por_cobrar} isOpen={false} simple />
 
-            <GroupHeader label="Inventario Materia Prima" total={activos.inventario_mp.total} />
-            {activos.inventario_mp.detalle.length > 0 && (
+            <CollapsibleRow label="Inventario Materia Prima" total={activos.inventario_mp.total} isOpen={open.invmp} onToggle={() => toggle('invmp')} hasDetail={activos.inventario_mp.detalle.length > 0} testId="bg-invmp">
               <SimpleTable
                 headers={['Categoria', 'Cantidad', 'Valor']}
                 rows={activos.inventario_mp.detalle.map(r => [
@@ -163,27 +166,28 @@ function BalanceGeneral({ data }) {
                 ])}
                 testId="balance-inv-mp-table"
               />
-            )}
+            </CollapsibleRow>
 
-            <GroupHeader label="Inventario Producto Terminado" total={activos.inventario_pt} />
+            <CollapsibleRow label="Inventario Producto Terminado" total={activos.inventario_pt} isOpen={false} simple />
 
-            <GroupHeader label="Trabajo en Proceso (WIP)" total={activos.wip.total} />
-            <div style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>MP Consumida</span><span>{fmt(activos.wip.mp_consumida)}</span>
+            <CollapsibleRow label="Trabajo en Proceso (WIP)" total={activos.wip.total} isOpen={open.wip} onToggle={() => toggle('wip')} hasDetail testId="bg-wip">
+              <div style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem', fontSize: '0.775rem', color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                  <span>MP Consumida</span><span style={{ fontWeight: 600 }}>{fmt(activos.wip.mp_consumida)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                  <span>Servicios</span><span style={{ fontWeight: 600 }}>{fmt(activos.wip.servicios)}</span>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Servicios</span><span>{fmt(activos.wip.servicios)}</span>
-              </div>
-            </div>
+            </CollapsibleRow>
           </SectionCard>
         </div>
 
         {/* PASIVOS + PATRIMONIO */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <SectionCard title="PASIVOS" total={pasivos.total} color="#ef4444">
-            <GroupHeader label="Cuentas por Pagar" total={pasivos.cuentas_por_pagar} />
-            <GroupHeader label="Letras por Pagar" total={pasivos.letras_por_pagar} />
+            <CollapsibleRow label="Cuentas por Pagar" total={pasivos.cuentas_por_pagar} isOpen={false} simple />
+            <CollapsibleRow label="Letras por Pagar" total={pasivos.letras_por_pagar} isOpen={false} simple />
           </SectionCard>
 
           <SectionCard title="PATRIMONIO" total={patrimonio} color={patrimonio >= 0 ? '#166534' : '#991b1b'}>
@@ -446,6 +450,38 @@ function InventarioValorizado({ data }) {
 
 
 /* ========== SHARED COMPONENTS ========== */
+
+function CollapsibleRow({ label, total, isOpen, onToggle, children, simple, hasDetail = true, testId }) {
+  const canExpand = !simple && hasDetail && children;
+  return (
+    <div data-testid={testId}>
+      <div
+        onClick={canExpand ? onToggle : undefined}
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '0.5rem 0.75rem',
+          borderBottom: '1px solid #f1f5f9',
+          cursor: canExpand ? 'pointer' : 'default',
+          background: isOpen ? '#f8fafc' : 'transparent',
+          transition: 'background 0.15s',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          {canExpand && (
+            isOpen ? <ChevronDown size={14} color="#94a3b8" /> : <ChevronRight size={14} color="#94a3b8" />
+          )}
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>{label}</span>
+        </div>
+        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>{fmt(total)}</span>
+      </div>
+      {canExpand && isOpen && (
+        <div style={{ borderBottom: '1px solid #f1f5f9', background: '#fafbfc' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function KPI({ label, value, subtitle, color, icon: Icon, bold }) {
   return (
