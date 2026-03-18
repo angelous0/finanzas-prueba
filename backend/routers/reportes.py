@@ -148,14 +148,14 @@ async def reporte_estado_resultados(
 
         # COSTO DE VENTA
         costo_mp = float(await conn.fetchval("""
-            SELECT COALESCE(SUM(r.cantidad_consumida * COALESCE(i.costo_unitario, 0)), 0)
-            FROM produccion.prod_registro_requerimiento_mp r
-            LEFT JOIN produccion.prod_inventario_ingresos i ON r.item_id = i.item_id AND i.empresa_id = $1
-            WHERE r.empresa_id = $1
-        """, empresa_id) or 0)
-        costo_srv = float(await conn.fetchval(
-            "SELECT COALESCE(SUM(monto), 0) FROM produccion.prod_registro_costos_servicio WHERE empresa_id = $1",
-            empresa_id) or 0)
+            SELECT COALESCE(SUM(costo_total), 0)
+            FROM produccion.prod_inventario_salidas
+            WHERE empresa_id = $1 AND fecha >= $2::timestamp AND fecha <= ($3::date + 1)::timestamp
+        """, empresa_id, f_desde, f_hasta) or 0)
+        costo_srv = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(monto), 0) FROM produccion.prod_registro_costos_servicio
+            WHERE empresa_id = $1 AND fecha >= $2 AND fecha <= $3
+        """, empresa_id, f_desde, f_hasta) or 0)
         costo_venta_total = costo_mp + costo_srv
         margen_bruto = ventas - costo_venta_total
 
