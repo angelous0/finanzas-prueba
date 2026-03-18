@@ -71,14 +71,19 @@ async def reporte_balance_general(
 
         # WIP
         wip_mp = float(await conn.fetchval("""
-            SELECT COALESCE(SUM(r.cantidad_consumida * COALESCE(i.costo_unitario, 0)), 0)
-            FROM produccion.prod_registro_requerimiento_mp r
-            LEFT JOIN produccion.prod_inventario_ingresos i ON r.item_id = i.item_id AND i.empresa_id = $1
-            WHERE r.empresa_id = $1 AND r.cantidad_consumida > 0
+            SELECT COALESCE(SUM(s.costo_total), 0)
+            FROM produccion.prod_inventario_salidas s
+            JOIN produccion.prod_registros r ON s.registro_id = r.id
+            WHERE s.empresa_id = $1 AND r.estado != 'Producto Terminado'
         """, empresa_id) or 0)
-        wip_srv = float(await conn.fetchval(
-            "SELECT COALESCE(SUM(monto), 0) FROM produccion.prod_registro_costos_servicio WHERE empresa_id = $1",
-            empresa_id) or 0)
+        wip_srv = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(fl.importe), 0)
+            FROM finanzas2.cont_factura_proveedor_linea fl
+            JOIN finanzas2.cont_factura_proveedor f ON fl.factura_id = f.id
+            JOIN produccion.prod_registros r ON fl.modelo_corte_id::text = r.id::text
+            WHERE f.empresa_id = $1 AND fl.tipo_linea = 'servicio'
+            AND r.estado != 'Producto Terminado' AND f.estado != 'anulada'
+        """, empresa_id) or 0)
         wip_total = wip_mp + wip_srv
 
         total_activos = caja_total + cxc + inv_mp + inv_pt + wip_total
