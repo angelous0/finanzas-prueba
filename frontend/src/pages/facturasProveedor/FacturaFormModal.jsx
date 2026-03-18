@@ -77,6 +77,7 @@ const FacturaFormModal = ({
           tipo_linea: a.tipo_linea || (a.servicio_id ? 'servicio' : 'inventariable'),
           articulo_id: a.articulo_id || '',
           servicio_id: a.servicio_id || '',
+          servicio_detalle: a.servicio_detalle || '',
           modelo_corte_id: a.modelo_corte_id || '',
           unidad: a.descripcion || '',
           cantidad: a.cantidad || 1,
@@ -95,7 +96,7 @@ const FacturaFormModal = ({
   const handleLineaChange = (index, field, value) => setFormData(prev => ({ ...prev, lineas: prev.lineas.map((linea, i) => i === index ? { ...linea, [field]: value } : linea) }));
 
   // Article handlers
-  const handleAddArticulo = () => setFormData(prev => ({ ...prev, articulos: [...prev.articulos, { tipo_linea: 'inventariable', articulo_id: '', servicio_id: '', modelo_corte_id: '', unidad: '', cantidad: 1, precio: 0, linea_negocio_id: '', igv_aplica: true }] }));
+  const handleAddArticulo = () => setFormData(prev => ({ ...prev, articulos: [...prev.articulos, { tipo_linea: 'inventariable', articulo_id: '', servicio_id: '', servicio_detalle: '', modelo_corte_id: '', unidad: '', cantidad: 1, precio: 0, linea_negocio_id: '', igv_aplica: true }] }));
   const handleRemoveArticulo = (index) => setFormData(prev => ({ ...prev, articulos: prev.articulos.filter((_, i) => i !== index) }));
   const handleDuplicateArticulo = (index) => setFormData(prev => ({ ...prev, articulos: [...prev.articulos.slice(0, index + 1), { ...prev.articulos[index] }, ...prev.articulos.slice(index + 1)] }));
   const handleArticuloChange = (index, field, value) => {
@@ -108,6 +109,7 @@ const FacturaFormModal = ({
         if (field === 'tipo_linea') {
           updated.articulo_id = '';
           updated.servicio_id = '';
+          updated.servicio_detalle = '';
           updated.unidad = '';
           updated.precio = 0;
           updated.modelo_corte_id = '';
@@ -181,11 +183,12 @@ const FacturaFormModal = ({
               tipo_linea: art.tipo_linea || 'inventariable',
               articulo_id: isServicio ? null : (art.articulo_id || null),
               servicio_id: isServicio ? (art.servicio_id || null) : null,
+              servicio_detalle: isServicio ? (art.servicio_detalle || null) : null,
               modelo_corte_id: isServicio && art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
               linea_negocio_id: art.linea_negocio_id ? parseInt(art.linea_negocio_id) : null,
               descripcion: selectedArticulo
                 ? `${selectedArticulo.codigo || ''} ${selectedArticulo.nombre}`.trim()
-                : (selectedServicio ? selectedServicio.nombre : (art.unidad || null)),
+                : (art.servicio_detalle || (selectedServicio ? selectedServicio.nombre : null)),
               cantidad: parseFloat(art.cantidad) || 0,
               precio_unitario: parseFloat(art.precio) || 0,
               importe: (parseFloat(art.cantidad) || 0) * (parseFloat(art.precio) || 0),
@@ -473,17 +476,17 @@ const FacturaFormModal = ({
                       <table className="factura-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '40px' }}>#</th>
-                            <th style={{ width: '120px' }}>TIPO</th>
-                            <th style={{ minWidth: '180px' }}>ARTICULO / SERVICIO</th>
-                            <th style={{ minWidth: '160px' }}>REGISTRO / CORTE</th>
-                            <th style={{ width: '65px' }}>UND</th>
-                            <th style={{ width: '70px' }}>CANT.</th>
-                            <th style={{ width: '90px' }}>COSTO UNIT.</th>
-                            <th style={{ minWidth: '140px' }}>LINEA NEGOCIO</th>
-                            <th style={{ width: '100px' }}>IMPORTE</th>
-                            <th style={{ width: '50px' }}>IGV</th>
-                            <th style={{ width: '70px' }}></th>
+                            <th style={{ width: '36px' }}>#</th>
+                            <th style={{ width: '110px' }}>TIPO</th>
+                            <th style={{ minWidth: '150px' }}>ART. / SRV. PADRE</th>
+                            <th style={{ minWidth: '140px' }}>DETALLE SERVICIO</th>
+                            <th style={{ minWidth: '140px' }}>REGISTRO / CORTE</th>
+                            <th style={{ width: '60px' }}>CANT.</th>
+                            <th style={{ width: '85px' }}>COSTO U.</th>
+                            <th style={{ minWidth: '120px' }}>LINEA NEG.</th>
+                            <th style={{ width: '90px' }}>IMPORTE</th>
+                            <th style={{ width: '40px' }}>IGV</th>
+                            <th style={{ width: '60px' }}></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -496,11 +499,11 @@ const FacturaFormModal = ({
                                   <select
                                     value={articulo.tipo_linea || 'inventariable'}
                                     onChange={(e) => handleArticuloChange(index, 'tipo_linea', e.target.value)}
-                                    style={{ width: '100%', fontSize: '0.8125rem', padding: '0.375rem', border: '1px solid #e2e8f0', borderRadius: '4px', background: isServicio ? '#eff6ff' : '#f0fdf4' }}
+                                    style={{ width: '100%', fontSize: '0.75rem', padding: '0.3rem', border: '1px solid #e2e8f0', borderRadius: '4px', background: isServicio ? '#eff6ff' : '#f0fdf4' }}
                                     data-testid={`tipo-linea-${index}`}
                                   >
                                     <option value="inventariable">Inventariable</option>
-                                    <option value="servicio">Srv. Produccion</option>
+                                    <option value="servicio">Srv. Produc.</option>
                                   </select>
                                 </td>
                                 <td>
@@ -509,7 +512,7 @@ const FacturaFormModal = ({
                                       options={serviciosProduccion}
                                       value={articulo.servicio_id}
                                       onChange={(value) => handleArticuloChange(index, 'servicio_id', value)}
-                                      placeholder="Servicio..."
+                                      placeholder="Srv. padre..."
                                       displayKey="nombre"
                                       valueKey="id"
                                       renderOption={(s) => s.nombre}
@@ -528,6 +531,20 @@ const FacturaFormModal = ({
                                 </td>
                                 <td>
                                   {isServicio ? (
+                                    <input
+                                      type="text"
+                                      value={articulo.servicio_detalle || ''}
+                                      onChange={(e) => handleArticuloChange(index, 'servicio_detalle', e.target.value)}
+                                      placeholder="Ej: Cerrado, Remallado..."
+                                      style={{ width: '100%', fontSize: '0.8125rem', padding: '0.375rem', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                                      data-testid={`servicio-detalle-${index}`}
+                                    />
+                                  ) : (
+                                    <span style={{ display: 'block', textAlign: 'center', color: '#cbd5e1', fontSize: '0.8125rem' }}>-</span>
+                                  )}
+                                </td>
+                                <td>
+                                  {isServicio ? (
                                     <TableSearchSelect
                                       options={modelosCortes}
                                       value={articulo.modelo_corte_id}
@@ -538,18 +555,17 @@ const FacturaFormModal = ({
                                       renderOption={(mc) => mc.display_name || `${mc.modelo_nombre || 'Sin modelo'} - Corte ${mc.n_corte}`}
                                     />
                                   ) : (
-                                    <span style={{ display: 'block', textAlign: 'center', color: '#cbd5e1', fontSize: '0.8125rem', padding: '0.375rem' }}>-</span>
+                                    <span style={{ display: 'block', textAlign: 'center', color: '#cbd5e1', fontSize: '0.8125rem' }}>-</span>
                                   )}
                                 </td>
-                                <td><input type="text" value={articulo.unidad || ''} readOnly disabled style={{ width: '100%', textAlign: 'center', background: '#f8fafc', color: '#64748b' }} /></td>
-                                <td><input type="number" step="1" min="1" placeholder="1" value={articulo.cantidad} onChange={(e) => handleArticuloChange(index, 'cantidad', e.target.value)} style={{ textAlign: 'center' }} data-testid={`articulo-cantidad-${index}`} /></td>
-                                <td><input type="number" step="0.01" placeholder="0.00" value={articulo.precio} onChange={(e) => handleArticuloChange(index, 'precio', e.target.value)} style={{ textAlign: 'right' }} data-testid={`articulo-precio-${index}`} /></td>
+                                <td><input type="number" step="1" min="1" placeholder="1" value={articulo.cantidad} onChange={(e) => handleArticuloChange(index, 'cantidad', e.target.value)} style={{ textAlign: 'center', fontSize: '0.8125rem' }} data-testid={`articulo-cantidad-${index}`} /></td>
+                                <td><input type="number" step="0.01" placeholder="0.00" value={articulo.precio} onChange={(e) => handleArticuloChange(index, 'precio', e.target.value)} style={{ textAlign: 'right', fontSize: '0.8125rem' }} data-testid={`articulo-precio-${index}`} /></td>
                                 <td>
                                   <TableSearchSelect options={lineasNegocio} value={articulo.linea_negocio_id} onChange={(value) => handleArticuloChange(index, 'linea_negocio_id', value)} placeholder="Linea" displayKey="nombre" valueKey="id" />
                                 </td>
-                                <td style={{ textAlign: 'right', fontWeight: 500, fontFamily: "'JetBrains Mono', monospace", padding: '0.625rem 0.75rem' }}>{calcularImporteArticulo(articulo).toFixed(2)}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 500, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8125rem', padding: '0.5rem' }}>{calcularImporteArticulo(articulo).toFixed(2)}</td>
                                 <td style={{ textAlign: 'center' }}>
-                                  <input type="checkbox" checked={articulo.igv_aplica} onChange={(e) => handleArticuloChange(index, 'igv_aplica', e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#1B4D3E' }} />
+                                  <input type="checkbox" checked={articulo.igv_aplica} onChange={(e) => handleArticuloChange(index, 'igv_aplica', e.target.checked)} style={{ width: '15px', height: '15px', accentColor: '#1B4D3E' }} />
                                 </td>
                                 <td className="actions-cell">
                                   <button type="button" className="btn-icon-small" onClick={() => handleDuplicateArticulo(index)} title="Duplicar"><Copy size={14} /></button>

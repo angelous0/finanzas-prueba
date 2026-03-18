@@ -341,6 +341,7 @@ class FacturaLineaBase(BaseModel):
     categoria_id: Optional[int] = None
     articulo_id: Optional[str] = None
     servicio_id: Optional[str] = None
+    servicio_detalle: Optional[str] = None
     tipo_linea: Optional[str] = None
     descripcion: Optional[str] = None
     linea_negocio_id: Optional[int] = None

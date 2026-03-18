@@ -171,6 +171,14 @@ Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - El dropdown de artículos en Órdenes de Compra ahora excluye artículos con categoría 'PT' (Producto Terminado)
 - Cambio mínimo: filtro frontend en OrdenesCompra.jsx línea 150
 
+## Detalle Fino Servicios en Factura Proveedor - COMPLETADO (2026-03-18)
+- Nuevo campo `servicio_detalle` (text) en cont_factura_proveedor_linea
+- UI: Columna "DETALLE SERVICIO" (texto libre: Cerrado, Remallado, Basta, etc.) solo visible para tipo Servicio
+- Columna "ART. / SRV. PADRE" = vínculo a servicio general de Producción (Costura, Corte, etc.)
+- "REGISTRO / CORTE" = vínculo opcional al registro/corte productivo
+- Lógica: Producción trabaja resumido, Finanzas registra el detalle fino → trazabilidad completa
+- Archivos: FacturaFormModal.jsx (UI), compras.py (INSERT), models.py (campo), DB (ALTER TABLE)
+
 ## Tipo Línea en Factura Proveedor (Inventariable vs Servicio) - COMPLETADO (2026-03-18)
 - Nuevo campo `tipo_linea` ('inventariable' / 'servicio') y `servicio_id` en cont_factura_proveedor_linea
 - Endpoint GET /api/servicios-produccion (9 servicios: Corte, Lazer, Estampado, Bordado, Costura, etc.)
