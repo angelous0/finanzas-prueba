@@ -153,8 +153,12 @@ async def reporte_estado_resultados(
             WHERE empresa_id = $1 AND fecha >= $2::timestamp AND fecha <= ($3::date + 1)::timestamp
         """, empresa_id, f_desde, f_hasta) or 0)
         costo_srv = float(await conn.fetchval("""
-            SELECT COALESCE(SUM(monto), 0) FROM produccion.prod_registro_costos_servicio
-            WHERE empresa_id = $1 AND fecha >= $2 AND fecha <= $3
+            SELECT COALESCE(SUM(fl.importe), 0)
+            FROM finanzas2.cont_factura_proveedor_linea fl
+            JOIN finanzas2.cont_factura_proveedor f ON fl.factura_id = f.id
+            WHERE f.empresa_id = $1 AND fl.tipo_linea = 'servicio'
+            AND f.fecha_factura >= $2 AND f.fecha_factura <= $3
+            AND f.estado != 'anulada'
         """, empresa_id, f_desde, f_hasta) or 0)
         costo_venta_total = costo_mp + costo_srv
         margen_bruto = ventas - costo_venta_total
