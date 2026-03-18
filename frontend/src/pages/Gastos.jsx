@@ -12,7 +12,6 @@ import {
   getCentrosCosto,
   getCuentasFinancieras,
   generarAsiento,
-  getCategoriasGasto,
   getMarcas,
   createTercero
 } from '../services/api';
@@ -55,7 +54,6 @@ export default function Gastos() {
   const [lineas, setLineas] = useState([]);
   const [centros, setCentros] = useState([]);
   const [cuentas, setCuentas] = useState([]);
-  const [categoriasGasto, setCategoriasGasto] = useState([]);
   const [marcas, setMarcas] = useState([]);
   
   // Filters
@@ -78,7 +76,7 @@ export default function Gastos() {
     isc: 0,
     notas: '',
     impuestos_incluidos: true,
-    categoria_gasto_id: '',
+    categoria_gasto_id: null,
     marca_id: ''
   });
   const [fechaContableManual, setFechaContableManual] = useState(false);
@@ -133,7 +131,7 @@ export default function Gastos() {
       const params = {};
       if (filtroFecha) params.fecha_desde = filtroFecha;
       
-      const [gastosRes, provRes, monRes, catRes, linRes, cenRes, cueRes, catGastoRes, marcasRes] = await Promise.all([
+      const [gastosRes, provRes, monRes, catRes, linRes, cenRes, cueRes, marcasRes] = await Promise.all([
         getGastos(params),
         getProveedores(),
         getMonedas(),
@@ -141,7 +139,6 @@ export default function Gastos() {
         getLineasNegocio(),
         getCentrosCosto(),
         getCuentasFinancieras(),
-        getCategoriasGasto(),
         getMarcas()
       ]);
       
@@ -152,7 +149,6 @@ export default function Gastos() {
       setLineas(linRes.data);
       setCentros(cenRes.data);
       setCuentas(cueRes.data);
-      setCategoriasGasto(catGastoRes.data);
       setMarcas(marcasRes.data);
       
       // Set default moneda
@@ -233,7 +229,7 @@ export default function Gastos() {
       isc: 0,
       notas: '',
       impuestos_incluidos: true,
-      categoria_gasto_id: '',
+      categoria_gasto_id: null,
       marca_id: ''
     });
     setFechaContableManual(false);
@@ -341,7 +337,7 @@ export default function Gastos() {
         ...formData,
         proveedor_id: formData.proveedor_id || null,
         tipo_cambio: formData.tipo_cambio ? parseFloat(formData.tipo_cambio) : null,
-        categoria_gasto_id: formData.categoria_gasto_id ? parseInt(formData.categoria_gasto_id) : null,
+        categoria_gasto_id: null,
         tipo_asignacion: tipoAsignacion,
         centro_costo_id: primeraLineaConCentro ? parseInt(primeraLineaConCentro.centro_costo_id) : null,
         marca_id: formData.marca_id ? parseInt(formData.marca_id) : null,
@@ -586,7 +582,6 @@ export default function Gastos() {
                     <th>Fecha</th>
                     <th>Número</th>
                     <th>Proveedor / Beneficiario</th>
-                    <th>Categoría</th>
                     <th>Tipo</th>
                     <th>Centro Costo</th>
                     <th className="text-right">Total</th>
@@ -603,7 +598,6 @@ export default function Gastos() {
                       <td>
                         {gasto.proveedor_nombre || gasto.beneficiario_nombre || '-'}
                       </td>
-                      <td>{gasto.categoria_gasto_nombre || '-'}</td>
                       <td>
                         <span style={{
                           display: 'inline-block',
@@ -1111,7 +1105,6 @@ export default function Gastos() {
                     background: selectedGasto.tipo_asignacion === 'directo' ? '#dbeafe' : selectedGasto.tipo_asignacion === 'comun' ? '#fef9c3' : '#f1f5f9',
                     color: selectedGasto.tipo_asignacion === 'directo' ? '#1e40af' : selectedGasto.tipo_asignacion === 'comun' ? '#854d0e' : '#64748b'
                   }}>{selectedGasto.tipo_asignacion}</span></span>
-                  {selectedGasto.categoria_gasto_nombre && <span>Cat. Gasto: {selectedGasto.categoria_gasto_nombre}</span>}
                   {selectedGasto.marca_nombre && <span>Marca: {selectedGasto.marca_nombre}</span>}
                 </div>
               )}

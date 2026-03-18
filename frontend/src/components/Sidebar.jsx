@@ -61,7 +61,7 @@ const navSections = [
       { icon: GitBranch, label: 'Líneas de Negocio', path: '/lineas-negocio' },
       { icon: Tag, label: 'Marcas', path: '/marcas' },
       { icon: Target, label: 'Centros de Costo', path: '/centros-costo' },
-      { icon: Tags, label: 'Categorías Gasto', path: '/categorias-gasto' },
+      { icon: Tags, label: 'Categorias', path: '/categorias-gasto' },
       { icon: Users, label: 'Proveedores', path: '/proveedores' },
       { icon: Users, label: 'Clientes', path: '/clientes' },
       { icon: Building2, label: 'Empresas', path: '/empresas' },

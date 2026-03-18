@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Tag, X, Check } from 'lucide-react';
-import { getCategoriasGasto, createCategoriaGasto, updateCategoriaGasto, deleteCategoriaGasto } from '../services/api';
+import { getCategorias, createCategoria, updateCategoria, deleteCategoria } from '../services/api';
 import { toast } from 'sonner';
 
 export default function CategoriasGasto() {
@@ -8,15 +8,15 @@ export default function CategoriasGasto() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ nombre: '', codigo: '', descripcion: '' });
+  const [formData, setFormData] = useState({ nombre: '', tipo: 'egreso' });
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await getCategoriasGasto();
+      const res = await getCategorias('egreso');
       setCategorias(res.data);
-    } catch (err) {
-      toast.error('Error cargando categorías');
+    } catch {
+      toast.error('Error cargando categorias');
     } finally {
       setLoading(false);
     }
@@ -25,7 +25,7 @@ export default function CategoriasGasto() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const resetForm = () => {
-    setFormData({ nombre: '', codigo: '', descripcion: '' });
+    setFormData({ nombre: '', tipo: 'egreso' });
     setEditingId(null);
     setShowForm(false);
   };
@@ -35,146 +35,91 @@ export default function CategoriasGasto() {
     if (!formData.nombre.trim()) { toast.error('Nombre es requerido'); return; }
     try {
       if (editingId) {
-        await updateCategoriaGasto(editingId, formData);
-        toast.success('Categoría actualizada');
+        await updateCategoria(editingId, formData);
+        toast.success('Categoria actualizada');
       } else {
-        await createCategoriaGasto(formData);
-        toast.success('Categoría creada');
+        await createCategoria(formData);
+        toast.success('Categoria creada');
       }
       resetForm();
       loadData();
-    } catch (err) {
-      toast.error('Error guardando categoría');
+    } catch {
+      toast.error('Error guardando categoria');
     }
   };
 
   const handleEdit = (cat) => {
-    setFormData({ nombre: cat.nombre, codigo: cat.codigo || '', descripcion: cat.descripcion || '' });
+    setFormData({ nombre: cat.nombre, tipo: cat.tipo || 'gasto' });
     setEditingId(cat.id);
     setShowForm(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Eliminar esta categoría?')) return;
+    if (!window.confirm('Eliminar esta categoria?')) return;
     try {
-      await deleteCategoriaGasto(id);
-      toast.success('Categoría eliminada');
+      await deleteCategoria(id);
+      toast.success('Categoria eliminada');
       loadData();
-    } catch (err) {
-      toast.error('Error eliminando');
+    } catch {
+      toast.error('Error eliminando categoria');
     }
   };
 
   return (
-    <div style={{ padding: '1.5rem' }} data-testid="categorias-gasto-page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div style={{ padding: '1.5rem', maxWidth: '800px' }} data-testid="categorias-page">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Categorías de Gasto</h1>
-          <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: '0.25rem 0 0' }}>
-            Clasificación del gasto: marketing, ventas, logística, planilla, etc.
-          </p>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Categorias</h1>
+          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.25rem 0 0' }}>Categorias para lineas de detalle de gastos</p>
         </div>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => { resetForm(); setShowForm(true); }}
-          data-testid="add-categoria-gasto-btn"
-        >
-          <Plus size={16} /> Nueva Categoría
+        <button className="btn btn-primary btn-sm" onClick={() => { resetForm(); setShowForm(true); }} data-testid="add-categoria-btn">
+          <Plus size={14} /> Nueva Categoria
         </button>
       </div>
 
       {showForm && (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ flex: '0 0 120px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', display: 'block', marginBottom: '4px' }}>Código</label>
-              <input
-                className="form-input"
-                placeholder="MKT"
-                value={formData.codigo}
-                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                data-testid="categoria-gasto-codigo"
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', display: 'block', marginBottom: '4px' }}>Nombre *</label>
-              <input
-                className="form-input"
-                placeholder="Nombre de la categoría"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                required
-                data-testid="categoria-gasto-nombre"
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b', display: 'block', marginBottom: '4px' }}>Descripción</label>
-              <input
-                className="form-input"
-                placeholder="Descripción"
-                value={formData.descripcion}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                data-testid="categoria-gasto-descripcion"
-              />
-            </div>
-            <button type="submit" className="btn btn-primary btn-sm" data-testid="save-categoria-gasto-btn">
-              <Check size={14} /> {editingId ? 'Actualizar' : 'Guardar'}
-            </button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={resetForm}>
-              <X size={14} /> Cancelar
-            </button>
-          </form>
-        </div>
+        <form onSubmit={handleSubmit} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '0.25rem' }}>Nombre</label>
+            <input className="form-input" value={formData.nombre} onChange={e => setFormData(p => ({ ...p, nombre: e.target.value }))}
+              placeholder="Ej: Telas, Avios, Servicios..." autoFocus data-testid="categoria-nombre-input" />
+          </div>
+          <button type="submit" className="btn btn-primary btn-sm" data-testid="categoria-save-btn"><Check size={14} /> {editingId ? 'Actualizar' : 'Crear'}</button>
+          <button type="button" className="btn btn-outline btn-sm" onClick={resetForm}><X size={14} /></button>
+        </form>
       )}
 
       {loading ? (
-        <p style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>Cargando...</p>
+        <div className="loading"><div className="loading-spinner"></div></div>
       ) : categorias.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-          <Tag size={40} strokeWidth={1} />
-          <p style={{ marginTop: '0.5rem' }}>No hay categorías. Crea la primera.</p>
+          <Tag size={40} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+          <p style={{ fontSize: '0.875rem' }}>No hay categorias. Crea la primera.</p>
         </div>
       ) : (
-        <table className="data-table" data-testid="categorias-gasto-table">
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Nombre</th>
-              <th>Descripción</th>
-              <th>Estado</th>
-              <th className="text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categorias.map(c => (
-              <tr key={c.id}>
-                <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8125rem' }}>{c.codigo || '-'}</td>
-                <td style={{ fontWeight: 500 }}>{c.nombre}</td>
-                <td style={{ color: '#64748b', fontSize: '0.8125rem' }}>{c.descripcion || '-'}</td>
-                <td>
-                  <span style={{
-                    display: 'inline-block', padding: '2px 8px', borderRadius: '12px',
-                    fontSize: '0.75rem', fontWeight: 500,
-                    background: c.activo ? '#dcfce7' : '#fee2e2',
-                    color: c.activo ? '#166534' : '#991b1b'
-                  }}>
-                    {c.activo ? 'Activo' : 'Inactivo'}
-                  </span>
-                </td>
-                <td className="text-center">
-                  <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                    <button className="btn btn-outline btn-sm" onClick={() => handleEdit(c)} data-testid={`edit-cat-${c.id}`}>
-                      <Pencil size={14} />
-                    </button>
-                    <button className="btn btn-outline btn-sm" style={{ color: '#ef4444' }} onClick={() => handleDelete(c.id)} data-testid={`del-cat-${c.id}`}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </td>
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }} data-testid="categorias-table">
+            <thead>
+              <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                <th style={{ padding: '0.5rem 1rem', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>#</th>
+                <th style={{ padding: '0.5rem 1rem', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Nombre</th>
+                <th style={{ padding: '0.5rem 1rem', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {categorias.map((cat, i) => (
+                <tr key={cat.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '0.5rem 1rem', color: '#94a3b8' }}>{i + 1}</td>
+                  <td style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#1e293b' }}>{cat.nombre}</td>
+                  <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => handleEdit(cat)} style={{ marginRight: '0.25rem' }} data-testid={`edit-cat-${cat.id}`}><Pencil size={14} /></button>
+                    <button className="btn btn-outline btn-sm" onClick={() => handleDelete(cat.id)} style={{ color: '#ef4444' }} data-testid={`delete-cat-${cat.id}`}><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
