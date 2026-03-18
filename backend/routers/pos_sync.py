@@ -111,22 +111,21 @@ async def refresh_ventas_pos(
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            # 1. Sync products first
-            products_synced = {"product_template": 0, "product_product": 0}
+            # 1. Sync all tables (products, partners, etc.) from Odoo
+            products_synced = {}
             try:
-                prod_resp = await client.post(
-                    f"{odoo_url}/api/sync/products",
-                    json={"company_key": company_key},
+                sync_resp = await client.post(
+                    f"{odoo_url}/api/sync/run",
+                    json={},
                     headers=headers)
-                if prod_resp.status_code == 200:
-                    prod_result = prod_resp.json()
-                    products_synced = {
-                        "product_template": prod_result.get("product_template", prod_result.get("templates", 0)),
-                        "product_product": prod_result.get("product_product", prod_result.get("variants", 0))
-                    }
-                    logger.info(f"Product sync OK: {products_synced}")
-            except Exception as prod_err:
-                logger.warning(f"Product sync skipped: {prod_err}")
+                if sync_resp.status_code == 200:
+                    sync_result = sync_resp.json()
+                    for r in sync_result.get("results", []):
+                        if r.get("status") == "OK":
+                            products_synced[r["job_code"]] = r.get("rows", 0)
+                    logger.info(f"Full sync OK: {len(products_synced)} jobs")
+            except Exception as sync_err:
+                logger.warning(f"Full sync skipped: {sync_err}")
 
             # 2. Sync POS orders
             resp = await client.post(url, json=payload, headers=headers)
