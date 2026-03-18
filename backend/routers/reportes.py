@@ -89,9 +89,14 @@ async def reporte_balance_general(
         total_activos = caja_total + cxc + inv_mp + inv_pt + wip_total
 
         # PASIVOS
-        cxp = float(await conn.fetchval(
-            "SELECT COALESCE(SUM(saldo_pendiente), 0) FROM finanzas2.cont_cxp WHERE empresa_id = $1 AND estado NOT IN ('pagado', 'anulada')",
-            empresa_id) or 0)
+        cxp = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(saldo_pendiente), 0) FROM finanzas2.cont_cxp
+            WHERE empresa_id = $1 AND estado NOT IN ('pagado', 'anulada')
+            AND factura_id NOT IN (
+                SELECT DISTINCT factura_id FROM finanzas2.cont_letra
+                WHERE empresa_id = $1 AND estado IN ('pendiente', 'parcial')
+            )
+        """, empresa_id) or 0)
         letras = float(await conn.fetchval(
             "SELECT COALESCE(SUM(saldo_pendiente), 0) FROM finanzas2.cont_letra WHERE estado IN ('pendiente', 'parcial') AND empresa_id = $1",
             empresa_id) or 0)
