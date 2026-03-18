@@ -56,7 +56,7 @@ const PagoModal = ({ show, factura, cuentasFinancieras, onClose, onPagoRegistrad
         tipo: 'egreso',
         fecha: new Date().toISOString().split('T')[0],
         cuenta_financiera_id: parseInt(pagoData.cuenta_id),
-        moneda_id: factura.moneda_id || 1,
+        moneda_id: factura.moneda_id || (cuentasFinancieras.find(c => c.id === parseInt(pagoData.cuenta_id))?.moneda_id) || null,
         monto_total: parseFloat(pagoData.monto),
         referencia: pagoData.referencia,
         detalles: [{
