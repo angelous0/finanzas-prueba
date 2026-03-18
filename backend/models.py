@@ -350,7 +350,7 @@ class FacturaLineaBase(BaseModel):
     igv_aplica: bool = True
     cantidad: Optional[float] = None
     precio_unitario: Optional[float] = None
-    modelo_corte_id: Optional[int] = None
+    modelo_corte_id: Optional[str] = None
 
 class FacturaLineaCreate(FacturaLineaBase):
     pass

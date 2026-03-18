@@ -65,7 +65,7 @@ const FacturaFormModal = ({
       isc: factura.isc || 0,
       notas: factura.notas || '',
       lineas: (() => {
-        const catLines = (factura.lineas || []).filter(l => !l.articulo_id);
+        const catLines = (factura.lineas || []).filter(l => !l.articulo_id && !l.servicio_id);
         return catLines.length > 0
           ? catLines.map(l => ({ id: l.id, categoria_id: l.categoria_id || '', descripcion: l.descripcion || '', linea_negocio_id: l.linea_negocio_id || '', centro_costo_id: l.centro_costo_id || '', importe: l.importe || 0, igv_aplica: l.igv_aplica !== false }))
           : [getEmptyLinea()];
@@ -184,7 +184,7 @@ const FacturaFormModal = ({
               articulo_id: isServicio ? null : (art.articulo_id || null),
               servicio_id: isServicio ? (art.servicio_id || null) : null,
               servicio_detalle: isServicio ? (art.servicio_detalle || null) : null,
-              modelo_corte_id: isServicio && art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
+              modelo_corte_id: isServicio ? (art.modelo_corte_id || null) : null,
               linea_negocio_id: art.linea_negocio_id ? parseInt(art.linea_negocio_id) : null,
               descripcion: selectedArticulo
                 ? `${selectedArticulo.codigo || ''} ${selectedArticulo.nombre}`.trim()
