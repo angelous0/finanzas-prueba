@@ -209,5 +209,21 @@ Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - Ventas por cruce linea x marca
 - Gastos directos por linea
 
+## Reportes Financieros Gerenciales - COMPLETADO (2026-03-18)
+### Descripcion
+Modulo consolidado de 4 estados financieros gerenciales con UI de pestanas:
+1. **Balance General**: Activos (Caja, CxC, Inventario MP/PT, WIP) vs Pasivos (CxP, Letras) + Patrimonio. Ecuacion contable visual.
+2. **Estado de Resultados (EGyP)**: Waterfall Ventas → Costo Venta → Margen Bruto → Gastos → Utilidad. Desglose por linea y categoria.
+3. **Flujo de Caja**: Ingresos (Cobros ventas, Tesoreria, Pagos recibidos) vs Egresos (Tesoreria, Pagos proveedores). Saldos de cuentas actuales.
+4. **Inventario Valorizado**: Tablas de MP, PT, WIP con costo promedio y valor total. KPI Gran Total.
+### Implementacion
+- Backend: `backend/routers/reportes.py` (4 endpoints GET /api/reportes/*)
+- Frontend: `frontend/src/pages/ReportesFinancieros.jsx` con 4 pestanas, KPIs y tablas
+- Navegacion: Sidebar > Reportes > "Reportes Financieros"
+- Filtros: Empresa (automatico) + Rango de fechas (solo EGyP y Flujo de Caja)
+### Testing
+- Backend: 26/26 tests passed
+- Frontend: 8/8 UI tests passed
+
 ### P2 - Modulos Futuros
 - Proyectos, Capital & ROI, Presupuesto vs Real
