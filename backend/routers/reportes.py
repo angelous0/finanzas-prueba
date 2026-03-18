@@ -131,18 +131,23 @@ async def reporte_estado_resultados(
         f_desde = fecha_desde or date(2020, 1, 1)
         f_hasta = fecha_hasta or date.today()
 
-        # VENTAS
+        # VENTAS (solo confirmadas + credito)
         ventas = float(await conn.fetchval("""
-            SELECT COALESCE(SUM(amount_total), 0) FROM finanzas2.cont_venta_pos
-            WHERE empresa_id = $1 AND date_order >= $2::timestamp AND date_order <= ($3::date + 1)::timestamp
+            SELECT COALESCE(SUM(v.amount_total), 0)
+            FROM finanzas2.cont_venta_pos v
+            LEFT JOIN finanzas2.cont_venta_pos_estado e ON e.odoo_order_id = v.odoo_id AND e.empresa_id = v.empresa_id
+            WHERE v.empresa_id = $1 AND v.date_order >= $2::timestamp AND v.date_order <= ($3::date + 1)::timestamp
+            AND COALESCE(e.estado_local, 'pendiente') IN ('confirmada', 'credito')
         """, empresa_id, f_desde, f_hasta) or 0)
 
-        # Ventas por linea
+        # Ventas por linea (solo confirmadas + credito)
         ventas_linea = await conn.fetch("""
             SELECT ln.nombre as linea, COALESCE(SUM(v.amount_total), 0) as total
             FROM finanzas2.cont_venta_pos v
+            LEFT JOIN finanzas2.cont_venta_pos_estado e ON e.odoo_order_id = v.odoo_id AND e.empresa_id = v.empresa_id
             LEFT JOIN finanzas2.cont_linea_negocio ln ON v.tienda_id::text = ln.id::text
             WHERE v.empresa_id = $1 AND v.date_order >= $2::timestamp AND v.date_order <= ($3::date + 1)::timestamp
+            AND COALESCE(e.estado_local, 'pendiente') IN ('confirmada', 'credito')
             GROUP BY ln.nombre ORDER BY total DESC
         """, empresa_id, f_desde, f_hasta)
 
