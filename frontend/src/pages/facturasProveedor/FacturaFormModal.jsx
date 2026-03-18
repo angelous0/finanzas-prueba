@@ -8,7 +8,7 @@ import TableSearchSelect from '../../components/TableSearchSelect';
 
 const FacturaFormModal = ({
   show, editingFactura, readOnly, proveedores, monedas, categorias, lineasNegocio,
-  centrosCosto, inventario, modelosCortes, valorizacionMap,
+  centrosCosto, inventario, modelosCortes, serviciosProduccion = [], valorizacionMap,
   onClose, onSaved, onProveedorCreated
 }) => {
   const [formData, setFormData] = useState(getEmptyFormData());
@@ -71,8 +71,19 @@ const FacturaFormModal = ({
           : [getEmptyLinea()];
       })(),
       articulos: (() => {
-        const artLines = (factura.lineas || []).filter(l => l.articulo_id);
-        return artLines.map(a => ({ id: a.id, articulo_id: a.articulo_id || '', modelo_corte_id: a.modelo_corte_id || '', unidad: a.descripcion || '', cantidad: a.cantidad || 1, precio: a.precio_unitario || 0, linea_negocio_id: a.linea_negocio_id || '', igv_aplica: a.igv_aplica !== false }));
+        const artLines = (factura.lineas || []).filter(l => l.articulo_id || l.servicio_id);
+        return artLines.map(a => ({
+          id: a.id,
+          tipo_linea: a.tipo_linea || (a.servicio_id ? 'servicio' : 'inventariable'),
+          articulo_id: a.articulo_id || '',
+          servicio_id: a.servicio_id || '',
+          modelo_corte_id: a.modelo_corte_id || '',
+          unidad: a.descripcion || '',
+          cantidad: a.cantidad || 1,
+          precio: a.precio_unitario || 0,
+          linea_negocio_id: a.linea_negocio_id || '',
+          igv_aplica: a.igv_aplica !== false
+        }));
       })()
     });
   };
@@ -84,7 +95,7 @@ const FacturaFormModal = ({
   const handleLineaChange = (index, field, value) => setFormData(prev => ({ ...prev, lineas: prev.lineas.map((linea, i) => i === index ? { ...linea, [field]: value } : linea) }));
 
   // Article handlers
-  const handleAddArticulo = () => setFormData(prev => ({ ...prev, articulos: [...prev.articulos, { articulo_id: '', modelo_corte_id: '', unidad: '', cantidad: 1, precio: 0, linea_negocio_id: '', igv_aplica: true }] }));
+  const handleAddArticulo = () => setFormData(prev => ({ ...prev, articulos: [...prev.articulos, { tipo_linea: 'inventariable', articulo_id: '', servicio_id: '', modelo_corte_id: '', unidad: '', cantidad: 1, precio: 0, linea_negocio_id: '', igv_aplica: true }] }));
   const handleRemoveArticulo = (index) => setFormData(prev => ({ ...prev, articulos: prev.articulos.filter((_, i) => i !== index) }));
   const handleDuplicateArticulo = (index) => setFormData(prev => ({ ...prev, articulos: [...prev.articulos.slice(0, index + 1), { ...prev.articulos[index] }, ...prev.articulos.slice(index + 1)] }));
   const handleArticuloChange = (index, field, value) => {
@@ -93,12 +104,27 @@ const FacturaFormModal = ({
       articulos: prev.articulos.map((art, i) => {
         if (i !== index) return art;
         const updated = { ...art, [field]: value };
+        // Reset fields on tipo_linea change
+        if (field === 'tipo_linea') {
+          updated.articulo_id = '';
+          updated.servicio_id = '';
+          updated.unidad = '';
+          updated.precio = 0;
+          updated.modelo_corte_id = '';
+        }
         if (field === 'articulo_id' && value) {
           const selectedArticulo = inventario.find(inv => inv.id === value);
           if (selectedArticulo) {
             updated.unidad = selectedArticulo.unidad_medida || 'UND';
             const fifo = valorizacionMap[value];
             updated.precio = fifo?.costo_fifo_unitario || parseFloat(selectedArticulo.costo_compra) || parseFloat(selectedArticulo.precio_ref) || 0;
+          }
+        }
+        if (field === 'servicio_id' && value) {
+          const selectedServicio = serviciosProduccion.find(s => s.id === value);
+          if (selectedServicio) {
+            updated.unidad = 'SRV';
+            updated.precio = selectedServicio.tarifa || 0;
           }
         }
         return updated;
@@ -148,12 +174,18 @@ const FacturaFormModal = ({
             importe: parseFloat(l.importe) || 0
           })),
           ...formData.articulos.map(art => {
-            const selectedArticulo = inventario.find(inv => inv.id === art.articulo_id);
+            const isServicio = art.tipo_linea === 'servicio';
+            const selectedArticulo = !isServicio ? inventario.find(inv => inv.id === art.articulo_id) : null;
+            const selectedServicio = isServicio ? serviciosProduccion.find(s => s.id === art.servicio_id) : null;
             return {
-              articulo_id: art.articulo_id || null,
-              modelo_corte_id: art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
+              tipo_linea: art.tipo_linea || 'inventariable',
+              articulo_id: isServicio ? null : (art.articulo_id || null),
+              servicio_id: isServicio ? (art.servicio_id || null) : null,
+              modelo_corte_id: isServicio && art.modelo_corte_id ? parseInt(art.modelo_corte_id) : null,
               linea_negocio_id: art.linea_negocio_id ? parseInt(art.linea_negocio_id) : null,
-              descripcion: selectedArticulo ? `${selectedArticulo.codigo || ''} ${selectedArticulo.nombre}`.trim() : (art.descripcion || art.unidad || null),
+              descripcion: selectedArticulo
+                ? `${selectedArticulo.codigo || ''} ${selectedArticulo.nombre}`.trim()
+                : (selectedServicio ? selectedServicio.nombre : (art.unidad || null)),
               cantidad: parseFloat(art.cantidad) || 0,
               precio_unitario: parseFloat(art.precio) || 0,
               importe: (parseFloat(art.cantidad) || 0) * (parseFloat(art.precio) || 0),
@@ -430,8 +462,8 @@ const FacturaFormModal = ({
               <button type="button" className="factura-section-header" onClick={() => setShowDetallesArticulo(!showDetallesArticulo)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {showDetallesArticulo ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  <span style={{ fontWeight: 600 }}>Detalles del articulo</span>
-                  <span style={{ color: '#64748b', fontSize: '0.875rem' }}>({formData.articulos.length} articulo{formData.articulos.length !== 1 ? 's' : ''})</span>
+                  <span style={{ fontWeight: 600 }}>Detalles del articulo / servicio</span>
+                  <span style={{ color: '#64748b', fontSize: '0.875rem' }}>({formData.articulos.length} linea{formData.articulos.length !== 1 ? 's' : ''})</span>
                 </div>
               </button>
               {showDetallesArticulo && (
@@ -442,49 +474,96 @@ const FacturaFormModal = ({
                         <thead>
                           <tr>
                             <th style={{ width: '40px' }}>#</th>
-                            <th style={{ minWidth: '180px' }}>ARTICULO</th>
-                            <th style={{ minWidth: '180px' }}>MODELO / CORTE</th>
-                            <th style={{ width: '70px' }}>UND</th>
+                            <th style={{ width: '120px' }}>TIPO</th>
+                            <th style={{ minWidth: '180px' }}>ARTICULO / SERVICIO</th>
+                            <th style={{ minWidth: '160px' }}>REGISTRO / CORTE</th>
+                            <th style={{ width: '65px' }}>UND</th>
                             <th style={{ width: '70px' }}>CANT.</th>
                             <th style={{ width: '90px' }}>COSTO UNIT.</th>
                             <th style={{ minWidth: '140px' }}>LINEA NEGOCIO</th>
                             <th style={{ width: '100px' }}>IMPORTE</th>
-                            <th style={{ width: '60px' }}>IGV</th>
-                            <th style={{ width: '80px' }}>ACCIONES</th>
+                            <th style={{ width: '50px' }}>IGV</th>
+                            <th style={{ width: '70px' }}></th>
                           </tr>
                         </thead>
                         <tbody>
-                          {formData.articulos.map((articulo, index) => (
-                            <tr key={index}>
-                              <td className="row-number">{index + 1}</td>
-                              <td>
-                                <TableSearchSelect options={inventario} value={articulo.articulo_id} onChange={(value) => handleArticuloChange(index, 'articulo_id', value)} placeholder="Articulo" displayKey="nombre_completo" valueKey="id" renderOption={(inv) => `${inv.codigo ? inv.codigo + ' - ' : ''}${inv.nombre}`} />
-                              </td>
-                              <td>
-                                <TableSearchSelect options={modelosCortes} value={articulo.modelo_corte_id} onChange={(value) => handleArticuloChange(index, 'modelo_corte_id', value)} placeholder="Modelo / Corte" displayKey="display_name" valueKey="id" renderOption={(mc) => mc.display_name || `${mc.modelo_nombre || 'Sin modelo'} - Corte ${mc.n_corte}`} />
-                              </td>
-                              <td><input type="text" value={articulo.unidad || ''} readOnly disabled style={{ width: '100%', textAlign: 'center', background: '#f8fafc', color: '#64748b' }} /></td>
-                              <td><input type="number" step="1" min="1" placeholder="1" value={articulo.cantidad} onChange={(e) => handleArticuloChange(index, 'cantidad', e.target.value)} style={{ textAlign: 'center' }} data-testid={`articulo-cantidad-${index}`} /></td>
-                              <td><input type="number" step="0.01" placeholder="0.00" value={articulo.precio} onChange={(e) => handleArticuloChange(index, 'precio', e.target.value)} style={{ textAlign: 'right' }} data-testid={`articulo-precio-${index}`} /></td>
-                              <td>
-                                <TableSearchSelect options={lineasNegocio} value={articulo.linea_negocio_id} onChange={(value) => handleArticuloChange(index, 'linea_negocio_id', value)} placeholder="Linea" displayKey="nombre" valueKey="id" />
-                              </td>
-                              <td style={{ textAlign: 'right', fontWeight: 500, fontFamily: "'JetBrains Mono', monospace", padding: '0.625rem 0.75rem' }}>{calcularImporteArticulo(articulo).toFixed(2)}</td>
-                              <td style={{ textAlign: 'center' }}>
-                                <input type="checkbox" checked={articulo.igv_aplica} onChange={(e) => handleArticuloChange(index, 'igv_aplica', e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#1B4D3E' }} />
-                              </td>
-                              <td className="actions-cell">
-                                <button type="button" className="btn-icon-small" onClick={() => handleDuplicateArticulo(index)} title="Duplicar"><Copy size={14} /></button>
-                                <button type="button" className="btn-icon-small" onClick={() => handleRemoveArticulo(index)} title="Eliminar"><Trash2 size={14} /></button>
-                              </td>
-                            </tr>
-                          ))}
+                          {formData.articulos.map((articulo, index) => {
+                            const isServicio = articulo.tipo_linea === 'servicio';
+                            return (
+                              <tr key={index}>
+                                <td className="row-number">{index + 1}</td>
+                                <td>
+                                  <select
+                                    value={articulo.tipo_linea || 'inventariable'}
+                                    onChange={(e) => handleArticuloChange(index, 'tipo_linea', e.target.value)}
+                                    style={{ width: '100%', fontSize: '0.8125rem', padding: '0.375rem', border: '1px solid #e2e8f0', borderRadius: '4px', background: isServicio ? '#eff6ff' : '#f0fdf4' }}
+                                    data-testid={`tipo-linea-${index}`}
+                                  >
+                                    <option value="inventariable">Inventariable</option>
+                                    <option value="servicio">Srv. Produccion</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  {isServicio ? (
+                                    <TableSearchSelect
+                                      options={serviciosProduccion}
+                                      value={articulo.servicio_id}
+                                      onChange={(value) => handleArticuloChange(index, 'servicio_id', value)}
+                                      placeholder="Servicio..."
+                                      displayKey="nombre"
+                                      valueKey="id"
+                                      renderOption={(s) => s.nombre}
+                                    />
+                                  ) : (
+                                    <TableSearchSelect
+                                      options={inventario}
+                                      value={articulo.articulo_id}
+                                      onChange={(value) => handleArticuloChange(index, 'articulo_id', value)}
+                                      placeholder="Articulo..."
+                                      displayKey="nombre_completo"
+                                      valueKey="id"
+                                      renderOption={(inv) => `${inv.codigo ? inv.codigo + ' - ' : ''}${inv.nombre}`}
+                                    />
+                                  )}
+                                </td>
+                                <td>
+                                  {isServicio ? (
+                                    <TableSearchSelect
+                                      options={modelosCortes}
+                                      value={articulo.modelo_corte_id}
+                                      onChange={(value) => handleArticuloChange(index, 'modelo_corte_id', value)}
+                                      placeholder="Registro / Corte"
+                                      displayKey="display_name"
+                                      valueKey="id"
+                                      renderOption={(mc) => mc.display_name || `${mc.modelo_nombre || 'Sin modelo'} - Corte ${mc.n_corte}`}
+                                    />
+                                  ) : (
+                                    <span style={{ display: 'block', textAlign: 'center', color: '#cbd5e1', fontSize: '0.8125rem', padding: '0.375rem' }}>-</span>
+                                  )}
+                                </td>
+                                <td><input type="text" value={articulo.unidad || ''} readOnly disabled style={{ width: '100%', textAlign: 'center', background: '#f8fafc', color: '#64748b' }} /></td>
+                                <td><input type="number" step="1" min="1" placeholder="1" value={articulo.cantidad} onChange={(e) => handleArticuloChange(index, 'cantidad', e.target.value)} style={{ textAlign: 'center' }} data-testid={`articulo-cantidad-${index}`} /></td>
+                                <td><input type="number" step="0.01" placeholder="0.00" value={articulo.precio} onChange={(e) => handleArticuloChange(index, 'precio', e.target.value)} style={{ textAlign: 'right' }} data-testid={`articulo-precio-${index}`} /></td>
+                                <td>
+                                  <TableSearchSelect options={lineasNegocio} value={articulo.linea_negocio_id} onChange={(value) => handleArticuloChange(index, 'linea_negocio_id', value)} placeholder="Linea" displayKey="nombre" valueKey="id" />
+                                </td>
+                                <td style={{ textAlign: 'right', fontWeight: 500, fontFamily: "'JetBrains Mono', monospace", padding: '0.625rem 0.75rem' }}>{calcularImporteArticulo(articulo).toFixed(2)}</td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <input type="checkbox" checked={articulo.igv_aplica} onChange={(e) => handleArticuloChange(index, 'igv_aplica', e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#1B4D3E' }} />
+                                </td>
+                                <td className="actions-cell">
+                                  <button type="button" className="btn-icon-small" onClick={() => handleDuplicateArticulo(index)} title="Duplicar"><Copy size={14} /></button>
+                                  <button type="button" className="btn-icon-small" onClick={() => handleRemoveArticulo(index)} title="Eliminar"><Trash2 size={14} /></button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   ) : null}
                   <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem' }}>
-                    <button type="button" className="btn btn-outline btn-sm" onClick={handleAddArticulo} data-testid="agregar-articulo-btn"><Plus size={16} /> Agregar articulo</button>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={handleAddArticulo} data-testid="agregar-articulo-btn"><Plus size={16} /> Agregar linea</button>
                     {formData.articulos.length > 0 && (
                       <button type="button" className="btn btn-outline btn-sm" onClick={() => setFormData(prev => ({ ...prev, articulos: [] }))}>Borrar todos</button>
                     )}

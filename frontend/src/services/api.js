@@ -80,6 +80,10 @@ export const getInventario = (search) => api.get('/inventario', { params: { sear
 export const getModelosCortes = (search) => api.get('/modelos-cortes', { params: { search } });
 export const getModelos = (search) => api.get('/modelos', { params: { search } });
 
+// Servicios de Produccion
+export const getServiciosProduccion = () => api.get('/servicios-produccion');
+
+
 // Ordenes de Compra (REVISAR Fase 2)
 export const getOrdenesCompra = (params) => api.get('/ordenes-compra', { params });
 export const getOrdenCompra = (id) => api.get(`/ordenes-compra/${id}`);

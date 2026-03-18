@@ -16,7 +16,8 @@ import React, { useState, useEffect } from 'react';
 import {
   getFacturasProveedor, deleteFacturaProveedor,
   getProveedores, getMonedas, getCategorias, getLineasNegocio, getCentrosCosto,
-  getInventario, getModelosCortes, getCuentasFinancieras
+  getInventario, getModelosCortes, getCuentasFinancieras,
+  getServiciosProduccion
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import { Plus, FileSpreadsheet } from 'lucide-react';
@@ -47,6 +48,7 @@ export const FacturasProveedor = () => {
   const [inventario, setInventario] = useState([]);
   const [modelosCortes, setModelosCortes] = useState([]);
   const [cuentasFinancieras, setCuentasFinancieras] = useState([]);
+  const [serviciosProduccion, setServiciosProduccion] = useState([]);
   const [valorizacionMap, setValorizacionMap] = useState({});
 
   // Filters
@@ -82,7 +84,7 @@ export const FacturasProveedor = () => {
       if (filtroProveedorId) params.proveedor_id = filtroProveedorId;
       if (filtroFecha) params.fecha_desde = filtroFecha;
 
-      const [facturasRes, proveedoresRes, monedasRes, categoriasRes, lineasRes, centrosRes, inventarioRes, modelosRes, cuentasRes] = await Promise.all([
+      const [facturasRes, proveedoresRes, monedasRes, categoriasRes, lineasRes, centrosRes, inventarioRes, modelosRes, cuentasRes, serviciosRes] = await Promise.all([
         getFacturasProveedor(params),
         getProveedores(),
         getMonedas(),
@@ -91,7 +93,8 @@ export const FacturasProveedor = () => {
         getCentrosCosto(),
         getInventario(),
         getModelosCortes(),
-        getCuentasFinancieras()
+        getCuentasFinancieras(),
+        getServiciosProduccion()
       ]);
 
       setFacturas(facturasRes.data);
@@ -103,6 +106,7 @@ export const FacturasProveedor = () => {
       setInventario(inventarioRes.data.filter(a => a.categoria !== 'PT'));
       setModelosCortes(modelosRes.data);
       setCuentasFinancieras(cuentasRes.data);
+      setServiciosProduccion(serviciosRes.data);
 
       // Fetch FIFO valuation
       try {
@@ -209,6 +213,7 @@ export const FacturasProveedor = () => {
         centrosCosto={centrosCosto}
         inventario={inventario}
         modelosCortes={modelosCortes}
+        serviciosProduccion={serviciosProduccion}
         valorizacionMap={valorizacionMap}
         onClose={() => { setShowFormModal(false); setEditingFactura(null); setViewOnlyMode(false); }}
         onSaved={loadData}

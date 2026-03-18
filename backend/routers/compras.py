@@ -12,6 +12,19 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/servicios-produccion")
+async def get_servicios_produccion(empresa_id: int = Depends(get_empresa_id)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, nombre, descripcion, tarifa, orden
+            FROM produccion.prod_servicios_produccion
+            ORDER BY orden, nombre
+        """)
+        return [dict(r) for r in rows]
+
+
+
 async def generate_oc_number(conn, empresa_id: int) -> str:
     year = datetime.now().year
     prefijo = f"OC-{year}-"
@@ -445,11 +458,11 @@ async def create_factura_proveedor(data: FacturaProveedorCreate, empresa_id: int
             for linea in data.lineas:
                 await conn.execute("""
                     INSERT INTO finanzas2.cont_factura_proveedor_linea
-                    (empresa_id, factura_id, categoria_id, articulo_id, descripcion, linea_negocio_id,
+                    (empresa_id, factura_id, categoria_id, articulo_id, servicio_id, tipo_linea, descripcion, linea_negocio_id,
                      centro_costo_id, importe, igv_aplica, cantidad, precio_unitario, modelo_corte_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                """, empresa_id, factura_id, linea.categoria_id, linea.articulo_id, linea.descripcion,
-                    linea.linea_negocio_id, linea.centro_costo_id, linea.importe, linea.igv_aplica,
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                """, empresa_id, factura_id, linea.categoria_id, linea.articulo_id, linea.servicio_id, linea.tipo_linea,
+                    linea.descripcion, linea.linea_negocio_id, linea.centro_costo_id, linea.importe, linea.igv_aplica,
                     linea.cantidad, linea.precio_unitario, linea.modelo_corte_id)
             await conn.execute("""
                 INSERT INTO finanzas2.cont_cxp

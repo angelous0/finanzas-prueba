@@ -171,6 +171,12 @@ Nuevo modulo que permite ver el historial completo de entradas y salidas por:
 - El dropdown de artículos en Órdenes de Compra ahora excluye artículos con categoría 'PT' (Producto Terminado)
 - Cambio mínimo: filtro frontend en OrdenesCompra.jsx línea 150
 
+## Tipo Línea en Factura Proveedor (Inventariable vs Servicio) - COMPLETADO (2026-03-18)
+- Nuevo campo `tipo_linea` ('inventariable' / 'servicio') y `servicio_id` en cont_factura_proveedor_linea
+- Endpoint GET /api/servicios-produccion (9 servicios: Corte, Lazer, Estampado, Bordado, Costura, etc.)
+- UI: Columna TIPO con selector verde (Inv) / azul (Srv), selector dinámico Artículo o Servicio, Registro/Corte solo habilitado para servicios
+- Archivos: FacturaFormModal.jsx, FacturasProveedor.jsx, helpers.js, api.js, compras.py, models.py
+
 ## Vinculación Factura Proveedor ↔ Ingresos MP - COMPLETADO (2026-03-17)
 - Tabla puente: `finanzas2.cont_factura_ingreso_mp` (factura_linea_id, ingreso_id, articulo_id, cantidad_aplicada)
 - Backend: 4 endpoints (vinculaciones, ingresos-disponibles, vincular, desvincular)
