@@ -471,7 +471,9 @@ const FacturaFormModal = ({
               </button>
               {showDetallesArticulo && (
                 <>
-                  {formData.articulos.length > 0 ? (
+                  {formData.articulos.length > 0 ? (() => {
+                    const hayServicio = formData.articulos.some(a => a.tipo_linea === 'servicio');
+                    return (
                     <div className="table-scroll-wrapper">
                       <table className="factura-table">
                         <thead>
@@ -479,8 +481,8 @@ const FacturaFormModal = ({
                             <th style={{ width: '36px' }}>#</th>
                             <th style={{ width: '110px' }}>TIPO</th>
                             <th style={{ minWidth: '150px' }}>ART. / SRV. PADRE</th>
-                            <th style={{ minWidth: '140px' }}>DETALLE SERVICIO</th>
-                            <th style={{ minWidth: '140px' }}>REGISTRO / CORTE</th>
+                            {hayServicio && <th style={{ minWidth: '140px' }}>DETALLE SERVICIO</th>}
+                            {hayServicio && <th style={{ minWidth: '140px' }}>REGISTRO / CORTE</th>}
                             <th style={{ width: '60px' }}>CANT.</th>
                             <th style={{ width: '85px' }}>COSTO U.</th>
                             <th style={{ minWidth: '120px' }}>LINEA NEG.</th>
@@ -529,6 +531,7 @@ const FacturaFormModal = ({
                                     />
                                   )}
                                 </td>
+                                {hayServicio && (
                                 <td>
                                   {isServicio ? (
                                     <input
@@ -543,6 +546,8 @@ const FacturaFormModal = ({
                                     <span style={{ display: 'block', textAlign: 'center', color: '#cbd5e1', fontSize: '0.8125rem' }}>-</span>
                                   )}
                                 </td>
+                                )}
+                                {hayServicio && (
                                 <td>
                                   {isServicio ? (
                                     <TableSearchSelect
@@ -558,6 +563,7 @@ const FacturaFormModal = ({
                                     <span style={{ display: 'block', textAlign: 'center', color: '#cbd5e1', fontSize: '0.8125rem' }}>-</span>
                                   )}
                                 </td>
+                                )}
                                 <td><input type="number" step="1" min="1" placeholder="1" value={articulo.cantidad} onChange={(e) => handleArticuloChange(index, 'cantidad', e.target.value)} style={{ textAlign: 'center', fontSize: '0.8125rem' }} data-testid={`articulo-cantidad-${index}`} /></td>
                                 <td><input type="number" step="0.01" placeholder="0.00" value={articulo.precio} onChange={(e) => handleArticuloChange(index, 'precio', e.target.value)} style={{ textAlign: 'right', fontSize: '0.8125rem' }} data-testid={`articulo-precio-${index}`} /></td>
                                 <td>
@@ -577,7 +583,8 @@ const FacturaFormModal = ({
                         </tbody>
                       </table>
                     </div>
-                  ) : null}
+                    );
+                  })() : null}
                   <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem' }}>
                     <button type="button" className="btn btn-outline btn-sm" onClick={handleAddArticulo} data-testid="agregar-articulo-btn"><Plus size={16} /> Agregar linea</button>
                     {formData.articulos.length > 0 && (
