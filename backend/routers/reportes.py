@@ -32,50 +32,108 @@ def _serialize(row):
 @router.get("/reportes/balance-general")
 async def reporte_balance_general(
     empresa_id: int = Depends(get_empresa_id),
+    fecha_corte: Optional[str] = Query(None),
     linea_negocio_id: Optional[int] = Query(None)
 ):
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
 
-        # ACTIVOS
-        # Caja y Bancos
-        cuentas = await conn.fetch(
-            "SELECT id, nombre, tipo, saldo_actual FROM finanzas2.cont_cuenta_financiera WHERE empresa_id = $1 AND activo = TRUE",
+        # Si no hay fecha_corte, usar hoy
+        corte = date.fromisoformat(fecha_corte) if fecha_corte else date.today()
+
+        # ── ACTIVOS ──
+
+        # Caja y Bancos: saldo inicial + movimientos hasta fecha_corte
+        cuentas_raw = await conn.fetch(
+            "SELECT id, nombre, tipo, saldo_inicial FROM finanzas2.cont_cuenta_financiera WHERE empresa_id = $1 AND activo = TRUE",
             empresa_id)
-        caja_total = sum(float(c['saldo_actual']) for c in cuentas)
+        cuentas = []
+        for c in cuentas_raw:
+            saldo_inicial = float(c['saldo_inicial'] or 0)
+            ingresos = float(await conn.fetchval("""
+                SELECT COALESCE(SUM(monto), 0) FROM finanzas2.cont_movimiento_tesoreria
+                WHERE cuenta_financiera_id = $1 AND tipo = 'ingreso' AND fecha <= $2::date
+            """, c['id'], corte) or 0)
+            egresos = float(await conn.fetchval("""
+                SELECT COALESCE(SUM(monto), 0) FROM finanzas2.cont_movimiento_tesoreria
+                WHERE cuenta_financiera_id = $1 AND tipo = 'egreso' AND fecha <= $2::date
+            """, c['id'], corte) or 0)
+            saldo = saldo_inicial + ingresos - egresos
+            cuentas.append({"id": c['id'], "nombre": c['nombre'], "tipo": c['tipo'], "saldo_actual": saldo})
+        caja_total = sum(c['saldo_actual'] for c in cuentas)
 
-        # CxC
-        cxc = float(await conn.fetchval(
-            "SELECT COALESCE(SUM(saldo_pendiente), 0) FROM finanzas2.cont_cxc WHERE empresa_id = $1 AND estado NOT IN ('pagado', 'anulada')",
-            empresa_id) or 0)
+        # CxC: creadas hasta fecha_corte menos las pagadas hasta fecha_corte
+        cxc = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(monto_original), 0) FROM finanzas2.cont_cxc
+            WHERE empresa_id = $1 AND estado != 'anulada' AND created_at::date <= $2::date
+        """, empresa_id, corte) or 0)
+        cxc_cobrado = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(pa.monto_aplicado), 0)
+            FROM finanzas2.cont_pago_aplicacion pa
+            JOIN finanzas2.cont_movimiento_tesoreria mt ON pa.pago_id = mt.id
+            WHERE pa.tipo_documento = 'cxc' AND mt.empresa_id = $1 AND pa.created_at::date <= $2::date
+        """, empresa_id, corte) or 0)
+        cxc_neto = cxc - cxc_cobrado
 
-        # Inventario MP
+        # Inventario MP: ingresos hasta fecha - salidas hasta fecha
         inv_mp_detail = await conn.fetch("""
-            SELECT inv.categoria, SUM(i.cantidad_disponible) as cantidad,
-                   SUM(i.cantidad_disponible * i.costo_unitario) as valor
+            SELECT inv.categoria,
+                   COALESCE(SUM(i.cantidad), 0) - COALESCE(
+                       (SELECT SUM(s.cantidad) FROM produccion.prod_inventario_salidas s
+                        WHERE s.item_id = inv.id AND s.empresa_id = $1 AND s.fecha <= $2::date), 0
+                   ) as cantidad,
+                   COALESCE(SUM(i.cantidad * i.costo_unitario), 0) - COALESCE(
+                       (SELECT SUM(s.costo_total) FROM produccion.prod_inventario_salidas s
+                        WHERE s.item_id = inv.id AND s.empresa_id = $1 AND s.fecha <= $2::date), 0
+                   ) as valor
             FROM produccion.prod_inventario_ingresos i
             JOIN produccion.prod_inventario inv ON i.item_id = inv.id
-            WHERE i.empresa_id = $1 AND inv.categoria != 'PT' AND i.cantidad_disponible > 0
-            GROUP BY inv.categoria ORDER BY inv.categoria
-        """, empresa_id)
-        inv_mp = sum(float(r['valor'] or 0) for r in inv_mp_detail)
+            WHERE i.empresa_id = $1 AND inv.categoria != 'PT' AND i.fecha <= $2::date
+            GROUP BY inv.categoria, inv.id
+            HAVING COALESCE(SUM(i.cantidad), 0) - COALESCE(
+                (SELECT SUM(s.cantidad) FROM produccion.prod_inventario_salidas s
+                 WHERE s.item_id = inv.id AND s.empresa_id = $1 AND s.fecha <= $2::date), 0) > 0
+        """, empresa_id, corte)
+        # Reagrupar por categoria
+        cat_totals = {}
+        for r in inv_mp_detail:
+            cat = r['categoria'] or 'Sin categoria'
+            if cat not in cat_totals:
+                cat_totals[cat] = {"categoria": cat, "cantidad": 0, "valor": 0}
+            cat_totals[cat]["cantidad"] += float(r['cantidad'] or 0)
+            cat_totals[cat]["valor"] += float(r['valor'] or 0)
+        inv_mp_grouped = sorted(cat_totals.values(), key=lambda x: x['categoria'])
+        inv_mp = sum(c['valor'] for c in inv_mp_grouped)
 
         # Inventario PT
-        inv_pt = float(await conn.fetchval("""
-            SELECT COALESCE(SUM(i.cantidad_disponible * i.costo_unitario), 0)
+        inv_pt_detail = await conn.fetch("""
+            SELECT inv.id,
+                   COALESCE(SUM(i.cantidad), 0) - COALESCE(
+                       (SELECT SUM(s.cantidad) FROM produccion.prod_inventario_salidas s
+                        WHERE s.item_id = inv.id AND s.empresa_id = $1 AND s.fecha <= $2::date), 0
+                   ) as cantidad,
+                   COALESCE(SUM(i.cantidad * i.costo_unitario), 0) - COALESCE(
+                       (SELECT SUM(s.costo_total) FROM produccion.prod_inventario_salidas s
+                        WHERE s.item_id = inv.id AND s.empresa_id = $1 AND s.fecha <= $2::date), 0
+                   ) as valor
             FROM produccion.prod_inventario_ingresos i
             JOIN produccion.prod_inventario inv ON i.item_id = inv.id
-            WHERE i.empresa_id = $1 AND inv.categoria = 'PT' AND i.cantidad_disponible > 0
-        """, empresa_id) or 0)
+            WHERE i.empresa_id = $1 AND inv.categoria = 'PT' AND i.fecha <= $2::date
+            GROUP BY inv.id
+            HAVING COALESCE(SUM(i.cantidad), 0) - COALESCE(
+                (SELECT SUM(s.cantidad) FROM produccion.prod_inventario_salidas s
+                 WHERE s.item_id = inv.id AND s.empresa_id = $1 AND s.fecha <= $2::date), 0) > 0
+        """, empresa_id, corte)
+        inv_pt = sum(float(r['valor'] or 0) for r in inv_pt_detail)
 
-        # WIP
+        # WIP: salidas hasta fecha en registros NO terminados a esa fecha
         wip_mp = float(await conn.fetchval("""
             SELECT COALESCE(SUM(s.costo_total), 0)
             FROM produccion.prod_inventario_salidas s
             JOIN produccion.prod_registros r ON s.registro_id = r.id
-            WHERE s.empresa_id = $1 AND r.estado != 'Producto Terminado'
-        """, empresa_id) or 0)
+            WHERE s.empresa_id = $1 AND s.fecha <= $2::date AND r.estado != 'Producto Terminado'
+        """, empresa_id, corte) or 0)
         wip_srv = float(await conn.fetchval("""
             SELECT COALESCE(SUM(fl.importe), 0)
             FROM finanzas2.cont_factura_proveedor_linea fl
@@ -83,32 +141,57 @@ async def reporte_balance_general(
             JOIN produccion.prod_registros r ON fl.modelo_corte_id::text = r.id::text
             WHERE f.empresa_id = $1 AND fl.tipo_linea = 'servicio'
             AND r.estado != 'Producto Terminado' AND f.estado != 'anulada'
-        """, empresa_id) or 0)
+            AND f.fecha_factura <= $2::date
+        """, empresa_id, corte) or 0)
         wip_total = wip_mp + wip_srv
 
-        total_activos = caja_total + cxc + inv_mp + inv_pt + wip_total
+        total_activos = caja_total + cxc_neto + inv_mp + inv_pt + wip_total
 
-        # PASIVOS
-        cxp = float(await conn.fetchval("""
-            SELECT COALESCE(SUM(saldo_pendiente), 0) FROM finanzas2.cont_cxp
-            WHERE empresa_id = $1 AND estado NOT IN ('pagado', 'anulada')
+        # ── PASIVOS ──
+
+        # CxP: facturas creadas hasta fecha_corte menos pagos hasta fecha_corte
+        cxp_total_facturas = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(monto_original), 0) FROM finanzas2.cont_cxp
+            WHERE empresa_id = $1 AND estado != 'anulada' AND created_at::date <= $2::date
             AND factura_id NOT IN (
                 SELECT DISTINCT factura_id FROM finanzas2.cont_letra
-                WHERE empresa_id = $1 AND estado IN ('pendiente', 'parcial')
+                WHERE empresa_id = $1 AND created_at::date <= $2::date
             )
-        """, empresa_id) or 0)
-        letras = float(await conn.fetchval(
-            "SELECT COALESCE(SUM(saldo_pendiente), 0) FROM finanzas2.cont_letra WHERE estado IN ('pendiente', 'parcial') AND empresa_id = $1",
-            empresa_id) or 0)
-        total_pasivos = cxp + letras
+        """, empresa_id, corte) or 0)
+        cxp_pagos = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(pa.monto_aplicado), 0)
+            FROM finanzas2.cont_pago_aplicacion pa
+            JOIN finanzas2.cont_movimiento_tesoreria mt ON pa.pago_id = mt.id
+            WHERE pa.tipo_documento = 'factura' AND mt.empresa_id = $1 AND pa.created_at::date <= $2::date
+            AND pa.documento_id NOT IN (
+                SELECT DISTINCT factura_id FROM finanzas2.cont_letra
+                WHERE empresa_id = $1 AND created_at::date <= $2::date
+            )
+        """, empresa_id, corte) or 0)
+        cxp = cxp_total_facturas - cxp_pagos
 
+        # Letras: emitidas hasta fecha - pagos de letras hasta fecha
+        letras_total = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(monto), 0) FROM finanzas2.cont_letra
+            WHERE empresa_id = $1 AND estado != 'anulada' AND created_at::date <= $2::date
+        """, empresa_id, corte) or 0)
+        letras_pagos = float(await conn.fetchval("""
+            SELECT COALESCE(SUM(pa.monto_aplicado), 0)
+            FROM finanzas2.cont_pago_aplicacion pa
+            JOIN finanzas2.cont_movimiento_tesoreria mt ON pa.pago_id = mt.id
+            WHERE pa.tipo_documento = 'letra' AND mt.empresa_id = $1 AND pa.created_at::date <= $2::date
+        """, empresa_id, corte) or 0)
+        letras = letras_total - letras_pagos
+
+        total_pasivos = cxp + letras
         patrimonio = total_activos - total_pasivos
 
         return {
+            "fecha_corte": corte,
             "activos": {
-                "caja_bancos": {"cuentas": [_serialize(c) for c in cuentas], "total": caja_total},
-                "cuentas_por_cobrar": cxc,
-                "inventario_mp": {"detalle": [_serialize(r) for r in inv_mp_detail], "total": inv_mp},
+                "caja_bancos": {"cuentas": cuentas, "total": caja_total},
+                "cuentas_por_cobrar": cxc_neto,
+                "inventario_mp": {"detalle": inv_mp_grouped, "total": inv_mp},
                 "inventario_pt": inv_pt,
                 "wip": {"mp_consumida": wip_mp, "servicios": wip_srv, "total": wip_total},
                 "total": total_activos

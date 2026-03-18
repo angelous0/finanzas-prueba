@@ -25,15 +25,18 @@ export default function ReportesFinancieros() {
   const [data, setData] = useState({});
 
   const needsDates = tab === 'egyp' || tab === 'flujo';
+  const needsCorte = tab === 'balance';
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = needsDates ? { fecha_desde: fechaDesde, fecha_hasta: fechaHasta } : {};
+      let params = {};
+      if (needsDates) params = { fecha_desde: fechaDesde, fecha_hasta: fechaHasta };
+      if (needsCorte) params = { fecha_corte: fechaHasta };
       let result;
       switch (tab) {
         case 'balance':
-          result = await getReporteBalanceGeneral();
+          result = await getReporteBalanceGeneral(params);
           break;
         case 'egyp':
           result = await getReporteEstadoResultados(params);
@@ -52,7 +55,7 @@ export default function ReportesFinancieros() {
     } finally {
       setLoading(false);
     }
-  }, [tab, fechaDesde, fechaHasta, needsDates]);
+  }, [tab, fechaDesde, fechaHasta, needsDates, needsCorte]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -65,6 +68,13 @@ export default function ReportesFinancieros() {
           <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.25rem 0 0' }}>Estados financieros gerenciales consolidados</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {needsCorte && (
+            <>
+              <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>Corte al:</span>
+              <input type="date" className="form-input" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
+                style={{ fontSize: '0.8rem', padding: '4px 8px' }} data-testid="rf-fecha-corte" />
+            </>
+          )}
           {needsDates && (
             <>
               <input type="date" className="form-input" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
