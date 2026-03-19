@@ -79,14 +79,14 @@ async def crear_distribucion_cobro(conn, empresa_id: int, odoo_order_id: int,
         return 0
 
     count = 0
-    restante = monto_cobro
+    restante = float(monto_cobro)
     for i, r in enumerate(lineas):
         mapped = resolve_linea(ln_map, r['odoo_linea_negocio_id'])
         if i == len(lineas) - 1:
             monto_linea = round(restante, 2)
         else:
-            proporcion = float(r['subtotal']) / total_venta
-            monto_linea = round(monto_cobro * proporcion, 2)
+            proporcion = float(r['subtotal']) / float(total_venta)
+            monto_linea = round(float(monto_cobro) * proporcion, 2)
             restante -= monto_linea
         if monto_linea > 0:
             await conn.execute("""
