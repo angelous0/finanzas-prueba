@@ -18,7 +18,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://erp-auditor.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://concilia-smart.preview.emergentagent.com').rstrip('/')
 EMPRESA_ID = 7
 CUENTA_FINANCIERA_ID = 10
 MONEDA_ID = 9

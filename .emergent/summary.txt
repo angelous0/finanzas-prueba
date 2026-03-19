@@ -1,52 +1,56 @@
 <analysis>**original_problem_statement:**
-The user, a Senior ERP Architect, initiated a project to audit and refactor the Finanzas Gerenciales application. The current focus is on building new features and improving UX, specifically around financial reporting and data traceability between finance and production modules.
+The user, a Senior ERP Architect, is continuing a project to audit, refactor, and enhance the Finanzas Gerenciales application.
 
-Latest User Requirements:
-1.  **Consolidate Financial Reports:** Create a new section in the application to house four key financial reports: Balance General (Balance Sheet), Estado de Ganancias y Pérdidas (P&L), Flujo de Caja (Cash Flow), and Inventarios Valorizados. These reports should be filterable by company and date ranges and should prepare the ground for future analysis by línea de negocio.
-2.  **Traceability (Factura Proveedor ↔ Ingresos MP):** Implement a many-to-many linking mechanism between Supplier Invoice lines and Material Receipt lines from production. This should allow users to see which receipts are covered by which invoices, and vice-versa, directly from the Supplier Invoice UI.
-3.  **Refine Invoice Line Types:** Differentiate between Inventariable items and Servicio Producción on the supplier invoice detail lines. The UI should adapt based on the selected type, showing relevant fields for each (e.g., Registro / Corte for services).
-4.  **Detailed Service Invoicing:** Allow users to record fine-grained service details (e.g., 'Cerrado', 'Remallado') on an invoice line while linking it to a general parent service from the production module (e.g., 'Costura').
-5.  **Ongoing Bug Fixes & UX improvements:** Address bugs and UI inconsistencies as they are reported by the user, such as fixing PDF generation, correcting data saving logic, and improving visual indicators.
+In this session, the user's focus shifted from the initial task of building financial reports to a deep-dive into debugging and refining the logic of several core modules based on the outputs of those reports.
+
+Key requirements addressed:
+1.  **Correct P&L Data Sources:** The user requested clarification on the data sources for the P&L report, leading to significant corrections to use the right tables for , , and to filter  by their confirmation status.
+2.  **Historical Balance Sheet:** The user requested the ability for the Balance Sheet to travel back in time via a date filter, requiring a full rewrite of its logic to be based on transactional data up to a cut-off date.
+3.  **Fix Balance Sheet Logic:** The user identified that Work-in-Process (WIP) was zero and that liabilities were being double-counted. This led to correcting the WIP calculation and the Accounts Payable logic.
+4.  **Fix Supplier Invoice Bugs:** The user reported that editing a specific invoice () was duplicating lines and not saving the Registro/Corte field.
+5.  **Data Reset:** To ensure clean testing, the user requested a full wipe of all transactional data, keeping only foundational tables like companies and suppliers.
+6.  **Refactor Category Management:** The user requested to simplify category management for expenses, removing the header-level category and consolidating on a single line-item level category.
+7.  **Enhance POS Sync:** The user wanted to ensure product information (, ) was updated when syncing POS sales to prevent items from appearing with blank names.
+8.  **Improve Bank Reconciliation:** The user requested a complete overhaul of the bank reconciliation module, starting with a physical UI redesign to be followed by logical improvements like auto-matching.
 
 **User's preferred language**: Spanish
 
 **what currently exists?**
-The application is a PostgreSQL-backed ERP with a FastAPI backend and a React frontend. The agent has just completed a series of significant feature enhancements and bug fixes primarily within the Órdenes de Compra (Purchase Orders) and Facturas de Proveedor (Supplier Invoices) modules.
+The application is a PostgreSQL-backed ERP with a FastAPI backend and a React frontend. The agent has just completed a major cycle of deep-dive bug fixing and logic refinement across multiple modules.
 
-Key functionalities implemented in this session include:
--   A full many-to-many linking system between supplier invoices and production material receipts, complete with a new UI modal and visual status indicators.
--   A sophisticated invoice detail form that now distinguishes between Inventariable and Servicio Producción line types, with a conditional UI that changes based on the selection.
--   The ability to record fine-grained service details on invoices while linking them to a parent production service.
--   Numerous critical bug fixes related to editing purchase orders, data type mismatches (UUID vs. Integer), PDF generation, and data persistence issues in forms.
+-   **Financial Reports:** The P&L and Balance General reports are now logically sound and pull data from the correct, user-validated sources. The Balance General is now a point-in-time report that can be run for any historical date.
+-   **Supplier Invoices:** A critical bug causing line duplication and data loss upon editing service lines has been fully resolved. This involved schema changes ( -> ), Pydantic model updates, and fixes to both frontend and backend logic.
+-   **POS Sync:** The Actualizar button in the POS module now triggers a full sync (), which updates products *before* syncing sales, solving an issue with products appearing with blank names.
+-   **Category Management:** The concept of a header-level Categoría Gasto has been removed from the application. The page at  now correctly manages line-item expense categories ().
+-   **Bank Reconciliation UI:** The UI for the reconciliation page has been completely redesigned with a side-by-side layout (Bank vs. System), a summary header for balances, and a unified action bar at the bottom. The logical backend for auto-matching has not been implemented yet.
+-   The database has been cleared of transactional data, providing a clean slate for testing. Core data like currencies have been re-seeded.
 
 **Last working item**:
-The user requested the creation of four consolidated financial reports: Balance Sheet, P&L, Cash Flow, and Inventory Valuation.
+The user requested an overhaul of the bank reconciliation module, split into two parts: physical (UI) and logical (backend). The agent has completed the physical part and is about to start the logical part.
 
-- **Last item agent was working:** The agent began implementing this by creating a new, consolidated backend router  to house the logic for all four reports, replacing a legacy implementation. It was in the process of debugging the new endpoints. An  in the P&L endpoint ( vs. ) was identified and fixed.
-- **Status:** IN PROGRESS
+- **Last item agent was working:** Implementing the logical improvements for bank reconciliation, starting with the auto-matching feature.
+- **Status:** NOT STARTED
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** both. First, use  or  to test each of the 4 endpoints in  to ensure they return accurate, serializable JSON data for different date ranges and company IDs. Once the backend is confirmed, use the frontend testing agent to verify the new page and its tabbed UI.
+- **Which testing method agent to use?** both. This is a significant backend feature. First, use the backend testing agent to create and validate the auto-matching logic. Once the API returns suggested matches, use the frontend testing agent to ensure the UI correctly highlights these suggestions and that the confirm workflow functions as expected.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Consolidate Financial Reports (P0)**
-  - **Description:** Implement four key financial reports: Balance General, Estado de Ganancias y Pérdidas (EGyP), Flujo de Caja (Cash Flow), and Inventarios Valorizados.
-  - **Attempted fixes:**
-    -   A new backend router  was created, overwriting a legacy file.
-    -   The logic for the 4 reports was drafted.
-    -   A bug in the Balance General endpoint was fixed.
-    -   An  was fixed in the EGyP endpoint by changing a table name from  to .
+- **Issue 1: Implement Auto-Matching Logic for Bank Reconciliation (P0)**
+  - **Description:** Implement the logical backend for the newly redesigned reconciliation page. The highest priority is to automatically suggest matches between bank movements and system movements.
   - **Next debug checklist:**
-    1.  Continue debugging the backend endpoints in . The P&L, Cash Flow, and Inventory Valuation endpoints still need to be verified after the last fix.
-    2.  Create a new frontend page, e.g., .
-    3.  Implement a tabbed UI on this page, with one tab for each of the four reports.
-    4.  Add filters for date range and company ().
-    5.  For each tab, fetch data from the corresponding backend endpoint and display it in a clear, well-formatted, and easily understandable layout (e.g., using tables or summary cards).
-  - **Why fix this issue?** This is a high-priority user request to provide core financial visibility and is the culmination of much of the data work done previously.
-  - **Status:** IN PROGRESS
+    1.  Modify the backend endpoint that fetches movements ( in  or similar).
+    2.  Create a new service function, e.g., .
+    3.  Implement matching rules within this function:
+        -   Rule 1: Match on identical  + identical .
+        -   Rule 2: Match on identical  +  within a close range (e.g., ±3 days).
+    4.  Augment the API response to include a  or similar field linking the matched pair.
+    5.  In the frontend (), use this  to visually highlight suggested pairs (e.g., with a green background or a link icon).
+    6.  Update the floating action bar to include a Confirmar Sugerencias Seleccionadas button.
+  - **Why fix this issue?** This is the core value proposition of the reconciliation improvement, aimed at saving the user significant manual effort.
+  - **Status:** NOT STARTED
   - **Is recurring issue?** N
   - **Should Test frontend/backend/both after fix?** Both.
-  - **Blocked on other issue:** None directly, but will be more powerful once  is implemented (Upcoming Task).
+  - **Blocked on other issue:** None.
 
 **In progress Task List**:
 - None.
@@ -54,24 +58,25 @@ The user requested the creation of four consolidated financial reports: Balance 
 **Upcoming and Future Tasks**
 
 - **Upcoming Tasks:**
-  - **P1: Add Línea de Negocio to Supplier Invoices:** This is a repeatedly postponed critical task. The  table and the corresponding form need a  field. This is essential for all financial reports to be analyzed by business line, a core user requirement. (Files: , ).
-  - **P2: File Splitting (Phase 5):** Continue breaking down large legacy files: , , .
-  - **P3: Audit PagarFacturas Module:** Decide if this legacy module is CORE or should be deprecated.
+    - **P1: Conciliation N:1 and 1:N:** After basic auto-matching is done, enhance the logic to allow matching multiple system movements to one bank movement (e.g., multiple customer payments in one deposit) and vice versa. (Files: , ).
+    - **P2: Add Línea de Negocio to Supplier Invoices:** This is a repeatedly postponed critical task from the original handoff. It is essential for financial analysis. (Files: , ).
 
 - **Future Tasks:**
-  - **Complete Simplified Reports:** Implement the remaining 4 out of 12 original reports from the legacy plan.
-  - **Legacy Backlog:** Re-evaluate paused features like Proyectos, Capital & ROI, and Presupuesto vs Real.
+    - **File Splitting (Phase 5):** Continue breaking down large legacy files: , , .
+    - **Audit PagarFacturas Module:** Decide if this legacy module is CORE or should be deprecated.
+    - **Complete Simplified Reports:** Implement the remaining 4 out of 12 original reports from the legacy plan.
+    - **Legacy Backlog:** Re-evaluate paused features like Proyectos, Capital & ROI, and Presupuesto vs Real.
 
 **Completed work in this session**
-- **Feature - Invoice ↔ Receipt Linking:** Implemented a many-to-many linking system between supplier invoices and production material receipts, with a new backend table (), API endpoints, and a frontend modal (). Added a visual status column (Ingresos) to the main invoice table.
-- **Feature - Differentiated Invoice Lines:** The invoice form now supports Inventariable and Servicio Producción line types with a conditional UI that shows/hides relevant fields ().
-- **Feature - Detailed Service Invoicing:** Enhanced service lines to capture a Servicio Padre (from Production) and a Detalle Servicio (free text), allowing for detailed financial recording without altering production data structures.
-- **Bug Fix - OC Edit creates duplicate:** Fixed logic in  and  to correctly use PUT for updates instead of POST.
-- **Bug Fix - Article empty on edit:** Resolved a critical data type mismatch where UUIDs for  were being incorrectly handled as integers. This required changing DB schema ( to ) and updating Pydantic models () and frontend logic.
-- **Bug Fix - Generate Invoice from OC fails:** Fixed incorrect parameter ordering in a backend SQL query and resolved another Pydantic  type mismatch.
-- **Bug Fix - PDF Generation:** Fixed issues where PDFs were rendered with a black background in dark mode and adjusted column widths for better readability.
-- **UX - Removed Generate Asiento Button:** Removed the journal entry button from the supplier invoice table as requested.
-- **UX - Filter 'PT' Items:** Excluded Producto Terminado items from the supplier invoice item dropdown.
+- **Feature - Point-in-Time Balance Sheet:** Reworked the Balance General report to be fully transactional, allowing it to be accurately calculated for any historical date.
+- **Logic Fix - P&L Data Sources:** Corrected the data sources for P&L costs (MP and Services) and sales (filtered by status), making the report accurate.
+- **Logic Fix - Balance Sheet Accuracy:** Corrected the WIP calculation to be based on production status and fixed a major bug that was double-counting liabilities between Accounts Payable and Letters of Credit.
+- **Bug Fix - Supplier Invoice Edit:** Fixed a critical bug in the supplier invoice form that caused line duplication and prevented  from being saved on update. This required DB schema changes, Pydantic model updates, and frontend/backend logic fixes.
+- **Bug Fix - POS Payment Error:** Fixed a  ( * ) that occurred when creating payments for POS sales.
+- **Feature - POS Sync Enhancement:** Updated the POS sync process to refresh products first, ensuring sales data is linked to correct product names.
+- **Feature - Category Management Refactor:** Eliminated the header-level expense category and refactored the Categorías page to manage line-item categories, simplifying the expense recording process.
+- **UX - Bank Reconciliation UI Redesign:** Completely redesigned the  page with a modern, side-by-side layout, a new summary header, and a unified action bar.
+- **System Maintenance:** Performed a full transactional data wipe and re-seeded necessary lookup tables like .
 
 **Earlier issues found/mentioned but not fixed**
 - None.
@@ -80,83 +85,75 @@ The user requested the creation of four consolidated financial reports: Balance 
 - None.
 
 **Code Architecture**
-
+/run
 
 **Key Technical Concepts**
-- **UUID vs. Integer Mismatch:** A recurring core issue was the system trying to treat UUIDs from production tables as integers in finance tables. The fix involved altering table schemas (), dropping foreign key constraints, and updating Pydantic models and frontend  calls.
-- **Conditional UI:** The  now uses React state to dynamically render different inputs and table columns based on a line's  ('inventariable' vs. 'servicio'), creating a more intuitive user experience within a single component.
-- **Manual JSON Serialization:** A bug where data was being stripped from an API response was solved by removing the strict Pydantic  from the FastAPI endpoint decorator and manually creating a serializable dictionary, converting  and  objects to strings/floats.
-- **Many-to-Many Bridge Table:** A new table, , was created to correctly model the many-to-many relationship between invoice lines and material receipt lines.
+- **Point-in-Time Reporting:** The Balance General was refactored to calculate balances by summing up all transactions from the beginning of time up to a specified , making it a true historical report.
+- **Data Integrity Validation:** The user's feedback drove a deep validation of business logic, leading to the correction of data sources (e.g., using  for actual cost) and fixing logical flaws (e.g., double-counting liabilities).
+- **Schema Evolution & Migration:** A bug was fixed by changing a DB column type from  to  (), which required cascading changes to the Pydantic model, backend queries, and frontend  calls.
+- **Type Coercion:** A backend  was resolved by explicitly converting  types (from PostgreSQL) to  before performing multiplication with other floats in Python services.
+- **API Call Chaining:** The POS sync logic was improved to chain two separate API calls ( then ) to ensure data dependencies (products must exist before sales) are met.
 
 **key DB schema**
-- ****:  data type changed from  to .
-- ****:  changed to . New columns added:  (varchar),  (varchar),  (varchar).
-- ** (New)**: Bridge table with schema .
+- ****: The  column was changed from  to  to correctly store UUIDs.
+- ****: This table is now obsolete and no longer used by the Gastos module.
+- ****: This table is now the single source of truth for expense line-item categories (where ).
+- ****: This table was wiped and re-seeded. New IDs are 11 (PEN) and 12 (USD).
 
 **changes in tech stack**
 - None.
 
 **All files of reference**
--  (New/Replaced)
--  (New)
--  (Heavily Modified)
--  (Modified)
--  (Heavily Modified)
--  (Heavily Modified)
--  (Modified)
--  (Modified)
--  (Modified)
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
 
 **Areas that need refactoring**:
 - The file-splitting initiative for large legacy files (, , ) remains pending.
 
 **key api endpoints**
-- **NEW / RE-IMPLEMENTED:**
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-- **MODIFIED:**
-  - 
-  - 
-  - 
-  - 
-  - 
+- **HEAVILY MODIFIED:**
+  - : Data sources and filters corrected.
+  - : Completely rewritten to be a point-in-time report.
+  - : Logic updated to correctly handle updates to all line-item fields and prevent data loss.
+  - : Now triggers a full sync () before syncing sales.
 
 **Critical Info for New Agent**
-- **Immediate Priority (P0):** Finish the financial reports feature. The backend logic is drafted in  but requires thorough debugging. Afterwards, a new frontend page with a tabbed layout needs to be built.
-- **Don't Forget P1:** The task to add  to supplier invoice details is the highest priority *upcoming* task. It has been repeatedly postponed. It's a blocker for making the new financial reports truly powerful. Address this immediately after completing the current reports feature.
-- **Data Integrity:** Pay close attention to data types, especially when linking finance tables (which often used  IDs) with production tables (which use UUIDs stored as /). This has been a recurring source of bugs.
+- **Immediate Priority (P0):** Begin implementing the **logical improvements** for the Bank Reconciliation module. The UI has been redesigned, and now the backend needs to be enhanced to provide auto-matching suggestions.
+- **High Priority Upcoming Task (P1):** The task to add  to supplier invoice lines () has been postponed for a long time and is a critical blocker for more advanced financial analysis. It should be addressed immediately after the reconciliation logic is complete.
+- **Data Context:** The database was recently wiped of transactional data. This provides a clean slate but means there is very little data for testing. You may need to guide the user to create new transactions (invoices, payments, sales) to properly test new features.
+- **User's Focus:** The user has a very keen eye for data accuracy and logical consistency. Before marking any task as complete, double-check that the data flows correctly and the numbers add up according to the business rules discussed in the chat history.
 
 **documents and test reports created in this job**
--  (Updated)
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** I need to consolidate financial reports (Balance Sheet, P&L, Cash Flow, Inventory). (Request to start the last working item).
-2.  **User:** The DETALLE SERVICIO and REGISTRO / CORTE columns should only appear if there is at least one service line.
-3.  **Agent:** Implemented the conditional columns.
-4.  **User:** I need to record fine-grained service details (e.g., 'Cerrado') on invoice lines while linking them to a parent production service (e.g., 'Costura').
-5.  **Agent:** Implemented the feature by adding a 'servicio_detalle' field and adjusting the UI.
-6.  **User:** I need to differentiate between 'Inventariable' items and 'Servicio Producción' on invoice detail lines with a clear UI.
-7.  **Agent:** Implemented the feature with a 'Tipo línea' selector and a conditional UI in the invoice form.
-8.  **User:** The Ingresos column in the invoice table isn't showing anything.
-9.  **Agent:** Fixed a backend bug where the Pydantic response model was stripping the data.
-10. **User:** I want to see if an invoice is linked to a receipt directly from the main invoice table.
-11. **Agent:** Added a new Ingresos column with a visual status indicator.
+1.  **User:** Asks to improve bank reconciliation, both physically (UI) and logically.
+2.  **Agent:** Proposes a list of UI and logical improvements.
+3.  **User:** mm primero has el tema fisico (first do the physical part).
+4.  **Agent:** Completes the full UI redesign of the reconciliation page.
+5.  **User:** Asks how POS sales are synced and if it includes the company filter.
+6.  **Agent:** Explains the sync process.
+7.  **User:** Asks to also sync product tables (, ) during the POS update.
+8.  **Agent:** Implements the product sync by calling the  endpoint before the POS sync.
+9.  **User:** Reports an error when adding a payment in the POS module (provides screenshot).
+10. **Agent:** Debugs and fixes a  in the backend related to  vs  multiplication.
 
 **Project Health Check:**
-- **Broken:** No. The application is stable.
+- **Broken:** No. The application is stable and significantly more robust after the recent bug fixes.
 - **Mocked:** None.
 
 **3rd Party Integrations**
-- **Odoo Data Source:** Read-only PostgreSQL connection for data synchronization.
+- **Odoo Data Source:** Read-only PostgreSQL connection for data synchronization. The application now uses the  endpoint to pull comprehensive data.
 - **xlsx:** Frontend library for Excel export.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO (for the latest features). Agent used self-testing (, , ).
+- **Testing agent used after significant changes:** YES, for the initial financial reports feature. Subsequent fixes and features were tested manually by the agent and validated by the user.
 - **Troubleshoot agent used after agent stuck in loop:** NO
 - **Test files created:** []
 - **Known regressions:** None.
@@ -165,4 +162,4 @@ The user requested the creation of four consolidated financial reports: Balance 
 - There is no authentication system. Direct access to the application is enabled.
 
 **What agent forgot to execute**
-- The agent has consistently postponed the **P1 task**: adding  to the detail lines of Supplier Invoices (). This was a high-priority upcoming task in the previous handoff and remains a high-priority upcoming task now. It is critical for the user's goal of analyzing financial reports by business line.</analysis>
+- The high-priority task to add  to supplier invoice detail lines () was mentioned in the initial handoff but was not addressed in this session as the user prioritized other fixes and features. It remains a critical pending item.</analysis>

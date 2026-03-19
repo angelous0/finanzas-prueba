@@ -23,7 +23,7 @@ import os
 from datetime import date, timedelta
 
 # API Configuration
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://erp-auditor.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://concilia-smart.preview.emergentagent.com')
 BASE_URL = BASE_URL.rstrip('/')
 
 # Reference IDs from catalog data

@@ -396,78 +396,56 @@ export const ConciliacionBancaria = () => {
         </div>
       </div>
 
-      {/* Summary Stats */}
+      {/* Summary Bar */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(4, 1fr)', 
-        gap: '1rem', 
-        marginBottom: '1.5rem' 
+        gap: '0.75rem', 
+        marginBottom: '1.25rem' 
       }}>
-        <div style={{ 
-          background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-          borderRadius: '12px',
-          padding: '1.25rem',
-          color: 'white'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <Building2 size={18} />
-            <span style={{ fontSize: '0.8125rem', opacity: 0.9 }}>Mov. Banco</span>
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Building2 size={18} color="#2563eb" />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>{pendientesBanco}</div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
-            {formatCurrency(totalBancoPendiente)}
+          <div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>Banco Pendientes</div>
+            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a' }}>{pendientesBanco}</div>
+            <div style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 600 }}>{formatCurrency(totalBancoPendiente)}</div>
           </div>
         </div>
         
-        <div style={{ 
-          background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
-          borderRadius: '12px',
-          padding: '1.25rem',
-          color: 'white'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <FileSpreadsheet size={18} />
-            <span style={{ fontSize: '0.8125rem', opacity: 0.9 }}>Mov. Sistema</span>
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '8px', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <FileSpreadsheet size={18} color="#d97706" />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>{pendientesSistema}</div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
-            {formatCurrency(totalSistemaPendiente)}
+          <div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>Sistema Pendientes</div>
+            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a' }}>{pendientesSistema}</div>
+            <div style={{ fontSize: '0.7rem', color: '#d97706', fontWeight: 600 }}>{formatCurrency(totalSistemaPendiente)}</div>
           </div>
         </div>
         
-        <div style={{ 
-          background: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)',
-          borderRadius: '12px',
-          padding: '1.25rem',
-          color: 'white'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <CheckCircle size={18} />
-            <span style={{ fontSize: '0.8125rem', opacity: 0.9 }}>Conciliados</span>
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '8px', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle size={18} color="#7c3aed" />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>{conciliaciones.length}</div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
-            Este período
+          <div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>Conciliados</div>
+            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a' }}>{conciliaciones.length}</div>
+            <div style={{ fontSize: '0.7rem', color: '#7c3aed' }}>Este periodo</div>
           </div>
         </div>
         
-        <div style={{ 
-          background: diferencia === 0 
-            ? 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)' 
-            : 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
-          borderRadius: '12px',
-          padding: '1.25rem',
-          color: 'white'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <ArrowDown size={18} />
-            <span style={{ fontSize: '0.8125rem', opacity: 0.9 }}>Diferencia</span>
+        <div style={{ background: '#fff', border: `1px solid ${diferencia === 0 ? '#bbf7d0' : '#fecaca'}`, borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: 36, height: 36, borderRadius: '8px', background: diferencia === 0 ? '#f0fdf4' : '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {diferencia === 0 ? <Check size={18} color="#16a34a" /> : <AlertCircle size={18} color="#dc2626" />}
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
-            {formatCurrency(Math.abs(diferencia))}
-          </div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '0.25rem' }}>
-            {diferencia === 0 ? 'Cuadrado' : diferencia > 0 ? 'Banco mayor' : 'Sistema mayor'}
+          <div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>Diferencia</div>
+            <div style={{ fontSize: '1.125rem', fontWeight: 700, color: diferencia === 0 ? '#16a34a' : '#dc2626' }}>{formatCurrency(Math.abs(diferencia))}</div>
+            <div style={{ fontSize: '0.7rem', color: diferencia === 0 ? '#16a34a' : '#dc2626' }}>
+              {diferencia === 0 ? 'Cuadrado' : diferencia > 0 ? 'Banco mayor' : 'Sistema mayor'}
+            </div>
           </div>
         </div>
       </div>
@@ -590,272 +568,220 @@ export const ConciliacionBancaria = () => {
 
       {/* Content */}
       {activeTab === 'pendientes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          
-          {/* Banco Section */}
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div 
-              onClick={() => setExpandedBanco(!expandedBanco)}
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '1rem 1.25rem',
-                background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Building2 size={20} />
-                <span style={{ fontWeight: 600, fontSize: '1rem' }}>
-                  Movimientos del Banco ({movimientosBanco.filter(m => !m.conciliado).length})
-                </span>
-                {selectedBanco.length > 0 && (
-                  <span style={{ 
-                    background: 'rgba(255,255,255,0.2)', 
-                    padding: '0.25rem 0.75rem', 
-                    borderRadius: '20px',
-                    fontSize: '0.8125rem'
-                  }}>
-                    {selectedBanco.length} seleccionados = {formatCurrency(selectedBancoTotal)}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span className="currency-display" style={{ fontWeight: 600 }}>
-                  {formatCurrency(totalBancoPendiente)}
-                </span>
-                {expandedBanco ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </div>
-            </div>
+        <>
+          {/* Side by side layout */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: (selectedBanco.length > 0 || selectedSistema.length > 0) ? '5rem' : '1rem' }}>
             
-            {expandedBanco && (
-              <div className="data-table-wrapper" style={{ maxHeight: '300px', overflow: 'auto' }}>
+            {/* LEFT: Banco */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.625rem 1rem', borderBottom: '2px solid #2563eb', background: '#f8fafc'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Building2 size={16} color="#2563eb" />
+                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#0f172a' }}>
+                    Banco ({movimientosBanco.filter(m => !m.conciliado).length})
+                  </span>
+                  {selectedBanco.length > 0 && (
+                    <span style={{ background: '#dbeafe', color: '#2563eb', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 600 }}>
+                      {selectedBanco.length} sel.
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#2563eb' }}>{formatCurrency(totalBancoPendiente)}</span>
+              </div>
+              
+              <div style={{ maxHeight: '500px', overflow: 'auto', flex: 1 }}>
                 {loading ? (
-                  <div className="loading"><div className="loading-spinner"></div></div>
-                ) : movimientosBanco.length === 0 ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                    <Upload size={40} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                    <div style={{ fontWeight: 500 }}>No hay movimientos importados</div>
-                    <div style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                      Importe un archivo Excel del banco
-                    </div>
+                  <div className="loading" style={{ padding: '2rem' }}><div className="loading-spinner"></div></div>
+                ) : movimientosBanco.filter(m => !m.conciliado).length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <Upload size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+                    <p style={{ fontSize: '0.8rem' }}>No hay movimientos. Importe un Excel.</p>
                   </div>
                 ) : (
-                  <table className="data-table" style={{ fontSize: '0.8125rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }} data-testid="banco-table">
                     <thead>
-                      <tr>
-                        <th style={{ width: '40px' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={selectedBanco.length === movimientosBanco.length && movimientosBanco.length > 0}
+                      <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ width: 32, padding: '6px 8px' }}>
+                          <input type="checkbox" style={{ width: 14, height: 14 }}
+                            checked={selectedBanco.length === movimientosBanco.filter(m => !m.conciliado).length && movimientosBanco.filter(m => !m.conciliado).length > 0}
                             onChange={() => {
-                              if (selectedBanco.length === movimientosBanco.length) {
-                                setSelectedBanco([]);
-                              } else {
-                                setSelectedBanco(movimientosBanco.map(m => m.id));
-                              }
-                            }}
-                            style={{ width: '16px', height: '16px' }}
-                          />
+                              const pending = movimientosBanco.filter(m => !m.conciliado);
+                              setSelectedBanco(selectedBanco.length === pending.length ? [] : pending.map(m => m.id));
+                            }} />
                         </th>
-                        <th>Fecha</th>
-                        <th>Banco</th>
-                        <th>Nro Operación</th>
-                        <th>Descripción</th>
-                        <th className="text-right">Monto</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Fecha</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Ref</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Descripcion</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Monto</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {movimientosBanco.filter(m => !m.conciliado).map(mov => (
-                        <tr 
-                          key={mov.id}
-                          className={selectedBanco.includes(mov.id) ? 'selected' : ''}
-                          onClick={() => handleSelectBanco(mov.id)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <input 
-                              type="checkbox" 
-                              checked={selectedBanco.includes(mov.id)}
-                              onChange={() => handleSelectBanco(mov.id)}
-                              style={{ width: '16px', height: '16px' }}
-                            />
-                          </td>
-                          <td>{formatDate(mov.fecha)}</td>
-                          <td>{mov.banco_excel || mov.banco || '-'}</td>
-                          <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem' }}>
-                            {mov.referencia || '-'}
-                          </td>
-                          <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {mov.descripcion}
-                          </td>
-                          <td className="text-right currency-display" style={{ 
-                            color: mov.monto < 0 ? '#dc2626' : '#16a34a',
-                            fontWeight: 500
-                          }}>
-                            {formatCurrency(mov.monto, mov.monto < 0 ? '-S/' : 'S/')}
-                          </td>
-                        </tr>
-                      ))}
+                      {movimientosBanco.filter(m => !m.conciliado).map(mov => {
+                        const isSelected = selectedBanco.includes(mov.id);
+                        return (
+                          <tr key={mov.id} onClick={() => handleSelectBanco(mov.id)}
+                            style={{ cursor: 'pointer', borderBottom: '1px solid #f8fafc', background: isSelected ? '#eff6ff' : 'transparent', transition: 'background 0.1s' }}>
+                            <td style={{ padding: '5px 8px' }} onClick={e => e.stopPropagation()}>
+                              <input type="checkbox" checked={isSelected} onChange={() => handleSelectBanco(mov.id)} style={{ width: 14, height: 14 }} />
+                            </td>
+                            <td style={{ padding: '5px 8px', whiteSpace: 'nowrap', color: '#475569' }}>{formatDate(mov.fecha)}</td>
+                            <td style={{ padding: '5px 8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', color: '#64748b' }}>{mov.referencia || '-'}</td>
+                            <td style={{ padding: '5px 8px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#334155' }}>{mov.descripcion}</td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600, color: mov.monto < 0 ? '#dc2626' : '#16a34a', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem' }}>
+                              {formatCurrency(mov.monto, mov.monto < 0 ? '-S/' : 'S/')}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
               </div>
-            )}
+            </div>
+
+            {/* RIGHT: Sistema */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.625rem 1rem', borderBottom: '2px solid #d97706', background: '#f8fafc'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileSpreadsheet size={16} color="#d97706" />
+                  <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#0f172a' }}>
+                    Sistema ({movimientosSistema.filter(m => !m.conciliado).length})
+                  </span>
+                  {selectedSistema.length > 0 && (
+                    <span style={{ background: '#fff7ed', color: '#d97706', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 600 }}>
+                      {selectedSistema.length} sel.
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#d97706' }}>{formatCurrency(totalSistemaPendiente)}</span>
+              </div>
+              
+              <div style={{ maxHeight: '500px', overflow: 'auto', flex: 1 }}>
+                {loading ? (
+                  <div className="loading" style={{ padding: '2rem' }}><div className="loading-spinner"></div></div>
+                ) : movimientosSistema.filter(m => !m.conciliado).length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <FileSpreadsheet size={32} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+                    <p style={{ fontSize: '0.8rem' }}>{cuentaSeleccionada ? 'No hay movimientos pendientes' : 'Seleccione una cuenta'}</p>
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }} data-testid="sistema-table">
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ width: 32, padding: '6px 8px' }}>
+                          <input type="checkbox" style={{ width: 14, height: 14 }}
+                            checked={selectedSistema.length === movimientosSistema.filter(m => !m.conciliado).length && movimientosSistema.filter(m => !m.conciliado).length > 0}
+                            onChange={() => {
+                              const pending = movimientosSistema.filter(m => !m.conciliado);
+                              setSelectedSistema(selectedSistema.length === pending.length ? [] : pending.map(m => m.id));
+                            }} />
+                        </th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Fecha</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Numero</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Tipo</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Descripcion</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Monto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {movimientosSistema.filter(m => !m.conciliado).map(mov => {
+                        const isSelected = selectedSistema.includes(mov.id);
+                        return (
+                          <tr key={mov.id} onClick={() => handleSelectSistema(mov.id)}
+                            style={{ cursor: 'pointer', borderBottom: '1px solid #f8fafc', background: isSelected ? '#fff7ed' : 'transparent', transition: 'background 0.1s' }}>
+                            <td style={{ padding: '5px 8px' }} onClick={e => e.stopPropagation()}>
+                              <input type="checkbox" checked={isSelected} onChange={() => handleSelectSistema(mov.id)} style={{ width: 14, height: 14 }} />
+                            </td>
+                            <td style={{ padding: '5px 8px', whiteSpace: 'nowrap', color: '#475569' }}>{formatDate(mov.fecha)}</td>
+                            <td style={{ padding: '5px 8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', color: '#64748b' }}>{mov.numero}</td>
+                            <td style={{ padding: '5px 8px' }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', 
+                                background: mov.tipo === 'ingreso' ? '#dcfce7' : '#fee2e2', color: mov.tipo === 'ingreso' ? '#16a34a' : '#dc2626' }}>
+                                {mov.tipo === 'ingreso' ? 'ING' : 'EGR'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '5px 8px', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#334155' }}>
+                              {mov.notas || mov.tercero_nombre || '-'}
+                            </td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem',
+                              color: mov.tipo === 'ingreso' ? '#16a34a' : '#dc2626' }}>
+                              {mov.tipo === 'ingreso' ? '' : '-'}{formatCurrency(mov.monto_total)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Link indicator */}
+          {/* Floating Action Bar */}
           {(selectedBanco.length > 0 || selectedSistema.length > 0) && (
             <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center',
-              padding: '0.5rem'
-            }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '1rem',
-                background: Math.abs(selectedBancoTotal - selectedSistemaTotal) < 0.01 ? '#dcfce7' : '#fef3c7',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '30px',
-                border: `1px solid ${Math.abs(selectedBancoTotal - selectedSistemaTotal) < 0.01 ? '#86efac' : '#fcd34d'}`
-              }}>
-                <Link2 size={18} color={Math.abs(selectedBancoTotal - selectedSistemaTotal) < 0.01 ? '#16a34a' : '#d97706'} />
-                <span style={{ fontWeight: 500 }}>
-                  Banco: {formatCurrency(selectedBancoTotal)} | Sistema: {formatCurrency(selectedSistemaTotal)}
-                </span>
-                {Math.abs(selectedBancoTotal - selectedSistemaTotal) < 0.01 ? (
-                  <Check size={18} color="#16a34a" />
-                ) : (
-                  <span style={{ color: '#dc2626', fontWeight: 600 }}>
-                    Dif: {formatCurrency(Math.abs(selectedBancoTotal - selectedSistemaTotal))}
-                  </span>
+              position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', zIndex: 100,
+              background: '#fff', borderRadius: '12px', padding: '0.75rem 1.25rem',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0',
+              display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '90vw'
+            }} data-testid="conciliacion-action-bar">
+              {/* Status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                  <Building2 size={14} color="#2563eb" />
+                  <span style={{ fontWeight: 600, color: '#2563eb' }}>{selectedBanco.length}</span>
+                  <span style={{ color: '#64748b' }}>=</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{formatCurrency(selectedBancoTotal)}</span>
+                </div>
+                <div style={{ width: 1, height: 20, background: '#e2e8f0' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                  <FileSpreadsheet size={14} color="#d97706" />
+                  <span style={{ fontWeight: 600, color: '#d97706' }}>{selectedSistema.length}</span>
+                  <span style={{ color: '#64748b' }}>=</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{formatCurrency(selectedSistemaTotal)}</span>
+                </div>
+                {selectedBanco.length > 0 && selectedSistema.length > 0 && (
+                  <>
+                    <div style={{ width: 1, height: 20, background: '#e2e8f0' }} />
+                    {Math.abs(selectedBancoTotal - selectedSistemaTotal) < 0.01 ? (
+                      <Check size={18} color="#16a34a" />
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>
+                        Dif: {formatCurrency(Math.abs(selectedBancoTotal - selectedSistemaTotal))}
+                      </span>
+                    )}
+                  </>
                 )}
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {selectedBanco.length > 0 && selectedSistema.length > 0 && Math.abs(selectedBancoTotal - selectedSistemaTotal) < 0.01 && (
+                  <button className="btn btn-primary btn-sm" onClick={handleConciliarManual} data-testid="conciliar-btn"
+                    style={{ borderRadius: '8px', fontWeight: 600 }}>
+                    <Check size={14} /> Conciliar
+                  </button>
+                )}
+                {selectedBanco.length > 0 && selectedSistema.length === 0 && (
+                  <button className="btn btn-sm" onClick={handleCrearGastoBancario} data-testid="gasto-bancario-btn"
+                    style={{ borderRadius: '8px', fontWeight: 600, background: '#ea580c', color: '#fff', border: 'none' }}>
+                    <FileSpreadsheet size={14} /> Gasto Bancario
+                  </button>
+                )}
+                <button className="btn btn-outline btn-sm" onClick={() => { setSelectedBanco([]); setSelectedSistema([]); }}
+                  style={{ borderRadius: '8px' }}>
+                  <X size={14} /> Limpiar
+                </button>
               </div>
             </div>
           )}
-
-          {/* Sistema Section */}
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div 
-              onClick={() => setExpandedSistema(!expandedSistema)}
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '1rem 1.25rem',
-                background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <FileSpreadsheet size={20} />
-                <span style={{ fontWeight: 600, fontSize: '1rem' }}>
-                  Movimientos del Sistema ({movimientosSistema.filter(m => !m.conciliado).length})
-                </span>
-                {selectedSistema.length > 0 && (
-                  <span style={{ 
-                    background: 'rgba(255,255,255,0.2)', 
-                    padding: '0.25rem 0.75rem', 
-                    borderRadius: '20px',
-                    fontSize: '0.8125rem'
-                  }}>
-                    {selectedSistema.length} seleccionados = {formatCurrency(selectedSistemaTotal)}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span className="currency-display" style={{ fontWeight: 600 }}>
-                  {formatCurrency(totalSistemaPendiente)}
-                </span>
-                {expandedSistema ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </div>
-            </div>
-            
-            {expandedSistema && (
-              <div className="data-table-wrapper" style={{ maxHeight: '300px', overflow: 'auto' }}>
-                {loading ? (
-                  <div className="loading"><div className="loading-spinner"></div></div>
-                ) : movimientosSistema.length === 0 ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                    <FileSpreadsheet size={40} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                    <div style={{ fontWeight: 500 }}>No hay movimientos pendientes</div>
-                    <div style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                      {cuentaSeleccionada ? 'Los pagos registrados aparecerán aquí' : 'Seleccione una cuenta y busque'}
-                    </div>
-                  </div>
-                ) : (
-                  <table className="data-table" style={{ fontSize: '0.8125rem' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '40px' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={selectedSistema.length === movimientosSistema.length && movimientosSistema.length > 0}
-                            onChange={() => {
-                              if (selectedSistema.length === movimientosSistema.length) {
-                                setSelectedSistema([]);
-                              } else {
-                                setSelectedSistema(movimientosSistema.map(m => m.id));
-                              }
-                            }}
-                            style={{ width: '16px', height: '16px' }}
-                          />
-                        </th>
-                        <th>Fecha</th>
-                        <th>Número</th>
-                        <th>Tipo</th>
-                        <th>Descripción</th>
-                        <th className="text-right">Monto</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {movimientosSistema.map(mov => (
-                        <tr 
-                          key={mov.id}
-                          className={selectedSistema.includes(mov.id) ? 'selected' : ''}
-                          onClick={() => handleSelectSistema(mov.id)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <input 
-                              type="checkbox" 
-                              checked={selectedSistema.includes(mov.id)}
-                              onChange={() => handleSelectSistema(mov.id)}
-                              style={{ width: '16px', height: '16px' }}
-                            />
-                          </td>
-                          <td>{formatDate(mov.fecha)}</td>
-                          <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem' }}>
-                            {mov.numero}
-                          </td>
-                          <td>
-                            <span className={`badge ${mov.tipo === 'ingreso' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.6875rem' }}>
-                              {mov.tipo === 'ingreso' ? 'INGRESO' : 'EGRESO'}
-                            </span>
-                          </td>
-                          <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {mov.notas || mov.tercero_nombre || '-'}
-                          </td>
-                          <td className="text-right currency-display" style={{ 
-                            fontWeight: 500,
-                            color: mov.tipo === 'ingreso' ? '#16a34a' : '#dc2626'
-                          }}>
-                            {mov.tipo === 'ingreso' ? '' : '-'}{formatCurrency(mov.monto_total)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       {activeTab === 'banco' && (
@@ -1031,59 +957,6 @@ export const ConciliacionBancaria = () => {
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Floating buttons */}
-      {/* Button for crear gasto bancario (only banco selected, no sistema) */}
-      {selectedBanco.length > 0 && selectedSistema.length === 0 && activeTab === 'pendientes' && (
-        <div style={{ 
-          position: 'fixed', 
-          bottom: '2rem', 
-          left: '50%', 
-          transform: 'translateX(-50%)',
-          zIndex: 100
-        }}>
-          <button 
-            className="btn btn-warning"
-            onClick={handleCrearGastoBancario}
-            style={{ 
-              padding: '1rem 2rem',
-              fontSize: '1rem',
-              boxShadow: '0 8px 24px rgba(234, 88, 12, 0.4)',
-              borderRadius: '30px',
-              background: '#ea580c',
-              color: 'white'
-            }}
-          >
-            <FileSpreadsheet size={20} />
-            Generar Gasto Automático ({selectedBanco.length} movimientos = {formatCurrency(selectedBancoTotal)})
-          </button>
-        </div>
-      )}
-      
-      {/* Conciliar button (banco + sistema selected) */}
-      {selectedBanco.length > 0 && selectedSistema.length > 0 && Math.abs(selectedBancoTotal - selectedSistemaTotal) < 0.01 && (
-        <div style={{ 
-          position: 'fixed', 
-          bottom: '2rem', 
-          left: '50%', 
-          transform: 'translateX(-50%)',
-          zIndex: 100
-        }}>
-          <button 
-            className="btn btn-primary"
-            onClick={handleConciliarManual}
-            style={{ 
-              padding: '1rem 2rem',
-              fontSize: '1rem',
-              boxShadow: '0 8px 24px rgba(27, 77, 62, 0.4)',
-              borderRadius: '30px'
-            }}
-          >
-            <Check size={20} />
-            Conciliar {selectedBanco.length} + {selectedSistema.length} movimientos
-          </button>
         </div>
       )}
 
