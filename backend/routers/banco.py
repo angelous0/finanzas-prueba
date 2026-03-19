@@ -248,6 +248,161 @@ async def desconciliar_movimientos(data: dict, empresa_id: int = Depends(get_emp
     return {"message": "Movimientos desconciliados exitosamente"}
 
 
+@router.get("/conciliacion/sugerencias")
+async def sugerir_matches(
+    cuenta_financiera_id: int = Query(...),
+    empresa_id: int = Depends(get_empresa_id),
+):
+    """Suggest automatic matches between pending bank and system movements."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+
+        banco_movs = await conn.fetch("""
+            SELECT id, fecha, referencia, descripcion, monto
+            FROM finanzas2.cont_banco_mov_raw
+            WHERE cuenta_financiera_id = $1 AND empresa_id = $2
+              AND COALESCE(conciliado, false) = false
+            ORDER BY fecha
+        """, cuenta_financiera_id, empresa_id)
+
+        sistema_movs = await conn.fetch("""
+            SELECT id, fecha, referencia, notas, monto as monto_total, tipo
+            FROM finanzas2.cont_movimiento_tesoreria
+            WHERE cuenta_financiera_id = $1 AND empresa_id = $2
+              AND COALESCE(conciliado, false) = false
+            ORDER BY fecha
+        """, cuenta_financiera_id, empresa_id)
+
+        sugerencias = []
+        banco_usado = set()
+        sistema_usado = set()
+
+        def monto_sistema_signed(sm):
+            val = float(sm['monto_total'])
+            return -val if sm['tipo'] == 'egreso' else val
+
+        # Rule 1: Exact amount + exact reference
+        for bm in banco_movs:
+            if bm['id'] in banco_usado:
+                continue
+            monto_banco = float(bm['monto'])
+            ref_banco = (bm['referencia'] or '').strip().lower()
+            if not ref_banco:
+                continue
+            for sm in sistema_movs:
+                if sm['id'] in sistema_usado:
+                    continue
+                monto_sis = monto_sistema_signed(sm)
+                ref_sis = (sm['referencia'] or '').strip().lower()
+                if abs(monto_banco - monto_sis) < 0.01 and ref_sis and ref_banco == ref_sis:
+                    sugerencias.append({
+                        'banco_mov_id': bm['id'],
+                        'sistema_mov_id': sm['id'],
+                        'monto': monto_banco,
+                        'regla': 'referencia_exacta',
+                        'confianza': 'alta'
+                    })
+                    banco_usado.add(bm['id'])
+                    sistema_usado.add(sm['id'])
+                    break
+
+        # Rule 2: Exact amount + close date (±3 days)
+        for bm in banco_movs:
+            if bm['id'] in banco_usado:
+                continue
+            monto_banco = float(bm['monto'])
+            fecha_banco = bm['fecha']
+            for sm in sistema_movs:
+                if sm['id'] in sistema_usado:
+                    continue
+                monto_sis = monto_sistema_signed(sm)
+                fecha_sis = sm['fecha']
+                if abs(monto_banco - monto_sis) < 0.01:
+                    diff_days = abs((fecha_banco - fecha_sis).days)
+                    if diff_days <= 3:
+                        sugerencias.append({
+                            'banco_mov_id': bm['id'],
+                            'sistema_mov_id': sm['id'],
+                            'monto': monto_banco,
+                            'regla': 'monto_fecha',
+                            'confianza': 'alta' if diff_days == 0 else 'media'
+                        })
+                        banco_usado.add(bm['id'])
+                        sistema_usado.add(sm['id'])
+                        break
+
+        return {
+            'sugerencias': sugerencias,
+            'total': len(sugerencias),
+            'pendientes_banco': len(banco_movs) - len(banco_usado),
+            'pendientes_sistema': len(sistema_movs) - len(sistema_usado)
+        }
+
+
+@router.post("/conciliacion/confirmar-sugerencias")
+async def confirmar_sugerencias(
+    data: dict,
+    empresa_id: int = Depends(get_empresa_id),
+):
+    """Confirm and persist a batch of suggested matches."""
+    sugerencias = data.get('sugerencias', [])
+    if not sugerencias:
+        raise HTTPException(400, "No hay sugerencias para confirmar")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        async with conn.transaction():
+            confirmados = 0
+            for sug in sugerencias:
+                banco_id = sug.get('banco_mov_id')
+                sistema_id = sug.get('sistema_mov_id')
+                if not banco_id or not sistema_id:
+                    continue
+
+                # Verify both are still pending
+                bm = await conn.fetchrow(
+                    "SELECT id, cuenta_financiera_id, monto FROM finanzas2.cont_banco_mov_raw WHERE id=$1 AND COALESCE(conciliado,false)=false",
+                    banco_id)
+                sm = await conn.fetchrow(
+                    "SELECT id FROM finanzas2.cont_movimiento_tesoreria WHERE id=$1 AND COALESCE(conciliado,false)=false",
+                    sistema_id)
+                if not bm or not sm:
+                    continue
+
+                # Mark as reconciled
+                await conn.execute(
+                    "UPDATE finanzas2.cont_banco_mov_raw SET procesado=TRUE, conciliado=TRUE WHERE id=$1",
+                    banco_id)
+                await conn.execute(
+                    "UPDATE finanzas2.cont_movimiento_tesoreria SET conciliado=TRUE WHERE id=$1",
+                    sistema_id)
+
+                # Create conciliacion record
+                from datetime import date as date_cls
+                today = date_cls.today()
+                conciliacion = await conn.fetchrow("""
+                    INSERT INTO finanzas2.cont_conciliacion
+                    (cuenta_financiera_id, fecha_inicio, fecha_fin, saldo_final, estado, notas, empresa_id)
+                    VALUES ($1, $2, $2, $3, 'completado', $4, $5) RETURNING id
+                """, bm['cuenta_financiera_id'], today, float(bm['monto']),
+                    f"Auto-match: {sug.get('regla', 'auto')}", empresa_id)
+
+                await conn.execute("""
+                    INSERT INTO finanzas2.cont_conciliacion_linea
+                    (conciliacion_id, banco_mov_id, pago_id, tipo, monto, conciliado, empresa_id)
+                    VALUES ($1, $2, $3, 'auto', $4, TRUE, $5)
+                """, conciliacion['id'], banco_id, sistema_id, float(bm['monto']), empresa_id)
+
+                confirmados += 1
+
+    return {
+        'message': f'{confirmados} sugerencias confirmadas exitosamente',
+        'confirmados': confirmados
+    }
+
+
 @router.get("/conciliacion/movimientos-banco")
 async def list_movimientos_banco(
     cuenta_financiera_id: Optional[int] = None,

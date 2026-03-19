@@ -218,6 +218,10 @@ export const crearGastoBancario = (bancoIds, categoriaId, cuentaFinancieraId, de
 export const getConciliacionesDetalladas = () => api.get('/conciliacion/historial');
 export const desconciliarMovimientos = (bancoId, pagoId) => 
   api.post('/conciliacion/desconciliar', { banco_id: bancoId, pago_id: pagoId });
+export const getSugerenciasConciliacion = (cuentaFinancieraId) =>
+  api.get('/conciliacion/sugerencias', { params: { cuenta_financiera_id: cuentaFinancieraId } });
+export const confirmarSugerencias = (sugerencias) =>
+  api.post('/conciliacion/confirmar-sugerencias', { sugerencias });
 
 // Tesoreria
 export const getTesoreriaResumen = (params) => api.get('/tesoreria/resumen', { params });

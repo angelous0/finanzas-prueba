@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   getCuentasFinancieras, getMovimientosBanco, getPagos,
   importarExcelBanco, getConciliaciones, conciliarMovimientos, previsualizarExcelBanco,
-  crearGastoBancario, getCategorias
+  crearGastoBancario, getCategorias, getSugerenciasConciliacion, confirmarSugerencias
 } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
 import { 
@@ -65,6 +65,11 @@ export const ConciliacionBancaria = () => {
     categoria_id: '',
     descripcion: 'Gastos bancarios'
   });
+  
+  // Sugerencias de auto-matching
+  const [sugerencias, setSugerencias] = useState([]);
+  const [sugerenciasAceptadas, setSugerenciasAceptadas] = useState(new Set()); // track accepted sug indexes
+  const [confirmandoSugerencias, setConfirmandoSugerencias] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -108,7 +113,6 @@ export const ConciliacionBancaria = () => {
         getConciliaciones(cuentaSeleccionada)
       ]);
       
-      // Combine pending and reconciled movements for both bank and system
       const allBancoMovements = [...(bancoPendientesRes.data || []), ...(bancoConciliadosRes.data || [])];
       const allSistemaMovements = [...(sistemaPendientesRes.data || []), ...(sistemaConciliadosRes.data || [])];
       
@@ -117,6 +121,21 @@ export const ConciliacionBancaria = () => {
       setConciliaciones(concilRes.data || []);
       setSelectedBanco([]);
       setSelectedSistema([]);
+      setSugerencias([]);
+      setSugerenciasAceptadas(new Set());
+
+      // Fetch auto-match suggestions
+      try {
+        const sugRes = await getSugerenciasConciliacion(cuentaSeleccionada);
+        const sugs = sugRes.data?.sugerencias || [];
+        setSugerencias(sugs);
+        if (sugs.length > 0) {
+          // All suggestions accepted by default
+          setSugerenciasAceptadas(new Set(sugs.map((_, i) => i)));
+        }
+      } catch (sugErr) {
+        console.warn('Error fetching suggestions:', sugErr);
+      }
     } catch (error) {
       console.error('Error loading movements:', error);
       toast.error('Error al cargar movimientos');
@@ -256,44 +275,57 @@ export const ConciliacionBancaria = () => {
   };
 
   const handleConciliarAuto = async () => {
-    if (movimientosBanco.length === 0 || movimientosSistema.length === 0) {
-      toast.error('No hay movimientos para conciliar');
+    if (!cuentaSeleccionada) {
+      toast.error('Seleccione una cuenta bancaria');
       return;
     }
-    
-    let conciliados = 0;
-    const bancoUsados = new Set();
-    const sistemaUsados = new Set();
-    
-    for (const movBanco of movimientosBanco) {
-      if (bancoUsados.has(movBanco.id)) continue;
-      const montoBanco = movBanco.monto || 0;
-      
-      for (const movSistema of movimientosSistema) {
-        if (sistemaUsados.has(movSistema.id)) continue;
-        const montoSistema = movSistema.tipo === 'ingreso' ? movSistema.monto_total : -movSistema.monto_total;
-        
-        if (Math.abs(montoBanco - montoSistema) < 0.01) {
-          const fechaBanco = new Date(movBanco.fecha);
-          const fechaSistema = new Date(movSistema.fecha);
-          const diffDays = Math.abs((fechaBanco - fechaSistema) / (1000 * 60 * 60 * 24));
-          
-          if (diffDays <= 3) {
-            bancoUsados.add(movBanco.id);
-            sistemaUsados.add(movSistema.id);
-            conciliados++;
-            break;
-          }
-        }
+    try {
+      setLoading(true);
+      const sugRes = await getSugerenciasConciliacion(cuentaSeleccionada);
+      const sugs = sugRes.data?.sugerencias || [];
+      setSugerencias(sugs);
+      if (sugs.length > 0) {
+        setSugerenciasAceptadas(new Set(sugs.map((_, i) => i)));
+        toast.success(`${sugs.length} coincidencias encontradas. Revise y confirme.`);
+      } else {
+        toast.info('No se encontraron coincidencias automáticas');
       }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      toast.error('Error al buscar coincidencias');
+    } finally {
+      setLoading(false);
     }
-    
-    if (conciliados > 0) {
-      toast.success(`Se conciliaron ${conciliados} movimientos automáticamente`);
-      loadMovimientos();
-    } else {
-      toast.info('No se encontraron coincidencias automáticas');
+  };
+
+  const handleConfirmarSugerencias = async () => {
+    const sugsToConfirm = sugerencias.filter((_, i) => sugerenciasAceptadas.has(i));
+    if (sugsToConfirm.length === 0) {
+      toast.error('No hay sugerencias seleccionadas para confirmar');
+      return;
     }
+    try {
+      setConfirmandoSugerencias(true);
+      const result = await confirmarSugerencias(sugsToConfirm);
+      toast.success(result.data.message);
+      setSugerencias([]);
+      setSugerenciasAceptadas(new Set());
+      await loadMovimientos();
+    } catch (error) {
+      console.error('Error confirming suggestions:', error);
+      toast.error('Error al confirmar sugerencias');
+    } finally {
+      setConfirmandoSugerencias(false);
+    }
+  };
+
+  const toggleSugerencia = (index) => {
+    setSugerenciasAceptadas(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   };
 
   const pendientesBanco = movimientosBanco.filter(m => !m.conciliado).length;
@@ -310,6 +342,18 @@ export const ConciliacionBancaria = () => {
   // Diferencia: Esta es la diferencia absoluta entre pendientes
   // Si está cerca de 0, significa que todo cuadra
   const diferencia = Math.abs(totalBancoPendiente) - Math.abs(totalSistemaPendiente);
+
+  // Build lookup maps for suggested matches
+  const suggestedBancoIds = new Set(sugerencias.filter((_, i) => sugerenciasAceptadas.has(i)).map(s => s.banco_mov_id));
+  const suggestedSistemaIds = new Set(sugerencias.filter((_, i) => sugerenciasAceptadas.has(i)).map(s => s.sistema_mov_id));
+  const bancoToSistemaMap = {};
+  const sistemaTobancoMap = {};
+  sugerencias.forEach((s, i) => {
+    if (sugerenciasAceptadas.has(i)) {
+      bancoToSistemaMap[s.banco_mov_id] = s.sistema_mov_id;
+      sistemaTobancoMap[s.sistema_mov_id] = s.banco_mov_id;
+    }
+  });
 
   const selectedBancoTotal = selectedBanco.reduce((sum, id) => {
     const mov = movimientosBanco.find(m => m.id === id);
@@ -330,6 +374,23 @@ export const ConciliacionBancaria = () => {
           <p className="page-subtitle">Concilie los movimientos del banco con el sistema</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          {sugerencias.length > 0 && (
+            <button
+              className="btn"
+              onClick={handleConfirmarSugerencias}
+              disabled={confirmandoSugerencias || sugerenciasAceptadas.size === 0}
+              data-testid="confirmar-sugerencias-btn"
+              style={{ 
+                background: '#16a34a', color: '#fff', border: 'none', fontWeight: 600,
+                opacity: sugerenciasAceptadas.size === 0 ? 0.5 : 1
+              }}
+            >
+              {confirmandoSugerencias 
+                ? <><RefreshCw size={16} className="spin" /> Confirmando...</>
+                : <><Check size={16} /> Confirmar {sugerenciasAceptadas.size} Sugerencias</>
+              }
+            </button>
+          )}
           <button 
             className="btn btn-outline"
             onClick={() => setShowImportModal(true)}
@@ -341,7 +402,8 @@ export const ConciliacionBancaria = () => {
           <button 
             className="btn btn-secondary"
             onClick={handleConciliarAuto}
-            disabled={movimientosBanco.length === 0}
+            disabled={!cuentaSeleccionada || loading}
+            data-testid="conciliar-auto-btn"
           >
             <RefreshCw size={16} />
             Conciliar Auto
@@ -569,6 +631,100 @@ export const ConciliacionBancaria = () => {
       {/* Content */}
       {activeTab === 'pendientes' && (
         <>
+          {/* Suggestions banner */}
+          {sugerencias.length > 0 && (
+            <div style={{
+              background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px',
+              padding: '0.75rem 1rem', marginBottom: '0.75rem',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }} data-testid="sugerencias-banner">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Link2 size={16} color="#16a34a" />
+                </div>
+                <div>
+                  <span style={{ fontWeight: 700, color: '#15803d', fontSize: '0.875rem' }}>
+                    {sugerencias.length} coincidencia{sugerencias.length !== 1 ? 's' : ''} encontrada{sugerencias.length !== 1 ? 's' : ''}
+                  </span>
+                  <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                    ({sugerenciasAceptadas.size} seleccionada{sugerenciasAceptadas.size !== 1 ? 's' : ''})
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => setSugerenciasAceptadas(sugerencias.length === sugerenciasAceptadas.size ? new Set() : new Set(sugerencias.map((_, i) => i)))}
+                  style={{ background: 'none', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', color: '#15803d', fontWeight: 500 }}
+                >
+                  {sugerencias.length === sugerenciasAceptadas.size ? 'Deseleccionar todas' : 'Seleccionar todas'}
+                </button>
+                <button
+                  onClick={() => { setSugerencias([]); setSugerenciasAceptadas(new Set()); }}
+                  style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer', color: '#dc2626', fontWeight: 500 }}
+                >
+                  Descartar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Suggestions detail list */}
+          {sugerencias.length > 0 && (
+            <div style={{
+              background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px',
+              marginBottom: '0.75rem', overflow: 'hidden'
+            }} data-testid="sugerencias-list">
+              <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>Pares sugeridos</span>
+              </div>
+              <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+                {sugerencias.map((sug, idx) => {
+                  const bMov = movimientosBanco.find(m => m.id === sug.banco_mov_id);
+                  const sMov = movimientosSistema.find(m => m.id === sug.sistema_mov_id);
+                  const isAccepted = sugerenciasAceptadas.has(idx);
+                  return (
+                    <div key={idx}
+                      onClick={() => toggleSugerencia(idx)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        padding: '0.5rem 1rem', borderBottom: '1px solid #f1f5f9',
+                        cursor: 'pointer', transition: 'background 0.15s',
+                        background: isAccepted ? '#f0fdf4' : '#fff'
+                      }}
+                      data-testid={`sugerencia-row-${idx}`}
+                    >
+                      <input type="checkbox" checked={isAccepted} readOnly style={{ width: 14, height: 14, accentColor: '#16a34a' }} />
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.775rem' }}>
+                        <span style={{ color: '#2563eb', fontWeight: 600 }}>{formatDate(bMov?.fecha)}</span>
+                        <span style={{ color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {bMov?.descripcion || bMov?.referencia || '-'}
+                        </span>
+                      </div>
+                      <Link2 size={14} color="#16a34a" />
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.775rem' }}>
+                        <span style={{ color: '#d97706', fontWeight: 600 }}>{formatDate(sMov?.fecha)}</span>
+                        <span style={{ color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sMov?.numero || sMov?.notas || '-'}
+                        </span>
+                      </div>
+                      <span style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.775rem',
+                        color: sug.monto < 0 ? '#dc2626' : '#16a34a' }}>
+                        {formatCurrency(sug.monto)}
+                      </span>
+                      <span style={{
+                        fontSize: '0.6rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px',
+                        background: sug.confianza === 'alta' ? '#dcfce7' : '#fef9c3',
+                        color: sug.confianza === 'alta' ? '#15803d' : '#a16207'
+                      }}>
+                        {sug.regla === 'referencia_exacta' ? 'REF' : 'FECHA'} &middot; {sug.confianza === 'alta' ? 'ALTA' : 'MEDIA'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Side by side layout */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: (selectedBanco.length > 0 || selectedSistema.length > 0) ? '5rem' : '1rem' }}>
             
@@ -621,11 +777,18 @@ export const ConciliacionBancaria = () => {
                     <tbody>
                       {movimientosBanco.filter(m => !m.conciliado).map(mov => {
                         const isSelected = selectedBanco.includes(mov.id);
+                        const isSuggested = suggestedBancoIds.has(mov.id);
                         return (
                           <tr key={mov.id} onClick={() => handleSelectBanco(mov.id)}
-                            style={{ cursor: 'pointer', borderBottom: '1px solid #f8fafc', background: isSelected ? '#eff6ff' : 'transparent', transition: 'background 0.1s' }}>
+                            style={{ cursor: 'pointer', borderBottom: '1px solid #f8fafc', 
+                              background: isSuggested ? '#f0fdf4' : isSelected ? '#eff6ff' : 'transparent', 
+                              transition: 'background 0.1s' }}>
                             <td style={{ padding: '5px 8px' }} onClick={e => e.stopPropagation()}>
-                              <input type="checkbox" checked={isSelected} onChange={() => handleSelectBanco(mov.id)} style={{ width: 14, height: 14 }} />
+                              {isSuggested ? (
+                                <Link2 size={14} color="#16a34a" style={{ marginLeft: 1 }} />
+                              ) : (
+                                <input type="checkbox" checked={isSelected} onChange={() => handleSelectBanco(mov.id)} style={{ width: 14, height: 14 }} />
+                              )}
                             </td>
                             <td style={{ padding: '5px 8px', whiteSpace: 'nowrap', color: '#475569' }}>{formatDate(mov.fecha)}</td>
                             <td style={{ padding: '5px 8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', color: '#64748b' }}>{mov.referencia || '-'}</td>
@@ -692,11 +855,18 @@ export const ConciliacionBancaria = () => {
                     <tbody>
                       {movimientosSistema.filter(m => !m.conciliado).map(mov => {
                         const isSelected = selectedSistema.includes(mov.id);
+                        const isSuggested = suggestedSistemaIds.has(mov.id);
                         return (
                           <tr key={mov.id} onClick={() => handleSelectSistema(mov.id)}
-                            style={{ cursor: 'pointer', borderBottom: '1px solid #f8fafc', background: isSelected ? '#fff7ed' : 'transparent', transition: 'background 0.1s' }}>
+                            style={{ cursor: 'pointer', borderBottom: '1px solid #f8fafc', 
+                              background: isSuggested ? '#f0fdf4' : isSelected ? '#fff7ed' : 'transparent', 
+                              transition: 'background 0.1s' }}>
                             <td style={{ padding: '5px 8px' }} onClick={e => e.stopPropagation()}>
-                              <input type="checkbox" checked={isSelected} onChange={() => handleSelectSistema(mov.id)} style={{ width: 14, height: 14 }} />
+                              {isSuggested ? (
+                                <Link2 size={14} color="#16a34a" style={{ marginLeft: 1 }} />
+                              ) : (
+                                <input type="checkbox" checked={isSelected} onChange={() => handleSelectSistema(mov.id)} style={{ width: 14, height: 14 }} />
+                              )}
                             </td>
                             <td style={{ padding: '5px 8px', whiteSpace: 'nowrap', color: '#475569' }}>{formatDate(mov.fecha)}</td>
                             <td style={{ padding: '5px 8px', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', color: '#64748b' }}>{mov.numero}</td>

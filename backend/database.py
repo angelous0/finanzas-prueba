@@ -836,6 +836,21 @@ async def create_schema():
             END $$;
         """)
 
+        # ── Migration: Drop pago_id FK from cont_conciliacion_linea (cont_pago deprecated) ──
+        await conn.execute("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE constraint_name = 'cont_conciliacion_linea_pago_id_fkey'
+                    AND table_schema = 'finanzas2'
+                ) THEN
+                    ALTER TABLE finanzas2.cont_conciliacion_linea
+                    DROP CONSTRAINT cont_conciliacion_linea_pago_id_fkey;
+                END IF;
+            END $$;
+        """)
+
         # ── Indexes ──
         index_stmts = [
             "CREATE INDEX IF NOT EXISTS idx_cont_venta_pos_pago_venta ON finanzas2.cont_venta_pos_pago(venta_pos_id)",
