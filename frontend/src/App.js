@@ -43,6 +43,12 @@ import PagarFacturas from './pages/PagarFacturas';
 import ConciliacionBancaria from './pages/ConciliacionBancaria';
 import { HistorialConciliaciones } from './pages/HistorialConciliaciones';
 
+// === Unidades Internas de Producción ===
+import UnidadesInternas from './pages/UnidadesInternas';
+import GastosUnidadInterna from './pages/GastosUnidadInterna';
+import CargosInternos from './pages/CargosInternos';
+import ReporteUnidadesInternas from './pages/ReporteUnidadesInternas';
+
 function EmpresaGuard({ children }) {
   const { empresas, empresaActual, loading, reloadEmpresas } = useEmpresa();
   const [showCreate, setShowCreate] = useState(false);
@@ -137,6 +143,10 @@ function AppRoutes() {
         <Route path="/letras" element={<Letras />} />
         <Route path="/conciliacion" element={<ConciliacionBancaria />} />
         <Route path="/historial-conciliaciones" element={<HistorialConciliaciones />} />
+        <Route path="/unidades-internas" element={<UnidadesInternas />} />
+        <Route path="/gastos-unidad-interna" element={<GastosUnidadInterna />} />
+        <Route path="/cargos-internos" element={<CargosInternos />} />
+        <Route path="/reporte-unidades-internas" element={<ReporteUnidadesInternas />} />
       </Routes>
     </div>
   );

@@ -851,6 +851,75 @@ async def create_schema():
             END $$;
         """)
 
+        # ── Unidades Internas de Producción (Gerencial) ──
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.fin_unidad_interna (
+                id SERIAL PRIMARY KEY,
+                nombre VARCHAR(100) NOT NULL,
+                tipo VARCHAR(50),
+                activo BOOLEAN DEFAULT TRUE,
+                empresa_id INTEGER NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.fin_cargo_interno (
+                id SERIAL PRIMARY KEY,
+                fecha DATE NOT NULL,
+                registro_id VARCHAR(100),
+                movimiento_id VARCHAR(100),
+                unidad_interna_id INTEGER NOT NULL REFERENCES finanzas2.fin_unidad_interna(id),
+                servicio_nombre VARCHAR(100),
+                persona_nombre VARCHAR(100),
+                cantidad INTEGER DEFAULT 0,
+                tarifa DECIMAL(15, 4) DEFAULT 0,
+                importe DECIMAL(15, 2) DEFAULT 0,
+                estado VARCHAR(30) DEFAULT 'generado',
+                empresa_id INTEGER NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(movimiento_id)
+            )
+        """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS finanzas2.fin_gasto_unidad_interna (
+                id SERIAL PRIMARY KEY,
+                fecha DATE NOT NULL,
+                unidad_interna_id INTEGER NOT NULL REFERENCES finanzas2.fin_unidad_interna(id),
+                tipo_gasto VARCHAR(50) NOT NULL,
+                descripcion TEXT,
+                monto DECIMAL(15, 2) NOT NULL,
+                registro_id VARCHAR(100),
+                movimiento_id VARCHAR(100),
+                empresa_id INTEGER NOT NULL REFERENCES finanzas2.cont_empresa(id),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # Migration: Add tipo_persona and unidad_interna_id to prod_personas_produccion
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='produccion' AND table_name='prod_personas_produccion' AND column_name='tipo_persona')
+                THEN
+                    ALTER TABLE produccion.prod_personas_produccion ADD COLUMN tipo_persona VARCHAR(20) DEFAULT 'EXTERNO';
+                END IF;
+            END $$;
+        """)
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema='produccion' AND table_name='prod_personas_produccion' AND column_name='unidad_interna_id')
+                THEN
+                    ALTER TABLE produccion.prod_personas_produccion ADD COLUMN unidad_interna_id INTEGER;
+                END IF;
+            END $$;
+        """)
+
         # ── Indexes ──
         index_stmts = [
             "CREATE INDEX IF NOT EXISTS idx_cont_venta_pos_pago_venta ON finanzas2.cont_venta_pos_pago(venta_pos_id)",

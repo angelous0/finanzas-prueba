@@ -1,0 +1,146 @@
+{
+  "iteration": 40,
+  "date": "2026-03-20",
+  "feature": "Internal Production Units (Unidades Internas) for Gerencial Cost Analysis",
+  "summary": "Complete testing of Unidades Internas feature for internal production cost analysis. All 29 backend API tests passed (100%). All frontend pages load correctly with all UI components functional.",
+
+  "features_tested": {
+    "Backend_unidades_internas_crud": {
+      "endpoints": ["GET /api/unidades-internas", "POST /api/unidades-internas", "PUT /api/unidades-internas/{id}", "DELETE /api/unidades-internas/{id}"],
+      "status": "PASSED",
+      "details": "All CRUD operations work correctly. Delete with dependencies (cargos/gastos) correctly returns 400 error."
+    },
+    "Backend_personas_produccion": {
+      "endpoints": ["GET /api/personas-produccion", "PUT /api/personas-produccion/{id}/tipo"],
+      "status": "PASSED",
+      "details": "Personas list returns tipo_persona field. Can mark personas as INTERNO/EXTERNO with unidad assignment."
+    },
+    "Backend_cargos_internos": {
+      "endpoints": ["GET /api/cargos-internos", "POST /api/cargos-internos/generar"],
+      "status": "PASSED",
+      "details": "Cargos list works with filters. Generate endpoint creates cargos from production movements, avoids duplicates."
+    },
+    "Backend_gastos_unidad_interna": {
+      "endpoints": ["GET /api/gastos-unidad-interna", "POST /api/gastos-unidad-interna", "PUT /api/gastos-unidad-interna/{id}", "DELETE /api/gastos-unidad-interna/{id}"],
+      "status": "PASSED",
+      "details": "Full CRUD for gastos works. Filter by unidad works correctly."
+    },
+    "Backend_reporte_gerencial": {
+      "endpoint": "GET /api/reporte-unidades-internas",
+      "status": "PASSED",
+      "details": "Returns vista_empresa, vista_unidades, and resumen. Corte Interno shows ingresos=588, gastos=430, resultado=158 as expected."
+    },
+    "Frontend_unidades_internas_page": {
+      "url": "/unidades-internas",
+      "status": "PASSED",
+      "details": "Page loads with 3 unidades (Corte, Costura, Acabado). Tabs work (Unidades/Personas). CRUD form opens/closes correctly."
+    },
+    "Frontend_cargos_internos_page": {
+      "url": "/cargos-internos",
+      "status": "PASSED",
+      "details": "Page loads with 1 cargo. 'Generar Cargos' button present. Filter dropdown works."
+    },
+    "Frontend_gastos_unidad_page": {
+      "url": "/gastos-unidad-interna",
+      "status": "PASSED",
+      "details": "Page loads with 2 gastos. 'Registrar Gasto' form works. Full CRUD flow tested successfully."
+    },
+    "Frontend_reporte_gerencial_page": {
+      "url": "/reporte-unidades-internas",
+      "status": "PASSED",
+      "details": "Page loads with summary cards (Total Ingresos S/588, Total Gastos S/430, Resultado S/158). Both tabs work (Vista Empresa / Vista Unidad)."
+    },
+    "Frontend_sidebar_section": {
+      "status": "PASSED",
+      "details": "'Producción Interna' section visible in sidebar with all 4 links: Unidades Internas, Cargos Internos, Gastos Unidad, Reporte Gerencial."
+    }
+  },
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_unidades_internas.py",
+    "/app/test_reports/pytest/pytest_unidades_internas_iter40.xml"
+  ],
+
+  "tests_executed": [
+    {"name": "test_list_unidades_internas", "status": "PASSED"},
+    {"name": "test_unidad_structure", "status": "PASSED"},
+    {"name": "test_create_unidad_interna", "status": "PASSED"},
+    {"name": "test_update_unidad_interna", "status": "PASSED"},
+    {"name": "test_delete_unidad_interna", "status": "PASSED"},
+    {"name": "test_delete_unidad_with_dependencies_fails", "status": "PASSED"},
+    {"name": "test_list_personas_produccion", "status": "PASSED"},
+    {"name": "test_persona_structure", "status": "PASSED"},
+    {"name": "test_persona_interno_exists", "status": "PASSED"},
+    {"name": "test_update_persona_tipo", "status": "PASSED"},
+    {"name": "test_list_cargos_internos", "status": "PASSED"},
+    {"name": "test_cargo_structure", "status": "PASSED"},
+    {"name": "test_cargo_filter_by_unidad", "status": "PASSED"},
+    {"name": "test_generar_cargos_internos", "status": "PASSED"},
+    {"name": "test_generar_avoids_duplicates", "status": "PASSED"},
+    {"name": "test_list_gastos", "status": "PASSED"},
+    {"name": "test_gasto_structure", "status": "PASSED"},
+    {"name": "test_create_gasto", "status": "PASSED"},
+    {"name": "test_update_gasto", "status": "PASSED"},
+    {"name": "test_delete_gasto", "status": "PASSED"},
+    {"name": "test_filter_by_unidad", "status": "PASSED"},
+    {"name": "test_reporte_returns_200", "status": "PASSED"},
+    {"name": "test_reporte_structure", "status": "PASSED"},
+    {"name": "test_vista_empresa_structure", "status": "PASSED"},
+    {"name": "test_vista_unidades_structure", "status": "PASSED"},
+    {"name": "test_resumen_structure", "status": "PASSED"},
+    {"name": "test_corte_interno_totals", "status": "PASSED"},
+    {"name": "test_filter_by_date_range", "status": "PASSED"},
+    {"name": "test_get_tipos_gasto", "status": "PASSED"},
+    {"name": "Frontend: Unidades Internas page loads", "status": "PASSED"},
+    {"name": "Frontend: Tabs work (Unidades/Personas)", "status": "PASSED"},
+    {"name": "Frontend: Cargos Internos page loads", "status": "PASSED"},
+    {"name": "Frontend: Gastos Unidad page loads", "status": "PASSED"},
+    {"name": "Frontend: Create gasto flow works", "status": "PASSED"},
+    {"name": "Frontend: Reporte Gerencial page loads", "status": "PASSED"},
+    {"name": "Frontend: Vista Empresa/Unidad tabs work", "status": "PASSED"},
+    {"name": "Frontend: Sidebar Producción Interna section", "status": "PASSED"}
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_unidades_internas.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (29/29 tests passed)",
+    "frontend": "100% (8/8 UI tests passed)"
+  },
+
+  "test_credentials": "empresa_id=7 (Ambission Industries), no auth required",
+  "seed_data_creation": "Test data already exists: 3 unidades internas (Corte, Costura, Acabado), 1 persona INTERNO (Interno->Corte), 1 cargo interno (S/588), 2 gastos (PLANILLA_JORNAL S/350, LUZ S/80)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Unidades Internas feature fully functional. Backend: All CRUD endpoints for unidades, personas tipo, cargos internos, gastos work correctly. Report endpoint returns correct totals (Corte: ingresos=588, gastos=430, resultado=158). Frontend: All 4 pages load correctly (/unidades-internas, /cargos-internos, /gastos-unidad-interna, /reporte-unidades-internas). Sidebar has 'Producción Interna' section with all links. Test data in empresa_id=7.",
+  "overall_status": "ALL_PASSED",
+  "verified_data": {
+    "unidades_count": 3,
+    "unidades": ["Corte Interno", "Costura Interna", "Acabado Interno"],
+    "persona_interno": {"nombre": "Interno", "unidad": "Corte Interno"},
+    "cargo_interno": {"importe": 588.0, "cantidad": 490},
+    "gastos": [{"tipo": "PLANILLA_JORNAL", "monto": 350.0}, {"tipo": "LUZ", "monto": 80.0}],
+    "reporte_totals": {
+      "total_ingresos": 588.0,
+      "total_gastos": 430.0,
+      "resultado_global": 158.0
+    }
+  }
+}

@@ -278,4 +278,20 @@ export const getReporteInventarioValorizado = (params) => api.get('/reportes/inv
 export const getLibroAnalitico = (params) => api.get('/libro-analitico', { params });
 export const exportLibroAnalitico = (params) => api.get('/libro-analitico/export', { params, responseType: 'blob' });
 
+// Unidades Internas de Producción
+export const getUnidadesInternas = () => api.get('/unidades-internas');
+export const createUnidadInterna = (data) => api.post('/unidades-internas', data);
+export const updateUnidadInterna = (id, data) => api.put(`/unidades-internas/${id}`, data);
+export const deleteUnidadInterna = (id) => api.delete(`/unidades-internas/${id}`);
+export const getPersonasProduccion = () => api.get('/personas-produccion');
+export const updatePersonaTipo = (id, data) => api.put(`/personas-produccion/${id}/tipo`, data);
+export const getCargosInternos = (params) => api.get('/cargos-internos', { params });
+export const generarCargosInternos = () => api.post('/cargos-internos/generar');
+export const getGastosUnidadInterna = (params) => api.get('/gastos-unidad-interna', { params });
+export const createGastoUnidadInterna = (data) => api.post('/gastos-unidad-interna', data);
+export const updateGastoUnidadInterna = (id, data) => api.put(`/gastos-unidad-interna/${id}`, data);
+export const deleteGastoUnidadInterna = (id) => api.delete(`/gastos-unidad-interna/${id}`);
+export const getTiposGastoUnidad = () => api.get('/tipos-gasto-unidad');
+export const getReporteUnidadesInternas = (params) => api.get('/reporte-unidades-internas', { params });
+
 export default api;

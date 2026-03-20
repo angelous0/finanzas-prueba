@@ -6,7 +6,8 @@ import {
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock,
   Tags, GitBranch, Target, X, ChevronLeft,
   Tag, Activity, ClipboardList,
-  Vault, Layers, Package, FileSpreadsheet, Link2, History, BookOpen, PieChart
+  Vault, Layers, Package, FileSpreadsheet, Link2, History, BookOpen, PieChart,
+  Factory, ArrowRightLeft, FileText, BarChart3
 } from 'lucide-react';
 
 const navSections = [
@@ -53,6 +54,15 @@ const navSections = [
       { icon: GitBranch, label: 'Rentabilidad x Linea', path: '/rentabilidad-linea' },
       { icon: BookOpen, label: 'Libro Analitico', path: '/libro-analitico' },
       { icon: Package, label: 'Valorización Inventario', path: '/valorizacion-inventario' },
+    ]
+  },
+  {
+    title: 'Producción Interna',
+    items: [
+      { icon: Factory, label: 'Unidades Internas', path: '/unidades-internas' },
+      { icon: ArrowRightLeft, label: 'Cargos Internos', path: '/cargos-internos' },
+      { icon: FileText, label: 'Gastos Unidad', path: '/gastos-unidad-interna' },
+      { icon: BarChart3, label: 'Reporte Gerencial', path: '/reporte-unidades-internas' },
     ]
   },
   {
