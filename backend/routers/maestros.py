@@ -197,6 +197,159 @@ async def create_linea_negocio(data: LineaNegocioCreate, empresa_id: int = Depen
         return dict(row)
 
 
+@router.get("/lineas-negocio/{id}/detalle")
+async def detalle_linea_negocio(id: int, empresa_id: int = Depends(get_empresa_id)):
+    """Returns all records linked to a linea de negocio, grouped by type."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+
+        linea = await conn.fetchrow("SELECT * FROM finanzas2.cont_linea_negocio WHERE id = $1", id)
+        if not linea:
+            raise HTTPException(404, "Linea de negocio no encontrada")
+
+        vinculos = []
+
+        # 1. Distribuciones analíticas
+        rows = await conn.fetch("""
+            SELECT d.id, d.origen_tipo, d.origen_id, d.monto, d.fecha
+            FROM finanzas2.cont_distribucion_analitica d
+            WHERE d.linea_negocio_id = $1 ORDER BY d.fecha DESC
+        """, id)
+        for r in rows:
+            vinculos.append({
+                "tipo": "Distribucion Analitica",
+                "id": r['id'], "origen_tipo": r['origen_tipo'], "origen_id": r['origen_id'],
+                "monto": float(r['monto'] or 0),
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "ruta": None,
+            })
+
+        # 2. Movimientos de tesorería
+        rows = await conn.fetch("""
+            SELECT id, numero, tipo, fecha, monto, referencia, notas
+            FROM finanzas2.cont_movimiento_tesoreria
+            WHERE linea_negocio_id = $1 ORDER BY fecha DESC
+        """, id)
+        for r in rows:
+            vinculos.append({
+                "tipo": "Movimiento Tesoreria",
+                "id": r['id'], "numero": r['numero'], "subtipo": r['tipo'],
+                "monto": float(r['monto'] or 0),
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "detalle": r['referencia'] or r['notas'] or '',
+                "ruta": "/pagos",
+            })
+
+        # 3. Gastos (header)
+        rows = await conn.fetch("""
+            SELECT g.id, g.numero, g.fecha, g.total, g.notas
+            FROM finanzas2.cont_gasto g
+            WHERE g.linea_negocio_id = $1 ORDER BY g.fecha DESC
+        """, id)
+        for r in rows:
+            vinculos.append({
+                "tipo": "Gasto",
+                "id": r['id'], "numero": r['numero'],
+                "monto": float(r['total'] or 0),
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "detalle": r['notas'] or '',
+                "ruta": "/gastos",
+            })
+
+        # 4. Líneas de gasto
+        rows = await conn.fetch("""
+            SELECT gl.id, gl.gasto_id, gl.descripcion, gl.importe,
+                   g.numero, g.fecha
+            FROM finanzas2.cont_gasto_linea gl
+            LEFT JOIN finanzas2.cont_gasto g ON gl.gasto_id = g.id
+            WHERE gl.linea_negocio_id = $1 ORDER BY g.fecha DESC
+        """, id)
+        for r in rows:
+            vinculos.append({
+                "tipo": "Linea de Gasto",
+                "id": r['id'], "numero": r['numero'],
+                "monto": float(r['importe'] or 0),
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "detalle": r['descripcion'] or '',
+                "ruta": "/gastos",
+            })
+
+        # 5. Facturas proveedor líneas
+        rows = await conn.fetch("""
+            SELECT fl.id, fl.factura_id as factura_proveedor_id, fl.descripcion, fl.importe,
+                   f.numero, f.fecha_factura as fecha
+            FROM finanzas2.cont_factura_proveedor_linea fl
+            LEFT JOIN finanzas2.cont_factura_proveedor f ON fl.factura_id = f.id
+            WHERE fl.linea_negocio_id = $1 ORDER BY f.fecha_factura DESC
+        """, id)
+        for r in rows:
+            vinculos.append({
+                "tipo": "Factura Proveedor",
+                "id": r['factura_proveedor_id'], "numero": r['numero'],
+                "monto": float(r['importe'] or 0),
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "detalle": r['descripcion'] or '',
+                "ruta": "/facturas-proveedor",
+            })
+
+        # 6. Prorrateos
+        rows = await conn.fetch("""
+            SELECT p.id, p.gasto_id, p.monto as monto_asignado,
+                   g.numero as gasto_numero, g.fecha
+            FROM finanzas2.cont_prorrateo_gasto p
+            LEFT JOIN finanzas2.cont_gasto g ON p.gasto_id = g.id
+            WHERE p.linea_negocio_id = $1 ORDER BY g.fecha DESC
+        """, id)
+        for r in rows:
+            vinculos.append({
+                "tipo": "Prorrateo",
+                "id": r['id'], "numero": r['gasto_numero'],
+                "monto": float(r['monto_asignado'] or 0),
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "detalle": '',
+                "ruta": "/prorrateo",
+            })
+
+        # 7. Banco mov raw
+        rows = await conn.fetch("""
+            SELECT id, fecha, descripcion, monto, referencia
+            FROM finanzas2.cont_banco_mov_raw
+            WHERE linea_negocio_id = $1 ORDER BY fecha DESC
+        """, id)
+        for r in rows:
+            vinculos.append({
+                "tipo": "Movimiento Banco",
+                "id": r['id'],
+                "monto": float(r['monto'] or 0),
+                "fecha": r['fecha'].isoformat() if r['fecha'] else None,
+                "detalle": r['descripcion'] or r['referencia'] or '',
+                "ruta": "/conciliacion-bancaria",
+            })
+
+        # Group by tipo
+        por_tipo = {}
+        for v in vinculos:
+            t = v['tipo']
+            if t not in por_tipo:
+                por_tipo[t] = []
+            por_tipo[t].append(v)
+
+        total_vinculos = len(vinculos)
+        total_monto = sum(abs(v['monto']) for v in vinculos)
+
+        return {
+            "linea": dict(linea),
+            "vinculos": vinculos,
+            "por_tipo": por_tipo,
+            "resumen": {
+                "total_vinculos": total_vinculos,
+                "total_monto": total_monto,
+                "tipos": {k: len(v) for k, v in por_tipo.items()},
+            }
+        }
+
+
 @router.delete("/lineas-negocio/{id}")
 async def delete_linea_negocio(id: int, empresa_id: int = Depends(get_empresa_id)):
     pool = await get_pool()

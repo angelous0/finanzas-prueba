@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getLineasNegocio, createLineaNegocio, updateLineaNegocio, deleteLineaNegocio, getOdooLineasNegocioOpciones } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { getLineasNegocio, getLineaNegocioDetalle, createLineaNegocio, updateLineaNegocio, deleteLineaNegocio, getOdooLineasNegocioOpciones } from '../services/api';
 import { useEmpresa } from '../context/EmpresaContext';
-import { Plus, Trash2, GitBranch, X, Edit } from 'lucide-react';
+import { Plus, Trash2, GitBranch, X, Edit, Eye, ExternalLink, FileText, ArrowRightLeft, Receipt, Landmark, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const LineasNegocio = () => {
   const { empresaActual } = useEmpresa();
+  const navigate = useNavigate();
 
   const [lineas, setLineas] = useState([]);
   const [odooOpciones, setOdooOpciones] = useState([]);
@@ -13,6 +15,9 @@ export const LineasNegocio = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [detalleData, setDetalleData] = useState(null);
+  const [showDetalle, setShowDetalle] = useState(false);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
   
   const [formData, setFormData] = useState({ codigo: '', nombre: '', descripcion: '', odoo_linea_negocio_id: '', odoo_linea_negocio_nombre: '' });
 
@@ -73,7 +78,25 @@ export const LineasNegocio = () => {
       toast.success('Línea de negocio eliminada');
       loadData();
     } catch (error) {
-      toast.error('Error al eliminar');
+      const msg = error.response?.data?.detail || 'Error al eliminar';
+      toast.error(msg);
+      if (msg.includes('datos asociados')) {
+        handleVerDetalle(id);
+      }
+    }
+  };
+
+  const handleVerDetalle = async (id) => {
+    try {
+      setLoadingDetalle(true);
+      setShowDetalle(true);
+      const res = await getLineaNegocioDetalle(id);
+      setDetalleData(res.data);
+    } catch (e) {
+      toast.error('Error al cargar detalle');
+      setShowDetalle(false);
+    } finally {
+      setLoadingDetalle(false);
     }
   };
 
@@ -134,6 +157,9 @@ export const LineasNegocio = () => {
                         )}
                       </td>
                       <td className="text-center" style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                        <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleVerDetalle(linea.id)} title="Ver vinculos" data-testid={`ver-linea-${linea.id}`}>
+                          <Eye size={14} />
+                        </button>
                         <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleEdit(linea)} title="Editar" data-testid={`edit-linea-${linea.id}`}>
                           <Edit size={14} />
                         </button>
@@ -238,8 +264,149 @@ export const LineasNegocio = () => {
           </div>
         </div>
       )}
+      {showDetalle && (
+        <DetalleLineaModal
+          data={detalleData}
+          loading={loadingDetalle}
+          onClose={() => { setShowDetalle(false); setDetalleData(null); }}
+          onNavigate={(ruta) => { setShowDetalle(false); navigate(ruta); }}
+        />
+      )}
     </div>
   );
 };
+
+const TIPO_ICONS = {
+  'Distribucion Analitica': BarChart3,
+  'Movimiento Tesoreria': ArrowRightLeft,
+  'Gasto': Receipt,
+  'Linea de Gasto': Receipt,
+  'Factura Proveedor': FileText,
+  'Prorrateo': BarChart3,
+  'Movimiento Banco': Landmark,
+};
+
+const TIPO_COLORS = {
+  'Distribucion Analitica': { bg: '#ede9fe', text: '#7c3aed', border: '#c4b5fd' },
+  'Movimiento Tesoreria': { bg: '#dbeafe', text: '#2563eb', border: '#93c5fd' },
+  'Gasto': { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+  'Linea de Gasto': { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+  'Factura Proveedor': { bg: '#fff7ed', text: '#c2410c', border: '#fdba74' },
+  'Prorrateo': { bg: '#fefce8', text: '#a16207', border: '#fde68a' },
+  'Movimiento Banco': { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' },
+};
+
+const fmtMoney = (v) => `S/ ${(Math.abs(v) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function DetalleLineaModal({ data, loading, onClose, onNavigate }) {
+  if (!data && !loading) return null;
+
+  const tipoKeys = data ? Object.keys(data.por_tipo) : [];
+
+  return (
+    <div className="modal-overlay" onClick={onClose} data-testid="detalle-linea-modal">
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720, maxHeight: '85vh', overflow: 'auto' }}>
+        <div className="modal-header" style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
+          <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <GitBranch size={18} />
+            {data?.linea?.nombre || 'Cargando...'}
+          </h2>
+          <button className="modal-close" onClick={onClose}><X size={20} /></button>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Cargando vinculos...</div>
+        ) : data?.resumen?.total_vinculos === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: 8 }}>Esta linea no tiene registros vinculados.</div>
+            <div style={{ fontSize: '0.8rem', color: '#16a34a' }}>Se puede eliminar sin problema.</div>
+          </div>
+        ) : (
+          <>
+            {/* Summary */}
+            <div style={{ display: 'flex', gap: 12, padding: '0.75rem 1.25rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                <strong style={{ color: '#0f172a' }}>{data.resumen.total_vinculos}</strong> registros vinculados
+              </div>
+              {tipoKeys.map(tipo => (
+                <span key={tipo} style={{
+                  padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
+                  background: (TIPO_COLORS[tipo] || { bg: '#f1f5f9' }).bg,
+                  color: (TIPO_COLORS[tipo] || { text: '#64748b' }).text,
+                }}>
+                  {tipo}: {data.resumen.tipos[tipo]}
+                </span>
+              ))}
+            </div>
+
+            {/* Groups */}
+            <div style={{ padding: '0.5rem 0' }}>
+              {tipoKeys.map(tipo => {
+                const items = data.por_tipo[tipo];
+                const color = TIPO_COLORS[tipo] || { bg: '#f1f5f9', text: '#64748b', border: '#e2e8f0' };
+                const Icon = TIPO_ICONS[tipo] || FileText;
+
+                return (
+                  <div key={tipo} style={{ marginBottom: 4 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 1.25rem',
+                      background: color.bg, fontSize: '0.8rem', fontWeight: 700, color: color.text,
+                    }}>
+                      <Icon size={14} />
+                      {tipo} ({items.length})
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '6px 14px', textAlign: 'left', fontWeight: 600, color: '#94a3b8', fontSize: '0.7rem', borderBottom: '1px solid #f1f5f9' }}>Fecha</th>
+                          <th style={{ padding: '6px 14px', textAlign: 'left', fontWeight: 600, color: '#94a3b8', fontSize: '0.7rem', borderBottom: '1px solid #f1f5f9' }}>Numero/Detalle</th>
+                          <th style={{ padding: '6px 14px', textAlign: 'right', fontWeight: 600, color: '#94a3b8', fontSize: '0.7rem', borderBottom: '1px solid #f1f5f9' }}>Monto</th>
+                          <th style={{ padding: '6px 14px', width: 40, borderBottom: '1px solid #f1f5f9' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item, idx) => (
+                          <tr key={idx}
+                            style={{
+                              cursor: item.ruta ? 'pointer' : 'default',
+                              transition: 'background 0.1s',
+                            }}
+                            onMouseEnter={e => { if (item.ruta) e.currentTarget.style.background = '#f8fafc'; }}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            onClick={() => item.ruta && onNavigate(item.ruta)}
+                            data-testid={`vinculo-row-${tipo}-${idx}`}
+                          >
+                            <td style={{ padding: '6px 14px', borderBottom: '1px solid #f8fafc', color: '#64748b' }}>
+                              {item.fecha || '-'}
+                            </td>
+                            <td style={{ padding: '6px 14px', borderBottom: '1px solid #f8fafc' }}>
+                              <span style={{ fontWeight: 600, color: '#0f172a' }}>{item.numero || ''}</span>
+                              {item.detalle && <span style={{ color: '#94a3b8', marginLeft: 6 }}>{item.detalle}</span>}
+                              {item.origen_tipo && <span style={{ color: '#94a3b8', marginLeft: 6 }}>({item.origen_tipo})</span>}
+                            </td>
+                            <td style={{
+                              padding: '6px 14px', borderBottom: '1px solid #f8fafc', textAlign: 'right',
+                              fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.78rem',
+                              color: item.monto < 0 ? '#dc2626' : '#0f172a'
+                            }}>
+                              {fmtMoney(item.monto)}
+                            </td>
+                            <td style={{ padding: '6px 14px', borderBottom: '1px solid #f8fafc' }}>
+                              {item.ruta && <ExternalLink size={12} color="#94a3b8" />}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default LineasNegocio;

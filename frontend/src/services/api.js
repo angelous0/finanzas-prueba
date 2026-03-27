@@ -51,6 +51,7 @@ export const deleteCentroCosto = (id) => api.delete(`/centros-costo/${id}`);
 
 // Lineas de Negocio
 export const getLineasNegocio = () => api.get('/lineas-negocio');
+export const getLineaNegocioDetalle = (id) => api.get(`/lineas-negocio/${id}/detalle`);
 export const getOdooLineasNegocioOpciones = () => api.get('/lineas-negocio/odoo-opciones');
 export const createLineaNegocio = (data) => api.post('/lineas-negocio', data);
 export const updateLineaNegocio = (id, data) => api.put(`/lineas-negocio/${id}`, data);
