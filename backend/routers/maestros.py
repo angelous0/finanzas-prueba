@@ -178,7 +178,7 @@ async def list_lineas_negocio(empresa_id: int = Depends(get_empresa_id)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
-        rows = await conn.fetch("SELECT * FROM finanzas2.cont_linea_negocio WHERE empresa_id = $1 ORDER BY nombre", empresa_id)
+        rows = await conn.fetch("SELECT * FROM finanzas2.cont_linea_negocio ORDER BY nombre")
         return [dict(r) for r in rows]
 
 
@@ -202,7 +202,7 @@ async def delete_linea_negocio(id: int, empresa_id: int = Depends(get_empresa_id
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
-        result = await conn.execute("DELETE FROM finanzas2.cont_linea_negocio WHERE id = $1 AND empresa_id = $2", id, empresa_id)
+        result = await conn.execute("DELETE FROM finanzas2.cont_linea_negocio WHERE id = $1", id)
         if result == "DELETE 0":
             raise HTTPException(404, "Linea de negocio not found")
         return {"message": "Linea de negocio deleted"}
@@ -217,9 +217,9 @@ async def update_linea_negocio(id: int, data: LineaNegocioCreate, empresa_id: in
             UPDATE finanzas2.cont_linea_negocio
             SET codigo = $1, nombre = $2, descripcion = $3,
                 odoo_linea_negocio_id = $4, odoo_linea_negocio_nombre = $5
-            WHERE id = $6 AND empresa_id = $7 RETURNING *
+            WHERE id = $6 RETURNING *
         """, data.codigo, data.nombre, data.descripcion,
-            data.odoo_linea_negocio_id, data.odoo_linea_negocio_nombre, id, empresa_id)
+            data.odoo_linea_negocio_id, data.odoo_linea_negocio_nombre, id)
         if not row:
             raise HTTPException(404, "Linea de negocio not found")
         return dict(row)
