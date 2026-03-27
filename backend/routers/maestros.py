@@ -202,10 +202,15 @@ async def delete_linea_negocio(id: int, empresa_id: int = Depends(get_empresa_id
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
-        result = await conn.execute("DELETE FROM finanzas2.cont_linea_negocio WHERE id = $1", id)
-        if result == "DELETE 0":
-            raise HTTPException(404, "Linea de negocio not found")
-        return {"message": "Linea de negocio deleted"}
+        try:
+            result = await conn.execute("DELETE FROM finanzas2.cont_linea_negocio WHERE id = $1", id)
+            if result == "DELETE 0":
+                raise HTTPException(404, "Linea de negocio no encontrada")
+            return {"message": "Linea de negocio eliminada"}
+        except Exception as e:
+            if "foreign key" in str(e).lower() or "violates" in str(e).lower():
+                raise HTTPException(400, "No se puede eliminar: esta linea de negocio tiene datos asociados (gastos, pagos, movimientos, etc.)")
+            raise
 
 
 @router.put("/lineas-negocio/{id}", response_model=LineaNegocio)
