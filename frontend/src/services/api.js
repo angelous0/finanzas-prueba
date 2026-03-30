@@ -76,6 +76,7 @@ export const getEmpleados = (search) => api.get('/empleados', { params: { search
 
 // Inventario (public.prod_inventario)
 export const getInventario = (search) => api.get('/inventario', { params: { search } });
+export const getArticulosOC = (search) => api.get('/articulos-oc', { params: { search } });
 
 // Modelos/Cortes (public.prod_registros + prod_modelos)
 export const getModelosCortes = (search) => api.get('/modelos-cortes', { params: { search } });

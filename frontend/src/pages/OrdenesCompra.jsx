@@ -9,7 +9,7 @@ import {
   generarFacturaDesdeOC,
   getProveedores, 
   getMonedas,
-  getInventario,
+  getArticulosOC,
   getEmpresas,
   createTercero
 } from '../services/api';
@@ -142,14 +142,14 @@ export default function OrdenesCompra() {
         getOrdenesCompra(params),
         getProveedores(),
         getMonedas(),
-        getInventario(),
+        getArticulosOC(),
         getEmpresas()
       ]);
       
       setOrdenes(ordenesRes.data);
       setProveedores(provRes.data);
       setMonedas(monRes.data);
-      setArticulos(artRes.data.filter(a => a.categoria !== 'PT'));
+      setArticulos(artRes.data);
       setEmpresas(empRes.data);
       
       if (monRes.data.length > 0 && !formData.moneda_id) {
@@ -246,11 +246,10 @@ export default function OrdenesCompra() {
           articulo_id: articulo.id,
           descripcion: articulo.descripcion || articulo.nombre,
           codigo: articulo.codigo || '',
-          unidad: articulo.unidad || 'UND',
-          precio_unitario: articulo.precio || 0
+          unidad: articulo.unidad_medida || 'UND',
+          precio_unitario: parseFloat(articulo.ultimo_precio) || 0
         } : l
       ));
-      // Clear search term for this row
       setArticuloSearchTerm(prev => ({ ...prev, [index]: '' }));
     }
   };
@@ -261,7 +260,8 @@ export default function OrdenesCompra() {
     if (!term) return articulos;
     return articulos.filter(a => 
       (a.nombre?.toLowerCase().includes(term.toLowerCase())) ||
-      (a.codigo?.toLowerCase().includes(term.toLowerCase()))
+      (a.codigo?.toLowerCase().includes(term.toLowerCase())) ||
+      (a.linea_negocio_nombre?.toLowerCase().includes(term.toLowerCase()))
     );
   };
 
@@ -969,7 +969,7 @@ export default function OrdenesCompra() {
                                     {filteredArts.length === 0 ? (
                                       <div className="combo-empty">No se encontraron artículos</div>
                                     ) : (
-                                      filteredArts.slice(0, 10).map(a => (
+                                      filteredArts.slice(0, 12).map(a => (
                                         <div
                                           key={a.id}
                                           className={`combo-option ${String(a.id) === String(linea.articulo_id) ? 'selected' : ''}`}
@@ -979,9 +979,40 @@ export default function OrdenesCompra() {
                                             setArticuloSearchTerm(prev => ({ ...prev, [index]: '' }));
                                             setArticuloDropdownOpen(prev => ({ ...prev, [index]: false }));
                                           }}
+                                          data-testid={`articulo-option-${a.id}`}
                                         >
-                                          {a.codigo && <span className="combo-code">[{a.codigo}]</span>}
-                                          <span className="combo-name">{a.nombre}</span>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {a.codigo && <span className="combo-code">[{a.codigo}]</span>}
+                                                <span className="combo-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nombre}</span>
+                                              </div>
+                                              {a.linea_negocio_nombre && (
+                                                <div style={{ fontSize: '0.6875rem', color: '#94a3b8', marginTop: '1px' }}>{a.linea_negocio_nombre}</div>
+                                              )}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                              <span style={{ 
+                                                fontSize: '0.6875rem', 
+                                                fontFamily: "'JetBrains Mono', monospace",
+                                                padding: '1px 6px', 
+                                                borderRadius: '4px',
+                                                background: parseFloat(a.stock_actual) > 0 ? '#ecfdf5' : '#fef2f2',
+                                                color: parseFloat(a.stock_actual) > 0 ? '#059669' : '#dc2626'
+                                              }}>
+                                                {parseFloat(a.stock_actual || 0).toFixed(0)} {a.unidad_medida || ''}
+                                              </span>
+                                              {parseFloat(a.ultimo_precio) > 0 && (
+                                                <span style={{ 
+                                                  fontSize: '0.6875rem', 
+                                                  fontFamily: "'JetBrains Mono', monospace",
+                                                  color: '#64748b'
+                                                }}>
+                                                  S/{parseFloat(a.ultimo_precio).toFixed(2)}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
                                         </div>
                                       ))
                                     )}

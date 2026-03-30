@@ -37,6 +37,57 @@ async def list_inventario(search: Optional[str] = None, empresa_id: int = Depend
             return []
 
 
+@router.get("/articulos-oc")
+async def articulos_para_oc(search: Optional[str] = None, empresa_id: int = Depends(get_empresa_id)):
+    """Articulos enriquecidos para Ordenes de Compra: stock, linea negocio, ultimo precio."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        try:
+            search_param = f"%{search}%" if search else None
+            rows = await conn.fetch("""
+                SELECT
+                    i.id,
+                    i.codigo,
+                    i.nombre,
+                    i.descripcion,
+                    i.categoria,
+                    i.unidad_medida,
+                    COALESCE(i.stock_actual, 0) as stock_actual,
+                    i.linea_negocio_id,
+                    ln.nombre as linea_negocio_nombre,
+                    COALESCE(
+                        ult_oc.precio_unitario,
+                        ult_ing.costo_unitario,
+                        0
+                    ) as ultimo_precio
+                FROM produccion.prod_inventario i
+                LEFT JOIN finanzas2.cont_linea_negocio ln ON i.linea_negocio_id = ln.id
+                LEFT JOIN LATERAL (
+                    SELECT ol.precio_unitario
+                    FROM finanzas2.cont_oc_linea ol
+                    WHERE ol.articulo_id = i.id::text
+                    ORDER BY ol.created_at DESC
+                    LIMIT 1
+                ) ult_oc ON true
+                LEFT JOIN LATERAL (
+                    SELECT ing.costo_unitario
+                    FROM produccion.prod_inventario_ingresos ing
+                    WHERE ing.item_id = i.id::text
+                      AND ing.costo_unitario > 0
+                    ORDER BY ing.fecha DESC
+                    LIMIT 1
+                ) ult_ing ON true
+                WHERE (i.categoria IS DISTINCT FROM 'PT')
+                  AND ($1::text IS NULL OR i.nombre ILIKE $1 OR i.codigo ILIKE $1)
+                ORDER BY i.nombre
+                LIMIT 200
+            """, search_param)
+            return [dict(r) for r in rows]
+        except Exception as e:
+            logger.error(f"Error fetching articulos-oc: {e}")
+            return []
+
+
 @router.get("/modelos-cortes")
 async def list_modelos_cortes(search: Optional[str] = None, empresa_id: int = Depends(get_empresa_id)):
     pool = await get_pool()

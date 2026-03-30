@@ -1,0 +1,108 @@
+{
+  "iteration": 41,
+  "date": "2026-03-30",
+  "feature": "Enhanced Article Selection in Purchase Orders (Órdenes de Compra)",
+  "summary": "Complete testing of P0 feature: enriched article dropdown for OC. Backend API (GET /api/articulos-oc) returns all required fields. Frontend dropdown shows Name | Stock | Línea de Negocio and auto-populates fields on selection. All 17 backend tests passed (100%). All frontend UI tests passed.",
+
+  "features_tested": {
+    "Backend_articulos_oc_endpoint": {
+      "endpoint": "GET /api/articulos-oc",
+      "status": "PASSED",
+      "details": "Returns enriched article data with stock_actual, linea_negocio_nombre, ultimo_precio, unidad_medida. Excludes PT category articles."
+    },
+    "Backend_search_filtering": {
+      "status": "PASSED",
+      "details": "Search works by nombre and codigo. Case insensitive. Returns correct filtered results."
+    },
+    "Backend_ultimo_precio_logic": {
+      "status": "PASSED",
+      "details": "TEL001 has 15.0 from OC history (cont_oc_linea). BOT001 has 0.6 from inventory entries (prod_inventario_ingresos). TEL-002 has 0 (no history)."
+    },
+    "Frontend_dropdown_display": {
+      "status": "PASSED",
+      "details": "Dropdown shows articles with [codigo] nombre, stock (colored badge), linea_negocio_nombre, and ultimo_precio (S/X.XX format)."
+    },
+    "Frontend_auto_population": {
+      "status": "PASSED",
+      "details": "Selecting article auto-populates: unidad (metro/unidad), precio_unitario (from ultimo_precio), codigo, descripcion."
+    },
+    "Frontend_search_by_linea_negocio": {
+      "status": "PASSED",
+      "details": "Search by 'element' returns articles from 'Pantalon denim - Element Premium' linea."
+    }
+  },
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_articulos_oc.py",
+    "/app/test_reports/pytest/pytest_articulos_oc_iter41.xml"
+  ],
+
+  "tests_executed": [
+    {"name": "test_endpoint_returns_200", "status": "PASSED"},
+    {"name": "test_returns_list", "status": "PASSED"},
+    {"name": "test_article_structure", "status": "PASSED"},
+    {"name": "test_stock_actual_is_numeric", "status": "PASSED"},
+    {"name": "test_ultimo_precio_is_numeric", "status": "PASSED"},
+    {"name": "test_excludes_pt_category", "status": "PASSED"},
+    {"name": "test_search_by_nombre", "status": "PASSED"},
+    {"name": "test_search_by_codigo", "status": "PASSED"},
+    {"name": "test_search_case_insensitive", "status": "PASSED"},
+    {"name": "test_linea_negocio_nombre_populated", "status": "PASSED"},
+    {"name": "test_article_with_oc_price", "status": "PASSED"},
+    {"name": "test_article_with_inventory_price", "status": "PASSED"},
+    {"name": "test_article_with_no_price_history", "status": "PASSED"},
+    {"name": "test_expected_article_count", "status": "PASSED"},
+    {"name": "test_unidad_medida_values", "status": "PASSED"},
+    {"name": "test_stock_values_non_negative", "status": "PASSED"},
+    {"name": "test_ultimo_precio_non_negative", "status": "PASSED"},
+    {"name": "Frontend: Dropdown shows enriched data", "status": "PASSED"},
+    {"name": "Frontend: Auto-population works", "status": "PASSED"},
+    {"name": "Frontend: Search by linea_negocio works", "status": "PASSED"}
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_articulos_oc.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "100% (3/3 UI tests passed)"
+  },
+
+  "test_credentials": "empresa_id=7 (Ambission Industries), no auth required",
+  "seed_data_creation": "Using existing data: 4 non-PT articles (TEL001, TEL-002, BOT001, BOT002). TEL001 has OC price history (15.0), BOT001/BOT002 have inventory entry prices (0.6, 0.66), TEL-002 has no price history (0).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Articulos-OC feature fully functional. Backend: GET /api/articulos-oc returns enriched data with stock, linea_negocio, ultimo_precio. Frontend: OrdenesCompra.jsx dropdown shows Name | Stock | Línea de Negocio | Precio. Selection auto-populates unidad, precio_unitario, codigo, descripcion. Search works by nombre, codigo, and linea_negocio_nombre.",
+  "overall_status": "ALL_PASSED",
+  "verified_data": {
+    "articles_count": 4,
+    "articles": [
+      {"codigo": "TEL001", "nombre": "Arkanzas Blue", "stock": 1378, "unidad": "metro", "linea": "Pantalon denim - Element Premium", "ultimo_precio": 15.0, "price_source": "OC history"},
+      {"codigo": "TEL-002", "nombre": "Arkanzas Blue", "stock": 0, "unidad": "unidad", "linea": "Pantalon Denim - Qepo", "ultimo_precio": 0, "price_source": "none"},
+      {"codigo": "BOT001", "nombre": "Boton Pretina Dorado 1", "stock": 1500, "unidad": "unidad", "linea": "Pantalon denim - Element Premium", "ultimo_precio": 0.6, "price_source": "inventory"},
+      {"codigo": "BOT002", "nombre": "Boton Pretina Dorado 1 - Q", "stock": 2000, "unidad": "unidad", "linea": "Pantalon Denim - Qepo", "ultimo_precio": 0.66, "price_source": "inventory"}
+    ],
+    "auto_population_verified": {
+      "unidad": true,
+      "precio_unitario": true,
+      "codigo": true,
+      "descripcion": true
+    }
+  }
+}
