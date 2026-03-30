@@ -62,6 +62,12 @@ Modulo gerencial para tratar servicios internos de produccion como unidades de n
 
 ## Backlog
 
+### P0 - COMPLETADO: Mejora Selección Artículos en OC (2026-03-30)
+- Backend: GET /api/articulos-oc con LATERAL joins (stock, linea negocio, ultimo precio)
+- Frontend: Dropdown muestra Nombre | Stock | Línea de Negocio | Precio
+- Auto-población: unidad_medida, precio_unitario (último precio OC/ingreso o 0), código, descripción
+- Testing: 17/17 backend + 3/3 frontend = ALL PASSED
+
 ### P1 - Conciliacion N:1 y 1:N
 - Permitir vincular multiples movimientos del sistema a uno del banco y viceversa
 
