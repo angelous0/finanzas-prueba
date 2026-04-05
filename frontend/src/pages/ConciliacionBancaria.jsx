@@ -343,15 +343,13 @@ export const ConciliacionBancaria = () => {
   // Si está cerca de 0, significa que todo cuadra
   const diferencia = Math.abs(totalBancoPendiente) - Math.abs(totalSistemaPendiente);
 
-  // Build lookup maps for suggested matches
-  const suggestedBancoIds = new Set(sugerencias.filter((_, i) => sugerenciasAceptadas.has(i)).map(s => s.banco_mov_id));
-  const suggestedSistemaIds = new Set(sugerencias.filter((_, i) => sugerenciasAceptadas.has(i)).map(s => s.sistema_mov_id));
-  const bancoToSistemaMap = {};
-  const sistemaTobancoMap = {};
+  // Build lookup maps for suggested matches (support both 1:1 and N:M)
+  const suggestedBancoIds = new Set();
+  const suggestedSistemaIds = new Set();
   sugerencias.forEach((s, i) => {
     if (sugerenciasAceptadas.has(i)) {
-      bancoToSistemaMap[s.banco_mov_id] = s.sistema_mov_id;
-      sistemaTobancoMap[s.sistema_mov_id] = s.banco_mov_id;
+      (s.banco_mov_ids || [s.banco_mov_id]).forEach(id => id && suggestedBancoIds.add(id));
+      (s.sistema_mov_ids || [s.sistema_mov_id]).forEach(id => id && suggestedSistemaIds.add(id));
     }
   });
 
@@ -677,11 +675,14 @@ export const ConciliacionBancaria = () => {
               <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
                 <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>Pares sugeridos</span>
               </div>
-              <div style={{ maxHeight: '200px', overflow: 'auto' }}>
+              <div style={{ maxHeight: '260px', overflow: 'auto' }}>
                 {sugerencias.map((sug, idx) => {
-                  const bMov = movimientosBanco.find(m => m.id === sug.banco_mov_id);
-                  const sMov = movimientosSistema.find(m => m.id === sug.sistema_mov_id);
+                  const bIds = sug.banco_mov_ids || [sug.banco_mov_id];
+                  const sIds = sug.sistema_mov_ids || [sug.sistema_mov_id];
+                  const bMovs = bIds.map(id => movimientosBanco.find(m => m.id === id)).filter(Boolean);
+                  const sMovs = sIds.map(id => movimientosSistema.find(m => m.id === id)).filter(Boolean);
                   const isAccepted = sugerenciasAceptadas.has(idx);
+                  const isGroup = bIds.length > 1 || sIds.length > 1;
                   return (
                     <div key={idx}
                       onClick={() => toggleSugerencia(idx)}
@@ -693,30 +694,53 @@ export const ConciliacionBancaria = () => {
                       }}
                       data-testid={`sugerencia-row-${idx}`}
                     >
-                      <input type="checkbox" checked={isAccepted} readOnly style={{ width: 14, height: 14, accentColor: '#16a34a' }} />
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.775rem' }}>
-                        <span style={{ color: '#2563eb', fontWeight: 600 }}>{formatDate(bMov?.fecha)}</span>
-                        <span style={{ color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {bMov?.descripcion || bMov?.referencia || '-'}
-                        </span>
+                      <input type="checkbox" checked={isAccepted} readOnly style={{ width: 14, height: 14, accentColor: '#16a34a', flexShrink: 0 }} />
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1px', fontSize: '0.775rem', minWidth: 0 }}>
+                        {bMovs.map((bMov, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ color: '#2563eb', fontWeight: 600, flexShrink: 0 }}>{formatDate(bMov?.fecha)}</span>
+                            <span style={{ color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {bMov?.descripcion || bMov?.referencia || '-'}
+                            </span>
+                            {bIds.length > 1 && (
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', color: '#2563eb', flexShrink: 0 }}>
+                                {formatCurrency(bMov?.monto)}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <Link2 size={14} color="#16a34a" />
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.775rem' }}>
-                        <span style={{ color: '#d97706', fontWeight: 600 }}>{formatDate(sMov?.fecha)}</span>
-                        <span style={{ color: '#64748b', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {sMov?.numero || sMov?.notas || '-'}
-                        </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                        <Link2 size={14} color="#16a34a" />
+                        {isGroup && (
+                          <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#16a34a' }}>{sug.tipo}</span>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1px', fontSize: '0.775rem', minWidth: 0 }}>
+                        {sMovs.map((sMov, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ color: '#d97706', fontWeight: 600, flexShrink: 0 }}>{formatDate(sMov?.fecha)}</span>
+                            <span style={{ color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {sMov?.numero || sMov?.notas || '-'}
+                            </span>
+                            {sIds.length > 1 && (
+                              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.7rem', color: '#d97706', flexShrink: 0 }}>
+                                {formatCurrency(sMov?.monto_total)}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
                       <span style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", fontSize: '0.775rem',
-                        color: sug.monto < 0 ? '#dc2626' : '#16a34a' }}>
+                        color: sug.monto < 0 ? '#dc2626' : '#16a34a', flexShrink: 0 }}>
                         {formatCurrency(sug.monto)}
                       </span>
                       <span style={{
-                        fontSize: '0.6rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px',
+                        fontSize: '0.6rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', flexShrink: 0,
                         background: sug.confianza === 'alta' ? '#dcfce7' : '#fef9c3',
                         color: sug.confianza === 'alta' ? '#15803d' : '#a16207'
                       }}>
-                        {sug.regla === 'referencia_exacta' ? 'REF' : 'FECHA'} &middot; {sug.confianza === 'alta' ? 'ALTA' : 'MEDIA'}
+                        {sug.regla === 'referencia_exacta' ? 'REF' : sug.tipo !== '1:1' ? sug.tipo : 'FECHA'} &middot; {sug.confianza === 'alta' ? 'ALTA' : 'MEDIA'}
                       </span>
                     </div>
                   );

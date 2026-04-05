@@ -253,7 +253,7 @@ async def sugerir_matches(
     cuenta_financiera_id: int = Query(...),
     empresa_id: int = Depends(get_empresa_id),
 ):
-    """Suggest automatic matches between pending bank and system movements."""
+    """Suggest automatic matches between pending bank and system movements (1:1, N:1, 1:N)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("SET search_path TO finanzas2, public")
@@ -282,7 +282,7 @@ async def sugerir_matches(
             val = float(sm['monto_total'])
             return -val if sm['tipo'] == 'egreso' else val
 
-        # Rule 1: Exact amount + exact reference
+        # Rule 1: Exact amount + exact reference (1:1)
         for bm in banco_movs:
             if bm['id'] in banco_usado:
                 continue
@@ -297,17 +297,18 @@ async def sugerir_matches(
                 ref_sis = (sm['referencia'] or '').strip().lower()
                 if abs(monto_banco - monto_sis) < 0.01 and ref_sis and ref_banco == ref_sis:
                     sugerencias.append({
-                        'banco_mov_id': bm['id'],
-                        'sistema_mov_id': sm['id'],
+                        'banco_mov_ids': [bm['id']],
+                        'sistema_mov_ids': [sm['id']],
                         'monto': monto_banco,
                         'regla': 'referencia_exacta',
-                        'confianza': 'alta'
+                        'confianza': 'alta',
+                        'tipo': '1:1'
                     })
                     banco_usado.add(bm['id'])
                     sistema_usado.add(sm['id'])
                     break
 
-        # Rule 2: Exact amount + close date (±3 days)
+        # Rule 2: Exact amount + close date ±3 days (1:1)
         for bm in banco_movs:
             if bm['id'] in banco_usado:
                 continue
@@ -322,15 +323,85 @@ async def sugerir_matches(
                     diff_days = abs((fecha_banco - fecha_sis).days)
                     if diff_days <= 3:
                         sugerencias.append({
-                            'banco_mov_id': bm['id'],
-                            'sistema_mov_id': sm['id'],
+                            'banco_mov_ids': [bm['id']],
+                            'sistema_mov_ids': [sm['id']],
                             'monto': monto_banco,
                             'regla': 'monto_fecha',
-                            'confianza': 'alta' if diff_days == 0 else 'media'
+                            'confianza': 'alta' if diff_days == 0 else 'media',
+                            'tipo': '1:1'
                         })
                         banco_usado.add(bm['id'])
                         sistema_usado.add(sm['id'])
                         break
+
+        # Rule 3: N:1 — Multiple sistema movements sum to one banco movement
+        from itertools import combinations
+        remaining_sistema = [sm for sm in sistema_movs if sm['id'] not in sistema_usado]
+        for bm in banco_movs:
+            if bm['id'] in banco_usado:
+                continue
+            monto_banco = float(bm['monto'])
+            fecha_banco = bm['fecha']
+            # Try combinations of 2 and 3 sistema movements
+            found = False
+            for combo_size in (2, 3, 4):
+                if found or combo_size > len(remaining_sistema):
+                    break
+                for combo in combinations(remaining_sistema, combo_size):
+                    if any(sm['id'] in sistema_usado for sm in combo):
+                        continue
+                    total_combo = sum(monto_sistema_signed(sm) for sm in combo)
+                    if abs(monto_banco - total_combo) < 0.01:
+                        # Check dates are within reasonable range (±7 days)
+                        fechas_sis = [sm['fecha'] for sm in combo]
+                        if all(abs((fecha_banco - f).days) <= 7 for f in fechas_sis):
+                            sugerencias.append({
+                                'banco_mov_ids': [bm['id']],
+                                'sistema_mov_ids': [sm['id'] for sm in combo],
+                                'monto': monto_banco,
+                                'regla': f'{combo_size}_a_1',
+                                'confianza': 'media',
+                                'tipo': f'{combo_size}:1'
+                            })
+                            banco_usado.add(bm['id'])
+                            for sm in combo:
+                                sistema_usado.add(sm['id'])
+                            remaining_sistema = [s for s in remaining_sistema if s['id'] not in sistema_usado]
+                            found = True
+                            break
+
+        # Rule 4: 1:N — Multiple banco movements sum to one sistema movement
+        remaining_banco = [bm for bm in banco_movs if bm['id'] not in banco_usado]
+        for sm in sistema_movs:
+            if sm['id'] in sistema_usado:
+                continue
+            monto_sis = monto_sistema_signed(sm)
+            fecha_sis = sm['fecha']
+            found = False
+            for combo_size in (2, 3, 4):
+                if found or combo_size > len(remaining_banco):
+                    break
+                for combo in combinations(remaining_banco, combo_size):
+                    if any(bm['id'] in banco_usado for bm in combo):
+                        continue
+                    total_combo = sum(float(bm['monto']) for bm in combo)
+                    if abs(monto_sis - total_combo) < 0.01:
+                        fechas_bco = [bm['fecha'] for bm in combo]
+                        if all(abs((fecha_sis - f).days) <= 7 for f in fechas_bco):
+                            sugerencias.append({
+                                'banco_mov_ids': [bm['id'] for bm in combo],
+                                'sistema_mov_ids': [sm['id']],
+                                'monto': monto_sis,
+                                'regla': f'1_a_{combo_size}',
+                                'confianza': 'media',
+                                'tipo': f'1:{combo_size}'
+                            })
+                            sistema_usado.add(sm['id'])
+                            for bm in combo:
+                                banco_usado.add(bm['id'])
+                            remaining_banco = [b for b in remaining_banco if b['id'] not in banco_usado]
+                            found = True
+                            break
 
         return {
             'sugerencias': sugerencias,
@@ -345,7 +416,7 @@ async def confirmar_sugerencias(
     data: dict,
     empresa_id: int = Depends(get_empresa_id),
 ):
-    """Confirm and persist a batch of suggested matches."""
+    """Confirm and persist a batch of suggested matches (supports 1:1, N:1, 1:N)."""
     sugerencias = data.get('sugerencias', [])
     if not sugerencias:
         raise HTTPException(400, "No hay sugerencias para confirmar")
@@ -356,44 +427,64 @@ async def confirmar_sugerencias(
         async with conn.transaction():
             confirmados = 0
             for sug in sugerencias:
-                banco_id = sug.get('banco_mov_id')
-                sistema_id = sug.get('sistema_mov_id')
-                if not banco_id or not sistema_id:
+                # Support both old format (singular) and new format (arrays)
+                banco_ids = sug.get('banco_mov_ids') or ([sug['banco_mov_id']] if sug.get('banco_mov_id') else [])
+                sistema_ids = sug.get('sistema_mov_ids') or ([sug['sistema_mov_id']] if sug.get('sistema_mov_id') else [])
+                if not banco_ids or not sistema_ids:
                     continue
 
-                # Verify both are still pending
-                bm = await conn.fetchrow(
-                    "SELECT id, cuenta_financiera_id, monto FROM finanzas2.cont_banco_mov_raw WHERE id=$1 AND COALESCE(conciliado,false)=false",
-                    banco_id)
-                sm = await conn.fetchrow(
-                    "SELECT id FROM finanzas2.cont_movimiento_tesoreria WHERE id=$1 AND COALESCE(conciliado,false)=false",
-                    sistema_id)
-                if not bm or not sm:
+                # Verify all are still pending
+                all_valid = True
+                cuenta_id = None
+                total_monto = 0
+                for bid in banco_ids:
+                    bm = await conn.fetchrow(
+                        "SELECT id, cuenta_financiera_id, monto FROM finanzas2.cont_banco_mov_raw WHERE id=$1 AND COALESCE(conciliado,false)=false",
+                        bid)
+                    if not bm:
+                        all_valid = False; break
+                    cuenta_id = bm['cuenta_financiera_id']
+                    total_monto += float(bm['monto'])
+                if not all_valid:
                     continue
 
-                # Mark as reconciled
-                await conn.execute(
-                    "UPDATE finanzas2.cont_banco_mov_raw SET procesado=TRUE, conciliado=TRUE WHERE id=$1",
-                    banco_id)
-                await conn.execute(
-                    "UPDATE finanzas2.cont_movimiento_tesoreria SET conciliado=TRUE WHERE id=$1",
-                    sistema_id)
+                for sid in sistema_ids:
+                    sm = await conn.fetchrow(
+                        "SELECT id FROM finanzas2.cont_movimiento_tesoreria WHERE id=$1 AND COALESCE(conciliado,false)=false",
+                        sid)
+                    if not sm:
+                        all_valid = False; break
+                if not all_valid:
+                    continue
 
-                # Create conciliacion record
+                # Mark all as reconciled
+                for bid in banco_ids:
+                    await conn.execute(
+                        "UPDATE finanzas2.cont_banco_mov_raw SET procesado=TRUE, conciliado=TRUE WHERE id=$1", bid)
+                for sid in sistema_ids:
+                    await conn.execute(
+                        "UPDATE finanzas2.cont_movimiento_tesoreria SET conciliado=TRUE WHERE id=$1", sid)
+
+                # Create single conciliacion record for this group
                 from datetime import date as date_cls
                 today = date_cls.today()
+                tipo_match = sug.get('tipo', '1:1')
                 conciliacion = await conn.fetchrow("""
                     INSERT INTO finanzas2.cont_conciliacion
                     (cuenta_financiera_id, fecha_inicio, fecha_fin, saldo_final, estado, notas, empresa_id)
                     VALUES ($1, $2, $2, $3, 'completado', $4, $5) RETURNING id
-                """, bm['cuenta_financiera_id'], today, float(bm['monto']),
-                    f"Auto-match: {sug.get('regla', 'auto')}", empresa_id)
+                """, cuenta_id, today, total_monto,
+                    f"Auto-match ({tipo_match}): {sug.get('regla', 'auto')}", empresa_id)
 
-                await conn.execute("""
-                    INSERT INTO finanzas2.cont_conciliacion_linea
-                    (conciliacion_id, banco_mov_id, pago_id, tipo, monto, conciliado, empresa_id)
-                    VALUES ($1, $2, $3, 'auto', $4, TRUE, $5)
-                """, conciliacion['id'], banco_id, sistema_id, float(bm['monto']), empresa_id)
+                # Create lineas for each banco+sistema pair
+                for bid in banco_ids:
+                    bm_monto = await conn.fetchval("SELECT monto FROM finanzas2.cont_banco_mov_raw WHERE id=$1", bid)
+                    for sid in sistema_ids:
+                        await conn.execute("""
+                            INSERT INTO finanzas2.cont_conciliacion_linea
+                            (conciliacion_id, banco_mov_id, pago_id, tipo, monto, conciliado, empresa_id)
+                            VALUES ($1, $2, $3, 'auto', $4, TRUE, $5)
+                        """, conciliacion['id'], bid, sid, float(bm_monto or total_monto), empresa_id)
 
                 confirmados += 1
 

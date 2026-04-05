@@ -120,6 +120,9 @@ const FacturaFormModal = ({
             updated.unidad = selectedArticulo.unidad_medida || 'UND';
             const fifo = valorizacionMap[value];
             updated.precio = fifo?.costo_fifo_unitario || parseFloat(selectedArticulo.costo_compra) || parseFloat(selectedArticulo.precio_ref) || 0;
+            if (selectedArticulo.linea_negocio_id) {
+              updated.linea_negocio_id = selectedArticulo.linea_negocio_id;
+            }
           }
         }
         if (field === 'servicio_id' && value) {
