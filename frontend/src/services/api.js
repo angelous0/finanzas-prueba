@@ -275,6 +275,9 @@ export const getReporteBalanceGeneral = (params) => api.get('/reportes/balance-g
 export const getReporteEstadoResultados = (params) => api.get('/reportes/estado-resultados', { params });
 export const getReporteFlujoCaja = (params) => api.get('/reportes/flujo-caja', { params });
 export const getReporteInventarioValorizado = (params) => api.get('/reportes/inventario-valorizado', { params });
+export const getReporteRentabilidadLinea = (params) => api.get('/reportes/rentabilidad-linea', { params });
+export const getReporteCxpAging = (params) => api.get('/reportes/cxp-aging', { params });
+export const getReporteCxcAging = (params) => api.get('/reportes/cxc-aging', { params });
 
 // Libro Analitico
 export const getLibroAnalitico = (params) => api.get('/libro-analitico', { params });

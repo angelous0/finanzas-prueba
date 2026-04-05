@@ -1,0 +1,143 @@
+{
+  "iteration": 43,
+  "date": "2026-04-05",
+  "feature": "3 New Financial Reports: Rentabilidad por Linea, CxP Aging, CxC Aging",
+  "summary": "Complete testing of 3 new financial report tabs in Reportes Financieros page. All 25 backend tests passed (100%). All frontend UI tests passed. Backend endpoints return correct structure with all required fields. Frontend displays 7 tabs with proper KPIs, tables, and visual components.",
+
+  "features_tested": {
+    "Backend_rentabilidad_linea": {
+      "endpoint": "GET /api/reportes/rentabilidad-linea?empresa_id=7",
+      "status": "PASSED",
+      "details": "Returns periodo, lineas array (3 business lines), and totales. Each linea has ventas, costo_mp, costo_servicios, costo_total, margen_bruto, pct_margen, gastos, utilidad."
+    },
+    "Backend_cxp_aging": {
+      "endpoint": "GET /api/reportes/cxp-aging?empresa_id=7",
+      "status": "PASSED",
+      "details": "Returns fecha_corte, buckets (5 aging periods), total, detalle array, resumen_proveedor. Has 1 record: Colortex SAC, S/15000, vigente bucket."
+    },
+    "Backend_cxc_aging": {
+      "endpoint": "GET /api/reportes/cxc-aging?empresa_id=7",
+      "status": "PASSED",
+      "details": "Returns correct structure with empty data (total=0, detalle=[]). Handles empty state gracefully."
+    },
+    "Backend_date_parameters": {
+      "status": "PASSED",
+      "details": "All 3 endpoints accept date parameters: rentabilidad uses fecha_desde/fecha_hasta, aging reports use fecha_corte."
+    },
+    "Backend_bucket_assignment": {
+      "status": "PASSED",
+      "details": "CxP aging correctly assigns buckets based on dias_vencido: vigente (<=0), 1_30, 31_60, 61_90, 90_plus."
+    },
+    "Backend_data_integrity": {
+      "status": "PASSED",
+      "details": "Totals match sum of components: CxP total equals bucket sum, rentabilidad totales match lineas sum."
+    },
+    "Frontend_7_tabs_visible": {
+      "status": "PASSED",
+      "details": "All 7 tabs visible: Balance General, Estado de Resultados, Flujo de Caja, Inventario Valorizado, Rentabilidad x Linea, CxP Aging, CxC Aging."
+    },
+    "Frontend_rentabilidad_tab": {
+      "status": "PASSED",
+      "details": "Shows 4 KPI cards (Ventas, Costo, Margen, Utilidad), table with 9 columns, visual comparison bars, date range filters."
+    },
+    "Frontend_cxp_aging_tab": {
+      "status": "PASSED",
+      "details": "Shows 6 KPI cards (Total + 5 buckets), distribution bar (100% green for vigente), proveedor table, detail table, fecha_corte filter."
+    },
+    "Frontend_cxc_aging_tab": {
+      "status": "PASSED",
+      "details": "Shows 6 KPI cards (all S/ 0.00), empty state message 'No hay cuentas por cobrar pendientes', fecha_corte filter."
+    },
+    "Frontend_date_filters": {
+      "status": "PASSED",
+      "details": "Rentabilidad shows fecha_desde/fecha_hasta range. Aging reports show fecha_corte single date."
+    }
+  },
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_reportes_nuevos_iter43.py",
+    "/app/test_reports/pytest/pytest_reportes_nuevos_iter43.xml"
+  ],
+
+  "tests_executed": [
+    {"name": "test_endpoint_returns_200 (rentabilidad)", "status": "PASSED"},
+    {"name": "test_response_has_required_structure (rentabilidad)", "status": "PASSED"},
+    {"name": "test_periodo_has_desde_hasta", "status": "PASSED"},
+    {"name": "test_lineas_is_array", "status": "PASSED"},
+    {"name": "test_linea_has_required_fields", "status": "PASSED"},
+    {"name": "test_totales_has_required_fields", "status": "PASSED"},
+    {"name": "test_accepts_date_parameters (rentabilidad)", "status": "PASSED"},
+    {"name": "test_endpoint_returns_200 (cxp)", "status": "PASSED"},
+    {"name": "test_response_has_required_structure (cxp)", "status": "PASSED"},
+    {"name": "test_buckets_has_5_aging_periods (cxp)", "status": "PASSED"},
+    {"name": "test_detalle_is_array (cxp)", "status": "PASSED"},
+    {"name": "test_detalle_item_has_required_fields", "status": "PASSED"},
+    {"name": "test_resumen_proveedor_is_array", "status": "PASSED"},
+    {"name": "test_resumen_proveedor_has_bucket_totals", "status": "PASSED"},
+    {"name": "test_accepts_fecha_corte_parameter (cxp)", "status": "PASSED"},
+    {"name": "test_bucket_assignment_correct", "status": "PASSED"},
+    {"name": "test_endpoint_returns_200 (cxc)", "status": "PASSED"},
+    {"name": "test_response_has_required_structure (cxc)", "status": "PASSED"},
+    {"name": "test_buckets_has_5_aging_periods (cxc)", "status": "PASSED"},
+    {"name": "test_detalle_is_array (cxc)", "status": "PASSED"},
+    {"name": "test_handles_empty_data", "status": "PASSED"},
+    {"name": "test_accepts_fecha_corte_parameter (cxc)", "status": "PASSED"},
+    {"name": "test_cxp_total_equals_bucket_sum", "status": "PASSED"},
+    {"name": "test_cxc_total_equals_bucket_sum", "status": "PASSED"},
+    {"name": "test_rentabilidad_totales_match_lineas_sum", "status": "PASSED"},
+    {"name": "Frontend: 7 tabs visible", "status": "PASSED"},
+    {"name": "Frontend: Rentabilidad tab KPIs and table", "status": "PASSED"},
+    {"name": "Frontend: CxP Aging tab with data", "status": "PASSED"},
+    {"name": "Frontend: CxC Aging tab empty state", "status": "PASSED"},
+    {"name": "Frontend: Date filters work correctly", "status": "PASSED"}
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_reportes_nuevos_iter43.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (25/25 tests passed)",
+    "frontend": "100% (5/5 UI tests passed)"
+  },
+
+  "test_credentials": "empresa_id=7 (Ambission Industries), no auth required",
+  "seed_data_creation": "Using existing data: CxP has 1 record (Colortex SAC, S/15000, vigente), CxC has 0 records, Rentabilidad shows 3 business lines with cost data but no sales.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "3 new financial reports fully functional. Backend: GET /api/reportes/rentabilidad-linea returns lineas array with financial metrics per business line. GET /api/reportes/cxp-aging returns aging buckets, detalle, and resumen_proveedor. GET /api/reportes/cxc-aging returns same structure but handles empty data. Frontend: ReportesFinancieros.jsx has 7 tabs with data-testid: rf-tab-rentabilidad, rf-tab-cxp_aging, rf-tab-cxc_aging. Content areas: rentabilidad-linea-content, cxp-aging-content, cxc-aging-content. Tables: rentabilidad-table, cxp-proveedor-table, cxp-detalle-table.",
+  "overall_status": "ALL_PASSED",
+  "verified_data": {
+    "rentabilidad": {
+      "lineas_count": 3,
+      "lineas": ["Pantalon denim - Element Premium", "Pantalon Denim - Qepo", "Polo - Element premium"],
+      "totales": {"ventas": 0, "costo_total": 8865, "margen_bruto": -8865, "utilidad": -8865}
+    },
+    "cxp_aging": {
+      "total": 15000,
+      "buckets": {"vigente": 15000, "1_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0},
+      "detalle_count": 1,
+      "sample_record": {"proveedor": "Colortex SAC", "documento": "CXP-109", "saldo": 15000, "bucket": "vigente"}
+    },
+    "cxc_aging": {
+      "total": 0,
+      "buckets": {"vigente": 0, "1_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0},
+      "detalle_count": 0
+    }
+  }
+}

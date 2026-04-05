@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus, ChevronRight, ChevronDown } from 'lucide-react';
+import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus, ChevronRight, ChevronDown, BarChart3, Clock, Users } from 'lucide-react';
 import {
   getReporteBalanceGeneral, getReporteEstadoResultados,
-  getReporteFlujoCaja, getReporteInventarioValorizado
+  getReporteFlujoCaja, getReporteInventarioValorizado,
+  getReporteRentabilidadLinea, getReporteCxpAging, getReporteCxcAging
 } from '../services/api';
 import { toast } from 'sonner';
 
@@ -13,6 +14,9 @@ const TABS = [
   { id: 'egyp', label: 'Estado de Resultados', icon: TrendingUp },
   { id: 'flujo', label: 'Flujo de Caja', icon: Banknote },
   { id: 'inventario', label: 'Inventario Valorizado', icon: Package },
+  { id: 'rentabilidad', label: 'Rentabilidad x Linea', icon: BarChart3 },
+  { id: 'cxp_aging', label: 'CxP Aging', icon: Clock },
+  { id: 'cxc_aging', label: 'CxC Aging', icon: Users },
 ];
 
 export default function ReportesFinancieros() {
@@ -24,8 +28,8 @@ export default function ReportesFinancieros() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({});
 
-  const needsDates = tab === 'egyp' || tab === 'flujo';
-  const needsCorte = tab === 'balance';
+  const needsDates = tab === 'egyp' || tab === 'flujo' || tab === 'rentabilidad';
+  const needsCorte = tab === 'balance' || tab === 'cxp_aging' || tab === 'cxc_aging';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +50,15 @@ export default function ReportesFinancieros() {
           break;
         case 'inventario':
           result = await getReporteInventarioValorizado();
+          break;
+        case 'rentabilidad':
+          result = await getReporteRentabilidadLinea(params);
+          break;
+        case 'cxp_aging':
+          result = await getReporteCxpAging(params);
+          break;
+        case 'cxc_aging':
+          result = await getReporteCxcAging(params);
           break;
         default: break;
       }
@@ -128,6 +141,9 @@ export default function ReportesFinancieros() {
           {tab === 'egyp' && <EstadoResultados data={data.egyp} />}
           {tab === 'flujo' && <FlujoCajaTab data={data.flujo} />}
           {tab === 'inventario' && <InventarioValorizado data={data.inventario} />}
+          {tab === 'rentabilidad' && <RentabilidadLinea data={data.rentabilidad} />}
+          {tab === 'cxp_aging' && <CxpAging data={data.cxp_aging} />}
+          {tab === 'cxc_aging' && <CxcAging data={data.cxc_aging} />}
         </>
       )}
     </div>
@@ -453,6 +469,300 @@ function InventarioValorizado({ data }) {
             <TotalRow label="Total Servicios" value={data.wip.total_srv} color="#f59e0b" />
           </Card>
         )}
+      </div>
+    </div>
+  );
+}
+
+
+/* ========== RENTABILIDAD POR LINEA ========== */
+function RentabilidadLinea({ data }) {
+  if (!data) return <Empty />;
+  const { lineas, totales } = data;
+  const hasData = lineas.some(l => l.ventas > 0 || l.costo_total > 0);
+
+  return (
+    <div data-testid="rentabilidad-linea-content">
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        <KPI label="Ventas Totales" value={fmt(totales.ventas)} color="#22c55e" icon={ArrowUpRight} />
+        <KPI label="Costo Total" value={fmt(totales.costo_total)} color="#ef4444" icon={ArrowDownRight} />
+        <KPI label="Margen Bruto" value={fmt(totales.margen_bruto)} subtitle={`${totales.pct_margen}%`} color={totales.margen_bruto >= 0 ? '#166534' : '#991b1b'} icon={TrendingUp} bold />
+        <KPI label="Utilidad Neta" value={fmt(totales.utilidad)} color={totales.utilidad >= 0 ? '#166534' : '#991b1b'} icon={BarChart3} bold />
+      </div>
+
+      {!hasData ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+          <BarChart3 size={40} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+          <p style={{ fontSize: '0.875rem' }}>Sin datos de ventas/costos en este periodo</p>
+        </div>
+      ) : (
+        <>
+          {/* Main table */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BarChart3 size={16} color="#64748b" />
+              <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: '#334155' }}>Rentabilidad por Linea de Negocio</h3>
+              <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#94a3b8' }}>{data.periodo.desde} - {data.periodo.hasta}</span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }} data-testid="rentabilidad-table">
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  {['Linea de Negocio', 'Ventas', 'Costo MP', 'Costo Srv.', 'Costo Total', 'Margen Bruto', '%', 'Gastos', 'Utilidad'].map((h, i) => (
+                    <th key={i} style={{ padding: '6px 10px', textAlign: i === 0 ? 'left' : 'right', color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', fontSize: '0.72rem' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lineas.map((ln, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '6px 10px', fontWeight: 600, color: '#1e293b' }}>{ln.linea_nombre}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#22c55e', fontWeight: 600 }}>{fmt(ln.ventas)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#64748b' }}>{fmt(ln.costo_mp)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#64748b' }}>{fmt(ln.costo_servicios)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#ef4444', fontWeight: 600 }}>{fmt(ln.costo_total)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: ln.margen_bruto >= 0 ? '#166534' : '#991b1b' }}>{fmt(ln.margen_bruto)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: ln.pct_margen >= 30 ? '#166534' : ln.pct_margen >= 0 ? '#d97706' : '#991b1b' }}>{ln.pct_margen}%</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#ef4444' }}>{fmt(ln.gastos)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: ln.utilidad >= 0 ? '#166534' : '#991b1b' }}>{fmt(ln.utilidad)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: '#f0fdf4', borderTop: '2px solid #e2e8f0' }}>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: '#0f172a' }}>TOTAL</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#22c55e' }}>{fmt(totales.ventas)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right' }} colSpan={2}></td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{fmt(totales.costo_total)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: totales.margen_bruto >= 0 ? '#166534' : '#991b1b' }}>{fmt(totales.margen_bruto)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>{totales.pct_margen}%</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{fmt(totales.gastos)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: totales.utilidad >= 0 ? '#166534' : '#991b1b' }}>{fmt(totales.utilidad)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Visual bar comparison */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', padding: '1rem' }}>
+            <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155', marginBottom: '0.75rem' }}>Comparativa Visual</h3>
+            {lineas.filter(l => l.ventas > 0 || l.utilidad !== 0).map((ln, i) => {
+              const maxVenta = Math.max(...lineas.map(l => l.ventas), 1);
+              return (
+                <div key={i} style={{ marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '2px' }}>
+                    <span style={{ fontWeight: 600, color: '#334155' }}>{ln.linea_nombre}</span>
+                    <span style={{ color: ln.utilidad >= 0 ? '#166534' : '#991b1b', fontWeight: 600 }}>Utilidad: {fmt(ln.utilidad)}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '2px', height: '20px' }}>
+                    <div style={{ width: `${(ln.ventas / maxVenta) * 100}%`, background: '#22c55e', borderRadius: '3px 0 0 3px', minWidth: ln.ventas > 0 ? '2px' : 0 }} title={`Ventas: ${fmt(ln.ventas)}`}></div>
+                    <div style={{ width: `${(ln.costo_total / maxVenta) * 100}%`, background: '#fbbf24', minWidth: ln.costo_total > 0 ? '2px' : 0 }} title={`Costo: ${fmt(ln.costo_total)}`}></div>
+                    <div style={{ width: `${(ln.gastos / maxVenta) * 100}%`, background: '#ef4444', borderRadius: '0 3px 3px 0', minWidth: ln.gastos > 0 ? '2px' : 0 }} title={`Gastos: ${fmt(ln.gastos)}`}></div>
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.65rem', color: '#94a3b8' }}>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#22c55e', borderRadius: 2, marginRight: 4 }}></span>Ventas</span>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fbbf24', borderRadius: 2, marginRight: 4 }}></span>Costo</span>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#ef4444', borderRadius: 2, marginRight: 4 }}></span>Gastos</span>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+/* ========== CXP AGING ========== */
+function CxpAging({ data }) {
+  if (!data) return <Empty />;
+  const { buckets, total, detalle, resumen_proveedor } = data;
+  const bucketLabels = { vigente: 'Vigente', '1_30': '1-30 dias', '31_60': '31-60 dias', '61_90': '61-90 dias', '90_plus': '90+ dias' };
+  const bucketColors = { vigente: '#22c55e', '1_30': '#3b82f6', '31_60': '#f59e0b', '61_90': '#f97316', '90_plus': '#ef4444' };
+
+  return (
+    <div data-testid="cxp-aging-content">
+      {/* Aging KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.5rem', marginBottom: '1.25rem' }}>
+        <KPI label="Total CxP" value={fmt(total)} color="#0f172a" icon={Scale} bold />
+        {Object.entries(bucketLabels).map(([key, label]) => (
+          <KPI key={key} label={label} value={fmt(buckets[key])} color={bucketColors[key]} icon={Clock} />
+        ))}
+      </div>
+
+      {/* Aging bar */}
+      {total > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155', marginBottom: '0.5rem' }}>Distribucion de Antiguedad</h3>
+          <div style={{ display: 'flex', height: '32px', borderRadius: '6px', overflow: 'hidden' }}>
+            {Object.entries(buckets).map(([key, val]) => val > 0 && (
+              <div key={key} style={{ width: `${(val / total) * 100}%`, background: bucketColors[key], minWidth: '2px', position: 'relative' }}
+                title={`${bucketLabels[key]}: ${fmt(val)} (${((val / total) * 100).toFixed(1)}%)`}>
+                {val / total > 0.08 && (
+                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#fff' }}>
+                    {((val / total) * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.65rem', color: '#94a3b8', flexWrap: 'wrap' }}>
+            {Object.entries(bucketLabels).map(([key, label]) => (
+              <span key={key}><span style={{ display: 'inline-block', width: 10, height: 10, background: bucketColors[key], borderRadius: 2, marginRight: 4 }}></span>{label}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Resumen por proveedor */}
+      {resumen_proveedor?.length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '1rem' }}>
+          <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Users size={16} color="#64748b" />
+            <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: '#334155' }}>Por Proveedor</h3>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }} data-testid="cxp-proveedor-table">
+            <thead>
+              <tr style={{ background: '#f8fafc' }}>
+                {['Proveedor', 'Vigente', '1-30', '31-60', '61-90', '90+', 'Total'].map((h, i) => (
+                  <th key={i} style={{ padding: '6px 10px', textAlign: i === 0 ? 'left' : 'right', color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', fontSize: '0.72rem' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {resumen_proveedor.map((p, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '6px 10px', fontWeight: 600, color: '#1e293b' }}>{p.nombre}</td>
+                  {['vigente', '1_30', '31_60', '61_90', '90_plus'].map(b => (
+                    <td key={b} style={{ padding: '6px 10px', textAlign: 'right', color: p[b] > 0 ? bucketColors[b] : '#cbd5e1', fontWeight: p[b] > 0 ? 600 : 400 }}>
+                      {p[b] > 0 ? fmt(p[b]) : '-'}
+                    </td>
+                  ))}
+                  <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>{fmt(p.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Detalle */}
+      {detalle.length > 0 && (
+        <AgingDetailTable data={detalle} entityField="proveedor" bucketLabels={bucketLabels} bucketColors={bucketColors} testId="cxp-detalle-table" />
+      )}
+
+      {detalle.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+          <Clock size={36} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+          <p style={{ fontSize: '0.875rem' }}>No hay cuentas por pagar pendientes</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* ========== CXC AGING ========== */
+function CxcAging({ data }) {
+  if (!data) return <Empty />;
+  const { buckets, total, detalle } = data;
+  const bucketLabels = { vigente: 'Vigente', '1_30': '1-30 dias', '31_60': '31-60 dias', '61_90': '61-90 dias', '90_plus': '90+ dias' };
+  const bucketColors = { vigente: '#22c55e', '1_30': '#3b82f6', '31_60': '#f59e0b', '61_90': '#f97316', '90_plus': '#ef4444' };
+
+  return (
+    <div data-testid="cxc-aging-content">
+      {/* Aging KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.5rem', marginBottom: '1.25rem' }}>
+        <KPI label="Total CxC" value={fmt(total)} color="#0f172a" icon={Scale} bold />
+        {Object.entries(bucketLabels).map(([key, label]) => (
+          <KPI key={key} label={label} value={fmt(buckets[key])} color={bucketColors[key]} icon={Clock} />
+        ))}
+      </div>
+
+      {/* Aging bar */}
+      {total > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155', marginBottom: '0.5rem' }}>Distribucion de Antiguedad</h3>
+          <div style={{ display: 'flex', height: '32px', borderRadius: '6px', overflow: 'hidden' }}>
+            {Object.entries(buckets).map(([key, val]) => val > 0 && (
+              <div key={key} style={{ width: `${(val / total) * 100}%`, background: bucketColors[key], minWidth: '2px', position: 'relative' }}
+                title={`${bucketLabels[key]}: ${fmt(val)} (${((val / total) * 100).toFixed(1)}%)`}>
+                {val / total > 0.08 && (
+                  <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#fff' }}>
+                    {((val / total) * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.65rem', color: '#94a3b8', flexWrap: 'wrap' }}>
+            {Object.entries(bucketLabels).map(([key, label]) => (
+              <span key={key}><span style={{ display: 'inline-block', width: 10, height: 10, background: bucketColors[key], borderRadius: 2, marginRight: 4 }}></span>{label}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Detalle */}
+      {detalle.length > 0 && (
+        <AgingDetailTable data={detalle} entityField="cliente" bucketLabels={bucketLabels} bucketColors={bucketColors} testId="cxc-detalle-table" />
+      )}
+
+      {detalle.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+          <Clock size={36} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+          <p style={{ fontSize: '0.875rem' }}>No hay cuentas por cobrar pendientes</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* ========== AGING DETAIL TABLE (shared) ========== */
+function AgingDetailTable({ data, entityField, bucketLabels, bucketColors, testId }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9' }}>
+        <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: '#334155' }}>Detalle</h3>
+      </div>
+      <div style={{ maxHeight: '400px', overflow: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }} data-testid={testId}>
+          <thead style={{ position: 'sticky', top: 0, background: '#f8fafc' }}>
+            <tr>
+              {[entityField === 'proveedor' ? 'Proveedor' : 'Cliente/Documento', 'Documento', 'Monto Orig.', 'Saldo', 'Vencimiento', 'Dias', 'Estado'].map((h, i) => (
+                <th key={i} style={{ padding: '6px 10px', textAlign: i <= 1 ? 'left' : 'right', color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', fontSize: '0.72rem' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((d, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '6px 10px', fontWeight: 600, color: '#1e293b' }}>{d[entityField]}</td>
+                <td style={{ padding: '6px 10px', color: '#64748b' }}>{d.documento || d.cliente}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', color: '#64748b' }}>{fmt(d.monto_original)}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: bucketColors[d.bucket] }}>{fmt(d.saldo)}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', color: '#64748b' }}>{d.fecha_vencimiento || '-'}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                  <span style={{
+                    padding: '1px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600,
+                    background: d.dias_vencido > 60 ? '#fef2f2' : d.dias_vencido > 30 ? '#fffbeb' : d.dias_vencido > 0 ? '#eff6ff' : '#f0fdf4',
+                    color: d.dias_vencido > 60 ? '#dc2626' : d.dias_vencido > 30 ? '#d97706' : d.dias_vencido > 0 ? '#2563eb' : '#16a34a'
+                  }}>
+                    {d.dias_vencido > 0 ? `${d.dias_vencido}d` : 'Vigente'}
+                  </span>
+                </td>
+                <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                  <span style={{ padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, background: bucketColors[d.bucket] + '18', color: bucketColors[d.bucket] }}>
+                    {bucketLabels[d.bucket]}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

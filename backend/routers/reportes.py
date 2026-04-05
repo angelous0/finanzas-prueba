@@ -451,3 +451,254 @@ async def reporte_inventario_valorizado(
             },
             "gran_total": mp_total + pt_total + wip_mp_total + wip_srv_total
         }
+
+
+# =====================
+# RENTABILIDAD POR LINEA DE NEGOCIO
+# =====================
+@router.get("/reportes/rentabilidad-linea")
+async def reporte_rentabilidad_linea(
+    empresa_id: int = Depends(get_empresa_id),
+    fecha_desde: Optional[date] = Query(None),
+    fecha_hasta: Optional[date] = Query(None),
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+
+        f_desde = fecha_desde or date(2020, 1, 1)
+        f_hasta = fecha_hasta or date.today()
+
+        # Get all lineas de negocio
+        lineas = await conn.fetch("SELECT id, nombre, codigo FROM finanzas2.cont_linea_negocio ORDER BY nombre")
+
+        resultado = []
+        total_ventas = 0
+        total_costo = 0
+        total_gastos = 0
+
+        for ln in lineas:
+            ln_id = ln['id']
+
+            # Ventas por linea (tienda_id maps to linea_negocio)
+            ventas = float(await conn.fetchval("""
+                SELECT COALESCE(SUM(v.amount_total), 0)
+                FROM finanzas2.cont_venta_pos v
+                LEFT JOIN finanzas2.cont_venta_pos_estado e ON e.odoo_order_id = v.odoo_id AND e.empresa_id = v.empresa_id
+                WHERE v.empresa_id = $1 AND v.date_order >= $2::timestamp AND v.date_order <= ($3::date + 1)::timestamp
+                AND COALESCE(e.estado_local, 'pendiente') IN ('confirmada', 'credito')
+                AND v.tienda_id::text = $4::text
+            """, empresa_id, f_desde, f_hasta, str(ln_id)) or 0)
+
+            # Costo MP: salidas de inventario por linea
+            costo_mp = float(await conn.fetchval("""
+                SELECT COALESCE(SUM(s.costo_total), 0)
+                FROM produccion.prod_inventario_salidas s
+                JOIN produccion.prod_inventario inv ON s.item_id = inv.id
+                WHERE s.empresa_id = $1 AND s.fecha >= $2::timestamp AND s.fecha <= ($3::date + 1)::timestamp
+                AND inv.linea_negocio_id = $4
+            """, empresa_id, f_desde, f_hasta, ln_id) or 0)
+
+            # Costo servicios: facturas proveedor lineas con linea_negocio_id
+            costo_srv = float(await conn.fetchval("""
+                SELECT COALESCE(SUM(fl.importe), 0)
+                FROM finanzas2.cont_factura_proveedor_linea fl
+                JOIN finanzas2.cont_factura_proveedor f ON fl.factura_id = f.id
+                WHERE f.empresa_id = $1 AND fl.tipo_linea = 'servicio'
+                AND f.fecha_factura >= $2 AND f.fecha_factura <= $3
+                AND f.estado != 'anulada' AND fl.linea_negocio_id = $4
+            """, empresa_id, f_desde, f_hasta, ln_id) or 0)
+
+            costo_total = costo_mp + costo_srv
+
+            # Gastos asignados a esta linea
+            gastos = float(await conn.fetchval("""
+                SELECT COALESCE(SUM(gl.importe), 0)
+                FROM finanzas2.cont_gasto_linea gl
+                JOIN finanzas2.cont_gasto g ON gl.gasto_id = g.id
+                WHERE g.empresa_id = $1 AND g.fecha >= $2 AND g.fecha <= $3
+                AND gl.linea_negocio_id = $4
+            """, empresa_id, f_desde, f_hasta, ln_id) or 0)
+
+            margen_bruto = ventas - costo_total
+            utilidad = margen_bruto - gastos
+            pct_margen = (margen_bruto / ventas * 100) if ventas > 0 else 0
+
+            resultado.append({
+                "linea_id": ln_id,
+                "linea_nombre": ln['nombre'],
+                "linea_codigo": ln['codigo'],
+                "ventas": ventas,
+                "costo_mp": costo_mp,
+                "costo_servicios": costo_srv,
+                "costo_total": costo_total,
+                "margen_bruto": margen_bruto,
+                "pct_margen": round(pct_margen, 1),
+                "gastos": gastos,
+                "utilidad": utilidad
+            })
+
+            total_ventas += ventas
+            total_costo += costo_total
+            total_gastos += gastos
+
+        return {
+            "periodo": {"desde": f_desde.isoformat(), "hasta": f_hasta.isoformat()},
+            "lineas": resultado,
+            "totales": {
+                "ventas": total_ventas,
+                "costo_total": total_costo,
+                "margen_bruto": total_ventas - total_costo,
+                "pct_margen": round((total_ventas - total_costo) / total_ventas * 100, 1) if total_ventas > 0 else 0,
+                "gastos": total_gastos,
+                "utilidad": total_ventas - total_costo - total_gastos
+            }
+        }
+
+
+# =====================
+# CXP POR ANTIGUEDAD (AGING)
+# =====================
+@router.get("/reportes/cxp-aging")
+async def reporte_cxp_aging(
+    empresa_id: int = Depends(get_empresa_id),
+    fecha_corte: Optional[str] = Query(None),
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        corte = date.fromisoformat(fecha_corte) if fecha_corte else date.today()
+
+        rows = await conn.fetch("""
+            SELECT cp.id, cp.monto_original, cp.saldo_pendiente, cp.fecha_vencimiento,
+                   cp.estado, cp.documento_referencia, cp.created_at,
+                   t.nombre as proveedor,
+                   ln.nombre as linea_negocio
+            FROM finanzas2.cont_cxp cp
+            LEFT JOIN finanzas2.cont_tercero t ON cp.proveedor_id = t.id
+            LEFT JOIN finanzas2.cont_linea_negocio ln ON cp.linea_negocio_id = ln.id
+            WHERE cp.empresa_id = $1 AND cp.estado NOT IN ('anulada', 'pagado')
+              AND cp.saldo_pendiente > 0
+            ORDER BY cp.fecha_vencimiento
+        """, empresa_id)
+
+        # Aging buckets
+        buckets = {"vigente": 0, "1_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0}
+        detalle = []
+
+        for r in rows:
+            venc = r['fecha_vencimiento']
+            dias = (corte - venc).days if venc else 0
+            saldo = float(r['saldo_pendiente'] or 0)
+
+            if dias <= 0:
+                bucket = "vigente"
+            elif dias <= 30:
+                bucket = "1_30"
+            elif dias <= 60:
+                bucket = "31_60"
+            elif dias <= 90:
+                bucket = "61_90"
+            else:
+                bucket = "90_plus"
+
+            buckets[bucket] += saldo
+
+            detalle.append({
+                "id": r['id'],
+                "proveedor": r['proveedor'] or 'Sin proveedor',
+                "documento": r['documento_referencia'] or f"CXP-{r['id']}",
+                "monto_original": float(r['monto_original'] or 0),
+                "saldo": saldo,
+                "fecha_vencimiento": venc.isoformat() if venc else None,
+                "dias_vencido": max(dias, 0),
+                "bucket": bucket,
+                "linea_negocio": r['linea_negocio']
+            })
+
+        total = sum(buckets.values())
+
+        return {
+            "fecha_corte": corte.isoformat(),
+            "buckets": buckets,
+            "total": total,
+            "detalle": detalle,
+            "resumen_proveedor": _agrupar_por(detalle, "proveedor", corte)
+        }
+
+
+# =====================
+# CXC POR ANTIGUEDAD (AGING)
+# =====================
+@router.get("/reportes/cxc-aging")
+async def reporte_cxc_aging(
+    empresa_id: int = Depends(get_empresa_id),
+    fecha_corte: Optional[str] = Query(None),
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("SET search_path TO finanzas2, public")
+        corte = date.fromisoformat(fecha_corte) if fecha_corte else date.today()
+
+        rows = await conn.fetch("""
+            SELECT cc.id, cc.monto_original, cc.saldo_pendiente, cc.fecha_vencimiento,
+                   cc.estado, cc.documento_referencia, cc.created_at,
+                   ln.nombre as linea_negocio
+            FROM finanzas2.cont_cxc cc
+            LEFT JOIN finanzas2.cont_linea_negocio ln ON cc.linea_negocio_id = ln.id
+            WHERE cc.empresa_id = $1 AND cc.estado NOT IN ('anulada', 'pagado', 'cobrado')
+              AND cc.saldo_pendiente > 0
+            ORDER BY cc.fecha_vencimiento
+        """, empresa_id)
+
+        buckets = {"vigente": 0, "1_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0}
+        detalle = []
+
+        for r in rows:
+            venc = r['fecha_vencimiento']
+            dias = (corte - venc).days if venc else 0
+            saldo = float(r['saldo_pendiente'] or 0)
+
+            if dias <= 0:
+                bucket = "vigente"
+            elif dias <= 30:
+                bucket = "1_30"
+            elif dias <= 60:
+                bucket = "31_60"
+            elif dias <= 90:
+                bucket = "61_90"
+            else:
+                bucket = "90_plus"
+
+            buckets[bucket] += saldo
+            detalle.append({
+                "id": r['id'],
+                "cliente": r['documento_referencia'] or f"CXC-{r['id']}",
+                "monto_original": float(r['monto_original'] or 0),
+                "saldo": saldo,
+                "fecha_vencimiento": venc.isoformat() if venc else None,
+                "dias_vencido": max(dias, 0),
+                "bucket": bucket,
+                "linea_negocio": r['linea_negocio']
+            })
+
+        total = sum(buckets.values())
+
+        return {
+            "fecha_corte": corte.isoformat(),
+            "buckets": buckets,
+            "total": total,
+            "detalle": detalle,
+        }
+
+
+def _agrupar_por(detalle, campo, corte):
+    """Group aging detail by a field, with bucket subtotals."""
+    grupos = {}
+    for d in detalle:
+        key = d.get(campo) or 'Sin asignar'
+        if key not in grupos:
+            grupos[key] = {"nombre": key, "total": 0, "vigente": 0, "1_30": 0, "31_60": 0, "61_90": 0, "90_plus": 0}
+        grupos[key]["total"] += d['saldo']
+        grupos[key][d['bucket']] += d['saldo']
+    return sorted(grupos.values(), key=lambda x: -x['total'])
