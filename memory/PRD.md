@@ -1,84 +1,67 @@
 # Finanzas 4.0 - PRD
 
-## Problema Original
-Simplificar el modulo de Finanzas Gerenciales para enfocarse en operaciones financieras core.
+## Problema
+Sistema ERP gerencial para gestión financiera de empresa textil. PostgreSQL + FastAPI + React.
 
-## Principios Clave
-1. 1 movimiento real de tesoreria por cobro + N distribuciones analiticas
-2. Distribucion automatica por linea de negocio desde detalle POS
-3. Gastos: directo / comun / no_asignado con prorrateo de comunes
-4. Dimensiones: Linea de Negocio, Marca, Centro de Costo, Categoria de Gasto
+## Arquitectura
+- Backend: FastAPI con asyncpg → PostgreSQL (schemas: finanzas2, produccion)
+- Frontend: React con Shadcn/UI
+- Sin autenticación (acceso directo)
+- Multi-empresa (empresa_id=7 Ambission Industries)
 
-## Modulos CORE Activos (24 items en Sidebar)
-| Seccion | Items |
-|---------|-------|
-| Principal | Dashboard |
-| Ventas | Ventas POS, CxC |
-| Egresos | Gastos, Prorrateo, Factura Proveedor, OC, CxP, Letras |
-| Tesoreria | Tesoreria, Cuentas Bancarias, Movimientos/Pagos, Flujo de Caja, Conciliacion Bancaria, Historial Conciliaciones |
-| Reportes | Reportes Financieros, Reportes, Rentabilidad x Linea, Libro Analitico, Valorizacion Inventario |
-| Produccion Interna | Unidades Internas, Cargos Internos, Gastos Unidad, Reporte Gerencial |
-| Catalogos | Lineas Negocio, Marcas, Centros Costo, Categorias, Proveedores, Clientes, Empresas |
+## Módulos Implementados
 
-## Auto-Matching Conciliacion Bancaria - COMPLETADO (2026-03-19)
-- Backend: GET /api/conciliacion/sugerencias + POST /api/conciliacion/confirmar-sugerencias
-- Reglas: Referencia Exacta (alta) y Monto+Fecha ±3 dias (media)
-- Frontend: Banner, lista de pares, highlight verde, boton confirmar
-- Testing: 14/14 backend + 9/9 frontend
+### Reportes Financieros (7 tabs)
+1. Balance General (point-in-time con fecha_corte)
+2. Estado de Resultados (ventas, costos, margen, gastos)
+3. Flujo de Caja (ingresos/egresos reales)
+4. Inventario Valorizado (MP, PT, WIP)
+5. **Rentabilidad por Línea de Negocio** (ventas/costos/margen por LN) - 2026-04-05
+6. **CxP Aging** (antigüedad cuentas por pagar, 5 buckets, por proveedor) - 2026-04-05
+7. **CxC Aging** (antigüedad cuentas por cobrar, 5 buckets) - 2026-04-05
 
-## Unidades Internas de Produccion - COMPLETADO (2026-03-20)
-### Descripcion
-Modulo gerencial para tratar servicios internos de produccion como unidades de negocio. Mide si conviene seguir haciendo un proceso interno o tercerizar.
+### Conciliación Bancaria
+- Auto-matching 1:1 (referencia exacta + monto+fecha)
+- **Auto-matching N:1 y 1:N** (múltiples movimientos combinados) - 2026-04-05
+- UI side-by-side con sugerencias grupales
+- Confirmar sugerencias en lote
 
-### Tablas nuevas (finanzas2)
-- `fin_unidad_interna` - Catalogo de unidades (Corte, Costura, Acabado)
-- `fin_cargo_interno` - Cargos auto-generados desde movimientos de produccion (UNIQUE movimiento_id)
-- `fin_gasto_unidad_interna` - Gastos reales por unidad (registro_id y movimiento_id opcionales)
+### Órdenes de Compra
+- **Dropdown artículos enriquecido** (Stock | Línea Negocio | Último Precio) - 2026-04-05
+- Auto-poblado de unidad, precio unitario, código, descripción
 
-### Cambios a tablas existentes
-- `produccion.prod_personas_produccion`: Agregado `tipo_persona` (INTERNO/EXTERNO) y `unidad_interna_id`
+### Facturas Proveedor
+- **Auto-llenado linea_negocio_id desde artículo** - 2026-04-05
+- CRUD completo con líneas de artículos y servicios
+- Vinculación con ingresos de inventario
+- Canje de letras
 
-### Backend: /app/backend/routers/unidades_internas.py
-- CRUD unidades internas
-- GET/PUT personas produccion (tipo persona)
-- GET cargos internos + POST generar (desde produccion)
-- CRUD gastos unidad interna
-- GET reporte gerencial (vista_empresa + vista_unidades + resumen)
+### Otros Módulos
+- Dashboard con KPIs
+- Ventas POS (sync con Odoo)
+- Gastos con categorías por línea
+- Unidades Internas de Producción (corte, confección)
+- Valorización Inventario (optimizada, batch queries)
+- Líneas de Negocio (universales, modal vínculos FK)
+- Tesorería, Cuentas Bancarias, CxP, CxC, Letras
 
-### Frontend: 4 paginas nuevas
-- `/unidades-internas` - CRUD unidades + tab personas INTERNO/EXTERNO
-- `/cargos-internos` - Vista cargos generados + boton "Generar Cargos"
-- `/gastos-unidad-interna` - Registro gastos reales por unidad
-- `/reporte-unidades-internas` - Reporte gerencial con 2 vistas
+## Endpoints Clave (nuevos esta sesión)
+- GET /api/reportes/rentabilidad-linea
+- GET /api/reportes/cxp-aging
+- GET /api/reportes/cxc-aging
+- GET /api/conciliacion/sugerencias (actualizado N:M)
+- POST /api/conciliacion/confirmar-sugerencias (actualizado arrays)
+- GET /api/articulos-oc (nuevo, enriquecido)
 
-### Logica
-- Persona INTERNA genera cargo = ingreso para la unidad + costo para empresa
-- Gastos reales se cargan a la unidad
-- Resultado = Ingresos Internos - Gastos Reales
-- Vista Empresa: solo costo consolidado, sin detalle de gastos
-- Vista Unidad: P&L detallado con costo promedio
-
-### Testing: 29/29 backend + 8/8 frontend = ALL PASSED
+## Testing
+- Iteration 41: Artículos OC (20/20 passed)
+- Iteration 42: Conciliación N:M + LN autofill (26/26 passed)
+- Iteration 43: 3 Reportes nuevos (30/30 passed)
 
 ## Backlog
 
-### P0 - COMPLETADO: Mejora Selección Artículos en OC (2026-03-30)
-- Backend: GET /api/articulos-oc con LATERAL joins (stock, linea negocio, ultimo precio)
-- Frontend: Dropdown muestra Nombre | Stock | Línea de Negocio | Precio
-- Auto-población: unidad_medida, precio_unitario (último precio OC/ingreso o 0), código, descripción
-- Testing: 17/17 backend + 3/3 frontend = ALL PASSED
-
-### P1 - Conciliacion N:1 y 1:N
-- Permitir vincular multiples movimientos del sistema a uno del banco y viceversa
-
-### P1 - Agregar Linea de Negocio a Factura Proveedor
-- Campo linea_negocio_id en cont_factura_proveedor_linea
-
-### P1 - Split archivos grandes
-- Gastos.jsx, VentasPOS.jsx, compras.py, gastos.py
-
-### P2 - Reportes Faltantes
-- Completar reportes simplificados restantes
-
-### P2 - Modulos Futuros
-- Proyectos, Capital & ROI, Presupuesto vs Real
+### P2 - Pendiente
+- Split archivos grandes (compras.py 826 líneas, OrdenesCompra.jsx 1275 líneas)
+- Auditar módulo PagarFacturas
+- Presupuesto vs Real
+- Proyectos, Capital & ROI
