@@ -1,14 +1,102 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus, ChevronRight, ChevronDown, BarChart3, Clock, Users } from 'lucide-react';
+import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus, ChevronRight, ChevronDown, BarChart3, Clock, Users, Download } from 'lucide-react';
 import {
   getReporteBalanceGeneral, getReporteEstadoResultados,
   getReporteFlujoCaja, getReporteInventarioValorizado,
   getReporteRentabilidadLinea, getReporteCxpAging, getReporteCxcAging
 } from '../services/api';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 const fmt = (v) => `S/ ${Number(v || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
+const fmtNum = (v) => Number(v || 0).toFixed(2);
 
+function exportRentabilidad(data) {
+  if (!data?.lineas) return;
+  const wb = XLSX.utils.book_new();
+  const rows = data.lineas.map(l => ({
+    'Linea de Negocio': l.linea_nombre,
+    'Ventas': +fmtNum(l.ventas),
+    'Costo MP': +fmtNum(l.costo_mp),
+    'Costo Servicios': +fmtNum(l.costo_servicios),
+    'Costo Total': +fmtNum(l.costo_total),
+    'Margen Bruto': +fmtNum(l.margen_bruto),
+    '% Margen': l.pct_margen,
+    'Gastos': +fmtNum(l.gastos),
+    'Utilidad': +fmtNum(l.utilidad),
+  }));
+  rows.push({
+    'Linea de Negocio': 'TOTAL',
+    'Ventas': +fmtNum(data.totales.ventas),
+    'Costo MP': '',
+    'Costo Servicios': '',
+    'Costo Total': +fmtNum(data.totales.costo_total),
+    'Margen Bruto': +fmtNum(data.totales.margen_bruto),
+    '% Margen': data.totales.pct_margen,
+    'Gastos': +fmtNum(data.totales.gastos),
+    'Utilidad': +fmtNum(data.totales.utilidad),
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 35 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Rentabilidad x Linea');
+  XLSX.writeFile(wb, `rentabilidad_linea_${data.periodo.desde}_${data.periodo.hasta}.xlsx`);
+  toast.success('Excel exportado');
+}
+
+function exportCxpAging(data) {
+  if (!data?.detalle) return;
+  const wb = XLSX.utils.book_new();
+  // Resumen por proveedor
+  if (data.resumen_proveedor?.length) {
+    const resProv = data.resumen_proveedor.map(p => ({
+      'Proveedor': p.nombre,
+      'Vigente': +fmtNum(p.vigente),
+      '1-30 dias': +fmtNum(p['1_30']),
+      '31-60 dias': +fmtNum(p['31_60']),
+      '61-90 dias': +fmtNum(p['61_90']),
+      '90+ dias': +fmtNum(p['90_plus']),
+      'Total': +fmtNum(p.total),
+    }));
+    const ws1 = XLSX.utils.json_to_sheet(resProv);
+    ws1['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Resumen Proveedor');
+  }
+  // Detalle
+  const det = data.detalle.map(d => ({
+    'Proveedor': d.proveedor,
+    'Documento': d.documento,
+    'Monto Original': +fmtNum(d.monto_original),
+    'Saldo': +fmtNum(d.saldo),
+    'Fecha Vencimiento': d.fecha_vencimiento || '',
+    'Dias Vencido': d.dias_vencido,
+    'Estado': d.bucket === 'vigente' ? 'Vigente' : d.bucket === '1_30' ? '1-30' : d.bucket === '31_60' ? '31-60' : d.bucket === '61_90' ? '61-90' : '90+',
+    'Linea Negocio': d.linea_negocio || '',
+  }));
+  const ws2 = XLSX.utils.json_to_sheet(det);
+  ws2['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 25 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalle CxP');
+  XLSX.writeFile(wb, `cxp_aging_${data.fecha_corte}.xlsx`);
+  toast.success('Excel exportado');
+}
+
+function exportCxcAging(data) {
+  if (!data?.detalle?.length) { toast.info('Sin datos para exportar'); return; }
+  const wb = XLSX.utils.book_new();
+  const det = data.detalle.map(d => ({
+    'Cliente/Documento': d.cliente,
+    'Monto Original': +fmtNum(d.monto_original),
+    'Saldo': +fmtNum(d.saldo),
+    'Fecha Vencimiento': d.fecha_vencimiento || '',
+    'Dias Vencido': d.dias_vencido,
+    'Estado': d.bucket === 'vigente' ? 'Vigente' : d.bucket === '1_30' ? '1-30' : d.bucket === '31_60' ? '31-60' : d.bucket === '61_90' ? '61-90' : '90+',
+    'Linea Negocio': d.linea_negocio || '',
+  }));
+  const ws = XLSX.utils.json_to_sheet(det);
+  ws['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 25 }];
+  XLSX.utils.book_append_sheet(wb, ws, 'Detalle CxC');
+  XLSX.writeFile(wb, `cxc_aging_${data.fecha_corte}.xlsx`);
+  toast.success('Excel exportado');
+}
 const TABS = [
   { id: 'balance', label: 'Balance General', icon: Scale },
   { id: 'egyp', label: 'Estado de Resultados', icon: TrendingUp },
@@ -100,6 +188,20 @@ export default function ReportesFinancieros() {
           <button className="btn btn-primary btn-sm" onClick={load} data-testid="rf-refresh">
             <RefreshCw size={14} /> Actualizar
           </button>
+          {(tab === 'rentabilidad' || tab === 'cxp_aging' || tab === 'cxc_aging') && data[tab] && (
+            <button
+              className="btn btn-outline btn-sm"
+              data-testid="rf-export-excel"
+              onClick={() => {
+                if (tab === 'rentabilidad') exportRentabilidad(data.rentabilidad);
+                else if (tab === 'cxp_aging') exportCxpAging(data.cxp_aging);
+                else if (tab === 'cxc_aging') exportCxcAging(data.cxc_aging);
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Download size={14} /> Excel
+            </button>
+          )}
         </div>
       </div>
 
