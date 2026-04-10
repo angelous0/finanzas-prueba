@@ -126,7 +126,8 @@ export const generatePDFAndPrint = (factura, proveedores, monedas) => {
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; }
+        html, body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background-color: #ffffff !important; color-scheme: light; -webkit-print-color-adjust: exact; }
+        @media print { body { background-color: #ffffff !important; } }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #1B4D3E; }
         .doc-title { font-size: 1.5rem; font-weight: 700; color: #1B4D3E; }
         .doc-number { font-family: 'JetBrains Mono', monospace; font-size: 1.125rem; font-weight: 600; margin-top: 4px; }
