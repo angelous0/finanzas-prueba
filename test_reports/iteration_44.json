@@ -1,0 +1,155 @@
+{
+  "iteration": 44,
+  "date": "2026-04-10",
+  "feature": "Report Consolidation: Flujo de Caja with ComposedChart + Rentabilidad with 5 sub-tabs",
+  "summary": "Complete testing of report consolidation changes. All 23 backend tests passed (100%). All frontend UI tests passed. Flujo de Caja tab shows ComposedChart with bars+line, agrupacion selector (Diario/Semanal/Mensual), and detail table. Rentabilidad tab shows 5 sub-tabs (Dinero, Ventas, Cobranza, Linea x Marca, Gastos). Sidebar cleaned with only 3 items under Reportes. Old routes render blank pages (routes removed from App.js).",
+
+  "features_tested": {
+    "Backend_flujo_caja_gerencial": {
+      "endpoint": "GET /api/flujo-caja-gerencial",
+      "status": "PASSED",
+      "details": "Returns timeline array with periodo, ingresos, egresos, saldo_acumulado. Supports agrupacion: diario/semanal/mensual. Totales include ingresos, egresos, flujo_neto."
+    },
+    "Backend_dinero_por_linea": {
+      "endpoint": "GET /api/reportes/dinero-por-linea",
+      "status": "PASSED",
+      "details": "Returns data array with linea, ventas, cobranzas, cxc_pendiente, gastos, saldo_neto. Totales match sum of data."
+    },
+    "Backend_ventas_por_linea": {
+      "endpoint": "GET /api/reportes/ventas-por-linea",
+      "status": "PASSED",
+      "details": "Returns data array with linea, ventas, tickets, ticket_promedio. Totales include ventas, tickets, ticket_promedio."
+    },
+    "Backend_cobranza_por_linea": {
+      "endpoint": "GET /api/reportes/cobranza-por-linea",
+      "status": "PASSED",
+      "details": "Returns data array with linea, vendido, cobrado, pendiente, pct_cobrado. Totales include all fields."
+    },
+    "Backend_cruce_linea_marca": {
+      "endpoint": "GET /api/reportes/cruce-linea-marca",
+      "status": "PASSED",
+      "details": "Returns array of lineas, each with marcas array containing marca, ventas, tickets, pct."
+    },
+    "Backend_gastos_directos_por_linea": {
+      "endpoint": "GET /api/reportes/gastos-directos-por-linea",
+      "status": "PASSED",
+      "details": "Returns data array with linea, total_gastos, total_facturas, total_egresos. Totales match sum."
+    },
+    "Frontend_7_tabs_visible": {
+      "status": "PASSED",
+      "details": "All 7 tabs visible: Balance General, Estado de Resultados, Flujo de Caja, Inventario Valorizado, Rentabilidad x Linea, CxP Aging, CxC Aging."
+    },
+    "Frontend_flujo_caja_tab": {
+      "status": "PASSED",
+      "details": "Shows 3 KPIs (Total Ingresos, Total Egresos, Flujo Neto), ComposedChart with bars (Ingresos/Egresos) + line (Saldo Acum.), detail table with all periods."
+    },
+    "Frontend_agrupacion_selector": {
+      "status": "PASSED",
+      "details": "Agrupacion selector (Diario/Semanal/Mensual) appears ONLY on Flujo tab. Hidden on other tabs."
+    },
+    "Frontend_rentabilidad_5_subtabs": {
+      "status": "PASSED",
+      "details": "5 sub-tabs visible: Dinero por Linea, Ventas por Linea, Cobranza por Linea, Linea x Marca, Gastos por Linea. Each shows appropriate KPIs and table."
+    },
+    "Frontend_excel_export": {
+      "status": "PASSED",
+      "details": "Excel export button visible on Flujo and Rentabilidad tabs."
+    },
+    "Frontend_sidebar_cleaned": {
+      "status": "PASSED",
+      "details": "Sidebar Reportes section has only 3 items: Reportes Financieros, Libro Analitico, Valorización Inventario. No duplicates."
+    },
+    "Frontend_old_routes_removed": {
+      "status": "PASSED",
+      "details": "Old routes /flujo-caja, /reportes-simplificados, /rentabilidad-linea render blank pages (routes removed from App.js)."
+    },
+    "Frontend_cxp_cxc_aging_tabs": {
+      "status": "PASSED",
+      "details": "CxP Aging and CxC Aging tabs still work correctly after changes."
+    }
+  },
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_consolidation_iter44.py",
+    "/app/test_reports/pytest/pytest_consolidation_iter44.xml"
+  ],
+
+  "tests_executed": [
+    {"name": "test_endpoint_returns_200 (flujo_caja)", "status": "PASSED"},
+    {"name": "test_response_has_required_structure (flujo_caja)", "status": "PASSED"},
+    {"name": "test_totales_has_required_fields (flujo_caja)", "status": "PASSED"},
+    {"name": "test_agrupacion_diario", "status": "PASSED"},
+    {"name": "test_agrupacion_semanal", "status": "PASSED"},
+    {"name": "test_agrupacion_mensual", "status": "PASSED"},
+    {"name": "test_timeline_item_has_required_fields", "status": "PASSED"},
+    {"name": "test_endpoint_returns_200 (dinero)", "status": "PASSED"},
+    {"name": "test_response_has_data_and_totales (dinero)", "status": "PASSED"},
+    {"name": "test_totales_has_required_fields (dinero)", "status": "PASSED"},
+    {"name": "test_endpoint_returns_200 (ventas)", "status": "PASSED"},
+    {"name": "test_response_has_data_and_totales (ventas)", "status": "PASSED"},
+    {"name": "test_totales_has_required_fields (ventas)", "status": "PASSED"},
+    {"name": "test_endpoint_returns_200 (cobranza)", "status": "PASSED"},
+    {"name": "test_response_has_data_and_totales (cobranza)", "status": "PASSED"},
+    {"name": "test_totales_has_required_fields (cobranza)", "status": "PASSED"},
+    {"name": "test_endpoint_returns_200 (cruce)", "status": "PASSED"},
+    {"name": "test_response_is_array (cruce)", "status": "PASSED"},
+    {"name": "test_endpoint_returns_200 (gastos)", "status": "PASSED"},
+    {"name": "test_response_has_data_and_totales (gastos)", "status": "PASSED"},
+    {"name": "test_totales_has_required_fields (gastos)", "status": "PASSED"},
+    {"name": "test_flujo_neto_equals_ingresos_minus_egresos", "status": "PASSED"},
+    {"name": "test_dinero_saldo_neto_calculation", "status": "PASSED"},
+    {"name": "Frontend: 7 tabs visible", "status": "PASSED"},
+    {"name": "Frontend: Flujo tab with ComposedChart", "status": "PASSED"},
+    {"name": "Frontend: Agrupacion selector on Flujo only", "status": "PASSED"},
+    {"name": "Frontend: Rentabilidad 5 sub-tabs", "status": "PASSED"},
+    {"name": "Frontend: Excel export buttons", "status": "PASSED"},
+    {"name": "Frontend: Sidebar 3 items only", "status": "PASSED"},
+    {"name": "Frontend: Old routes blank", "status": "PASSED"}
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_consolidation_iter44.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (23/23 tests passed)",
+    "frontend": "100% (7/7 UI tests passed)"
+  },
+
+  "test_credentials": "empresa_id=7 (Ambission Industries), no auth required",
+  "seed_data_creation": "Using existing data from previous iterations.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Report consolidation complete. Flujo de Caja tab uses Recharts ComposedChart with bars (Ingresos/Egresos) + line (Saldo Acumulado). Agrupacion selector (diario/semanal/mensual) only appears on Flujo tab. Rentabilidad tab has 5 sub-tabs with data-testid: rent-sub-dinero, rent-sub-ventas, rent-sub-cobranza, rent-sub-cruce, rent-sub-gastos. Sidebar cleaned - only 3 items under Reportes. Old standalone routes removed from App.js.",
+  "overall_status": "ALL_PASSED",
+  "verified_data": {
+    "flujo_caja": {
+      "agrupacion_options": ["diario", "semanal", "mensual"],
+      "totales_fields": ["ingresos", "egresos", "flujo_neto"],
+      "timeline_fields": ["periodo", "total_ingresos", "total_egresos", "flujo_neto", "saldo_acumulado"]
+    },
+    "rentabilidad_subtabs": {
+      "dinero": {"fields": ["ventas", "cobranzas", "cxc_pendiente", "gastos", "saldo_neto"]},
+      "ventas": {"fields": ["ventas", "tickets", "ticket_promedio"]},
+      "cobranza": {"fields": ["vendido", "cobrado", "pendiente", "pct_cobrado"]},
+      "cruce": {"structure": "array of lineas with marcas"},
+      "gastos": {"fields": ["total_gastos", "total_facturas", "total_egresos"]}
+    },
+    "sidebar_reportes_items": ["Reportes Financieros", "Libro Analitico", "Valorización Inventario"]
+  }
+}

@@ -5,8 +5,8 @@ import {
   Building2, Users, Wallet,
   ChevronDown, ChevronRight, DollarSign, Landmark, Clock,
   Tags, GitBranch, Target, X, ChevronLeft,
-  Tag, Activity, ClipboardList,
-  Vault, Layers, Package, FileSpreadsheet, Link2, History, BookOpen, PieChart,
+  Tag, Package, FileSpreadsheet,
+  Vault, Layers, Link2, History, BookOpen, PieChart,
   Factory, ArrowRightLeft, FileText, BarChart3
 } from 'lucide-react';
 
@@ -41,7 +41,6 @@ const navSections = [
       { icon: Vault, label: 'Tesorería', path: '/tesoreria' },
       { icon: Landmark, label: 'Cuentas Bancarias', path: '/cuentas-bancarias' },
       { icon: DollarSign, label: 'Movimientos/Pagos', path: '/pagos' },
-      { icon: Activity, label: 'Flujo de Caja', path: '/flujo-caja' },
       { icon: Link2, label: 'Conciliación Bancaria', path: '/conciliacion' },
       { icon: History, label: 'Historial Conciliaciones', path: '/historial-conciliaciones' },
     ]
@@ -50,8 +49,6 @@ const navSections = [
     title: 'Reportes',
     items: [
       { icon: PieChart, label: 'Reportes Financieros', path: '/reportes-financieros' },
-      { icon: ClipboardList, label: 'Reportes', path: '/reportes-simplificados' },
-      { icon: GitBranch, label: 'Rentabilidad x Linea', path: '/rentabilidad-linea' },
       { icon: BookOpen, label: 'Libro Analitico', path: '/libro-analitico' },
       { icon: Package, label: 'Valorización Inventario', path: '/valorizacion-inventario' },
     ]

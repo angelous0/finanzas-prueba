@@ -1,45 +1,68 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus, ChevronRight, ChevronDown, BarChart3, Clock, Users, Download } from 'lucide-react';
+import { RefreshCw, Scale, TrendingUp, Banknote, Package, ArrowUpRight, ArrowDownRight, Minus, ChevronRight, ChevronDown, BarChart3, Clock, Users, Download, DollarSign, CreditCard, Wallet } from 'lucide-react';
 import {
   getReporteBalanceGeneral, getReporteEstadoResultados,
   getReporteFlujoCaja, getReporteInventarioValorizado,
-  getReporteRentabilidadLinea, getReporteCxpAging, getReporteCxcAging
+  getReporteRentabilidadLinea, getReporteCxpAging, getReporteCxcAging,
+  getFlujoCajaGerencial,
+  getReporteVentasPorLinea, getReporteCobranzaPorLinea2,
+  getReporteCruceLineaMarca, getReporteGastosDirectosPorLinea,
+  getReporteDineroPorLinea
 } from '../services/api';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  Legend, Line, ComposedChart
+} from 'recharts';
 
 const fmt = (v) => `S/ ${Number(v || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
 const fmtNum = (v) => Number(v || 0).toFixed(2);
 
-function exportRentabilidad(data) {
-  if (!data?.lineas) return;
+function exportRentabilidadDetallado(data, subTab) {
+  if (!data) return;
   const wb = XLSX.utils.book_new();
-  const rows = data.lineas.map(l => ({
-    'Linea de Negocio': l.linea_nombre,
-    'Ventas': +fmtNum(l.ventas),
-    'Costo MP': +fmtNum(l.costo_mp),
-    'Costo Servicios': +fmtNum(l.costo_servicios),
-    'Costo Total': +fmtNum(l.costo_total),
-    'Margen Bruto': +fmtNum(l.margen_bruto),
-    '% Margen': l.pct_margen,
-    'Gastos': +fmtNum(l.gastos),
-    'Utilidad': +fmtNum(l.utilidad),
+  const sdata = data[subTab];
+  if (!sdata?.data?.length && !Array.isArray(sdata)) { toast.info('Sin datos para exportar'); return; }
+  const label = SUB_TABS_RENT.find(t => t.id === subTab)?.label || subTab;
+
+  if (subTab === 'cruce' && Array.isArray(sdata)) {
+    sdata.forEach(linea => {
+      const rows = linea.marcas.map(m => ({ 'Marca': m.marca, 'Ventas': +fmtNum(m.ventas), 'Tickets': m.tickets, '%': m.pct }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, linea.linea.substring(0, 28));
+    });
+  } else if (sdata?.data) {
+    const rows = sdata.data.map(r => {
+      const row = { 'Linea': r.linea };
+      Object.keys(r).filter(k => k !== 'linea').forEach(k => { row[k] = typeof r[k] === 'number' ? +fmtNum(r[k]) : r[k]; });
+      return row;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, label.substring(0, 31));
+  }
+  XLSX.writeFile(wb, `rentabilidad_${subTab}.xlsx`);
+  toast.success('Excel exportado');
+}
+
+function exportFlujoCaja(data) {
+  if (!data?.timeline?.length) { toast.info('Sin datos para exportar'); return; }
+  const wb = XLSX.utils.book_new();
+  const rows = data.timeline.map(r => ({
+    'Periodo': r.periodo,
+    'Ingresos Ventas': +fmtNum(r.ingresos_ventas),
+    'Cobranzas CxC': +fmtNum(r.cobranzas_cxc),
+    'Total Ingresos': +fmtNum(r.total_ingresos),
+    'Egresos Gastos': +fmtNum(r.egresos_gastos),
+    'Pagos CxP': +fmtNum(r.pagos_cxp),
+    'Total Egresos': +fmtNum(r.total_egresos),
+    'Flujo Neto': +fmtNum(r.flujo_neto),
+    'Saldo Acumulado': +fmtNum(r.saldo_acumulado),
   }));
-  rows.push({
-    'Linea de Negocio': 'TOTAL',
-    'Ventas': +fmtNum(data.totales.ventas),
-    'Costo MP': '',
-    'Costo Servicios': '',
-    'Costo Total': +fmtNum(data.totales.costo_total),
-    'Margen Bruto': +fmtNum(data.totales.margen_bruto),
-    '% Margen': data.totales.pct_margen,
-    'Gastos': +fmtNum(data.totales.gastos),
-    'Utilidad': +fmtNum(data.totales.utilidad),
-  });
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{ wch: 35 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 14 }];
-  XLSX.utils.book_append_sheet(wb, ws, 'Rentabilidad x Linea');
-  XLSX.writeFile(wb, `rentabilidad_linea_${data.periodo.desde}_${data.periodo.hasta}.xlsx`);
+  ws['!cols'] = Array(9).fill({ wch: 16 });
+  XLSX.utils.book_append_sheet(wb, ws, 'Flujo de Caja');
+  XLSX.writeFile(wb, `flujo_caja.xlsx`);
   toast.success('Excel exportado');
 }
 
@@ -107,8 +130,18 @@ const TABS = [
   { id: 'cxc_aging', label: 'CxC Aging', icon: Users },
 ];
 
+const SUB_TABS_RENT = [
+  { id: 'dinero', label: 'Dinero por Linea', icon: DollarSign },
+  { id: 'ventas', label: 'Ventas por Linea', icon: TrendingUp },
+  { id: 'cobranza', label: 'Cobranza por Linea', icon: CreditCard },
+  { id: 'cruce', label: 'Linea x Marca', icon: BarChart3 },
+  { id: 'gastos', label: 'Gastos por Linea', icon: Wallet },
+];
+
 export default function ReportesFinancieros() {
   const [tab, setTab] = useState('balance');
+  const [rentSubTab, setRentSubTab] = useState('dinero');
+  const [agrupacion, setAgrupacion] = useState('diario');
   const [fechaDesde, setFechaDesde] = useState(() => {
     const d = new Date(); d.setMonth(0, 1); return d.toISOString().split('T')[0];
   });
@@ -134,14 +167,22 @@ export default function ReportesFinancieros() {
           result = await getReporteEstadoResultados(params);
           break;
         case 'flujo':
-          result = await getReporteFlujoCaja(params);
+          result = await getFlujoCajaGerencial({ fecha_desde: fechaDesde, fecha_hasta: fechaHasta, agrupacion });
           break;
         case 'inventario':
           result = await getReporteInventarioValorizado();
           break;
-        case 'rentabilidad':
-          result = await getReporteRentabilidadLinea(params);
+        case 'rentabilidad': {
+          const [ventas, cobranza, cruce, gastos, dinero] = await Promise.all([
+            getReporteVentasPorLinea(params),
+            getReporteCobranzaPorLinea2(params),
+            getReporteCruceLineaMarca(params),
+            getReporteGastosDirectosPorLinea(params),
+            getReporteDineroPorLinea(params),
+          ]);
+          result = { data: { ventas: ventas.data, cobranza: cobranza.data, cruce: cruce.data, gastos: gastos.data, dinero: dinero.data } };
           break;
+        }
         case 'cxp_aging':
           result = await getReporteCxpAging(params);
           break;
@@ -156,7 +197,7 @@ export default function ReportesFinancieros() {
     } finally {
       setLoading(false);
     }
-  }, [tab, fechaDesde, fechaHasta, needsDates, needsCorte]);
+  }, [tab, fechaDesde, fechaHasta, needsDates, needsCorte, agrupacion]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -183,19 +224,28 @@ export default function ReportesFinancieros() {
               <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>a</span>
               <input type="date" className="form-input" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
                 style={{ fontSize: '0.8rem', padding: '4px 8px' }} data-testid="rf-fecha-hasta" />
+              {tab === 'flujo' && (
+                <select className="form-input" value={agrupacion} onChange={e => setAgrupacion(e.target.value)}
+                  style={{ fontSize: '0.8rem', padding: '4px 8px', width: 'auto' }} data-testid="rf-agrupacion">
+                  <option value="diario">Diario</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="mensual">Mensual</option>
+                </select>
+              )}
             </>
           )}
           <button className="btn btn-primary btn-sm" onClick={load} data-testid="rf-refresh">
             <RefreshCw size={14} /> Actualizar
           </button>
-          {(tab === 'rentabilidad' || tab === 'cxp_aging' || tab === 'cxc_aging') && data[tab] && (
+          {(tab === 'rentabilidad' || tab === 'cxp_aging' || tab === 'cxc_aging' || tab === 'flujo') && data[tab] && (
             <button
               className="btn btn-outline btn-sm"
               data-testid="rf-export-excel"
               onClick={() => {
-                if (tab === 'rentabilidad') exportRentabilidad(data.rentabilidad);
+                if (tab === 'rentabilidad') exportRentabilidadDetallado(data.rentabilidad, rentSubTab);
                 else if (tab === 'cxp_aging') exportCxpAging(data.cxp_aging);
                 else if (tab === 'cxc_aging') exportCxcAging(data.cxc_aging);
+                else if (tab === 'flujo') exportFlujoCaja(data.flujo);
               }}
               style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
             >
@@ -241,9 +291,9 @@ export default function ReportesFinancieros() {
         <>
           {tab === 'balance' && <BalanceGeneral data={data.balance} />}
           {tab === 'egyp' && <EstadoResultados data={data.egyp} />}
-          {tab === 'flujo' && <FlujoCajaTab data={data.flujo} />}
+          {tab === 'flujo' && <FlujoCajaChart data={data.flujo} agrupacion={agrupacion} />}
           {tab === 'inventario' && <InventarioValorizado data={data.inventario} />}
-          {tab === 'rentabilidad' && <RentabilidadLinea data={data.rentabilidad} />}
+          {tab === 'rentabilidad' && <RentabilidadDetallada data={data.rentabilidad} subTab={rentSubTab} setSubTab={setRentSubTab} />}
           {tab === 'cxp_aging' && <CxpAging data={data.cxp_aging} />}
           {tab === 'cxc_aging' && <CxcAging data={data.cxc_aging} />}
         </>
@@ -425,65 +475,102 @@ function EstadoResultados({ data }) {
 
 
 /* ========== FLUJO DE CAJA ========== */
-function FlujoCajaTab({ data }) {
+/* ========== FLUJO CAJA CON GRAFICOS ========== */
+const fmtDate = (d) => {
+  if (!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+};
+const fmtShort = (v) => `S/ ${(v / 1000).toFixed(1)}k`;
+const ChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.5rem 0.75rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '0.75rem' }}>
+      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{fmtDate(label)}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: p.color }}>
+          <span>{p.name}</span><span style={{ fontWeight: 600 }}>{fmt(p.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+function FlujoCajaChart({ data, agrupacion }) {
   if (!data) return <Empty />;
+  const timeline = data.timeline || [];
+  const totales = data.totales || {};
 
   return (
     <div data-testid="flujo-caja-content">
-      {/* KPI Cards */}
+      {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <KPI label="Total Ingresos" value={fmt(data.ingresos.total)} color="#22c55e" icon={ArrowUpRight} />
-        <KPI label="Total Egresos" value={fmt(data.egresos.total)} color="#ef4444" icon={ArrowDownRight} />
-        <KPI label="Flujo Neto" value={fmt(data.flujo_neto)} color={data.flujo_neto >= 0 ? '#166534' : '#991b1b'} icon={Banknote} bold />
+        <KPI label="Total Ingresos" value={fmt(totales.ingresos)} color="#22c55e" icon={ArrowUpRight} />
+        <KPI label="Total Egresos" value={fmt(totales.egresos)} color="#ef4444" icon={ArrowDownRight} />
+        <KPI label="Flujo Neto" value={fmt(totales.flujo_neto)} color={totales.flujo_neto >= 0 ? '#166534' : '#991b1b'} icon={Banknote} bold />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-        {/* Ingresos */}
-        <SectionCard title="INGRESOS" total={data.ingresos.total} color="#22c55e">
-          <GroupHeader label="Cobros de Ventas" total={data.ingresos.cobros_ventas} />
-          <GroupHeader label="Tesoreria (otros ingresos)" total={data.ingresos.tesoreria} />
-          <GroupHeader label="Pagos Recibidos" total={data.ingresos.pagos_recibidos} />
-          {data.ingresos.detalle?.length > 0 && (
-            <>
-              <div style={{ padding: '0.5rem 0.75rem 0.25rem', fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Detalle</div>
-              <SimpleTable
-                headers={['Concepto', 'Monto']}
-                rows={data.ingresos.detalle.map(r => [r.concepto || 'Sin concepto', { v: fmt(r.total), color: '#22c55e' }])}
-                testId="flujo-ing-detalle"
-              />
-            </>
-          )}
-        </SectionCard>
+      {/* Chart */}
+      {timeline.length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', overflow: 'hidden' }}>
+          <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9' }}>
+            <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: '#334155' }}>Flujo de Caja - {agrupacion?.charAt(0).toUpperCase() + agrupacion?.slice(1)}</h3>
+          </div>
+          <div style={{ padding: '0.5rem', height: 300 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={timeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="periodo" tick={{ fontSize: 10 }} tickFormatter={fmtDate} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={fmtShort} />
+                <Tooltip content={<ChartTooltip />} />
+                <Legend wrapperStyle={{ fontSize: '0.7rem' }} />
+                <Bar dataKey="total_ingresos" name="Ingresos" fill="#22C55E" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="total_egresos" name="Egresos" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                <Line type="monotone" dataKey="saldo_acumulado" name="Saldo Acum." stroke="#3B82F6" strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
-        {/* Egresos */}
-        <SectionCard title="EGRESOS" total={data.egresos.total} color="#ef4444">
-          <GroupHeader label="Tesoreria (salidas)" total={data.egresos.tesoreria} />
-          <GroupHeader label="Pagos a Proveedores" total={data.egresos.pagos_proveedores} />
-          {data.egresos.detalle?.length > 0 && (
-            <>
-              <div style={{ padding: '0.5rem 0.75rem 0.25rem', fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Detalle</div>
-              <SimpleTable
-                headers={['Concepto', 'Monto']}
-                rows={data.egresos.detalle.map(r => [r.concepto || 'Sin concepto', { v: fmt(r.total), color: '#ef4444' }])}
-                testId="flujo-egr-detalle"
-              />
-            </>
-          )}
-        </SectionCard>
-      </div>
-
-      {/* Saldos de Cuentas */}
-      {data.saldos_cuentas?.length > 0 && (
-        <Card title="Saldos Actuales de Cuentas" icon={Banknote} testId="flujo-saldos">
-          <SimpleTable
-            headers={['Cuenta', 'Tipo', 'Saldo']}
-            rows={data.saldos_cuentas.map(r => [
-              r.nombre, r.tipo,
-              { v: fmt(r.saldo_actual), color: Number(r.saldo_actual) >= 0 ? '#22c55e' : '#ef4444', bold: true }
-            ])}
-            testId="flujo-saldos-table"
-          />
-        </Card>
+      {/* Detail Table */}
+      {timeline.length > 0 ? (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9' }}>
+            <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: '#334155' }}>Detalle por Periodo</h3>
+          </div>
+          <div style={{ maxHeight: '350px', overflow: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }} data-testid="flujo-chart-table">
+              <thead style={{ position: 'sticky', top: 0, background: '#f8fafc' }}>
+                <tr>
+                  {['Periodo', 'Ventas', 'Cobranzas', 'Total Ing.', 'Gastos', 'Pagos CxP', 'Total Egr.', 'Flujo Neto', 'Saldo Acum.'].map((h, i) => (
+                    <th key={i} style={{ padding: '6px 10px', textAlign: i === 0 ? 'left' : 'right', color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', fontSize: '0.72rem' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {timeline.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '6px 10px', fontWeight: 500 }}>{fmtDate(r.periodo)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right' }}>{fmt(r.ingresos_ventas)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right' }}>{fmt(r.cobranzas_cxc)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: '#22c55e' }}>{fmt(r.total_ingresos)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right' }}>{fmt(r.egresos_gastos)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right' }}>{fmt(r.pagos_cxp)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: '#ef4444' }}>{fmt(r.total_egresos)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: r.flujo_neto >= 0 ? '#22c55e' : '#ef4444' }}>{fmt(r.flujo_neto)}</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: r.saldo_acumulado >= 0 ? '#166534' : '#ef4444' }}>{fmt(r.saldo_acumulado)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+          <Banknote size={36} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
+          <p style={{ fontSize: '0.875rem' }}>Sin movimientos en el periodo</p>
+        </div>
       )}
     </div>
   );
@@ -577,103 +664,185 @@ function InventarioValorizado({ data }) {
 }
 
 
-/* ========== RENTABILIDAD POR LINEA ========== */
-function RentabilidadLinea({ data }) {
+const pctFmt = (v) => `${Number(v || 0).toFixed(1)}%`;
+
+/* ========== RENTABILIDAD DETALLADA (5 SUB-TABS) ========== */
+function RentabilidadDetallada({ data, subTab, setSubTab }) {
   if (!data) return <Empty />;
-  const { lineas, totales } = data;
-  const hasData = lineas.some(l => l.ventas > 0 || l.costo_total > 0);
 
   return (
     <div data-testid="rentabilidad-linea-content">
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <KPI label="Ventas Totales" value={fmt(totales.ventas)} color="#22c55e" icon={ArrowUpRight} />
-        <KPI label="Costo Total" value={fmt(totales.costo_total)} color="#ef4444" icon={ArrowDownRight} />
-        <KPI label="Margen Bruto" value={fmt(totales.margen_bruto)} subtitle={`${totales.pct_margen}%`} color={totales.margen_bruto >= 0 ? '#166534' : '#991b1b'} icon={TrendingUp} bold />
-        <KPI label="Utilidad Neta" value={fmt(totales.utilidad)} color={totales.utilidad >= 0 ? '#166534' : '#991b1b'} icon={BarChart3} bold />
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0' }}>
+        {SUB_TABS_RENT.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            data-testid={`rent-sub-${t.id}`}
+            style={{
+              padding: '0.4rem 0.75rem', fontSize: '0.75rem', fontWeight: subTab === t.id ? 700 : 500,
+              color: subTab === t.id ? '#0f172a' : '#64748b', background: 'none', border: 'none',
+              borderBottom: subTab === t.id ? '2px solid #0f172a' : '2px solid transparent',
+              marginBottom: '-1px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
+            }}
+          >
+            <t.icon size={13} />{t.label}
+          </button>
+        ))}
       </div>
 
-      {!hasData ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-          <BarChart3 size={40} style={{ margin: '0 auto 0.5rem', opacity: 0.3 }} />
-          <p style={{ fontSize: '0.875rem' }}>Sin datos de ventas/costos en este periodo</p>
-        </div>
-      ) : (
-        <>
-          {/* Main table */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginBottom: '1rem' }}>
-            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <BarChart3 size={16} color="#64748b" />
-              <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, margin: 0, color: '#334155' }}>Rentabilidad por Linea de Negocio</h3>
-              <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: '#94a3b8' }}>{data.periodo.desde} - {data.periodo.hasta}</span>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }} data-testid="rentabilidad-table">
-              <thead>
-                <tr style={{ background: '#f8fafc' }}>
-                  {['Linea de Negocio', 'Ventas', 'Costo MP', 'Costo Srv.', 'Costo Total', 'Margen Bruto', '%', 'Gastos', 'Utilidad'].map((h, i) => (
-                    <th key={i} style={{ padding: '6px 10px', textAlign: i === 0 ? 'left' : 'right', color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', fontSize: '0.72rem' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {lineas.map((ln, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '6px 10px', fontWeight: 600, color: '#1e293b' }}>{ln.linea_nombre}</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#22c55e', fontWeight: 600 }}>{fmt(ln.ventas)}</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#64748b' }}>{fmt(ln.costo_mp)}</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#64748b' }}>{fmt(ln.costo_servicios)}</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#ef4444', fontWeight: 600 }}>{fmt(ln.costo_total)}</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: ln.margen_bruto >= 0 ? '#166534' : '#991b1b' }}>{fmt(ln.margen_bruto)}</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: ln.pct_margen >= 30 ? '#166534' : ln.pct_margen >= 0 ? '#d97706' : '#991b1b' }}>{ln.pct_margen}%</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', color: '#ef4444' }}>{fmt(ln.gastos)}</td>
-                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: ln.utilidad >= 0 ? '#166534' : '#991b1b' }}>{fmt(ln.utilidad)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr style={{ background: '#f0fdf4', borderTop: '2px solid #e2e8f0' }}>
-                  <td style={{ padding: '8px 10px', fontWeight: 700, color: '#0f172a' }}>TOTAL</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#22c55e' }}>{fmt(totales.ventas)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right' }} colSpan={2}></td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{fmt(totales.costo_total)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: totales.margen_bruto >= 0 ? '#166534' : '#991b1b' }}>{fmt(totales.margen_bruto)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>{totales.pct_margen}%</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>{fmt(totales.gastos)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: totales.utilidad >= 0 ? '#166534' : '#991b1b' }}>{fmt(totales.utilidad)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          {/* Visual bar comparison */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', padding: '1rem' }}>
-            <h3 style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155', marginBottom: '0.75rem' }}>Comparativa Visual</h3>
-            {lineas.filter(l => l.ventas > 0 || l.utilidad !== 0).map((ln, i) => {
-              const maxVenta = Math.max(...lineas.map(l => l.ventas), 1);
-              return (
-                <div key={i} style={{ marginBottom: '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '2px' }}>
-                    <span style={{ fontWeight: 600, color: '#334155' }}>{ln.linea_nombre}</span>
-                    <span style={{ color: ln.utilidad >= 0 ? '#166534' : '#991b1b', fontWeight: 600 }}>Utilidad: {fmt(ln.utilidad)}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '2px', height: '20px' }}>
-                    <div style={{ width: `${(ln.ventas / maxVenta) * 100}%`, background: '#22c55e', borderRadius: '3px 0 0 3px', minWidth: ln.ventas > 0 ? '2px' : 0 }} title={`Ventas: ${fmt(ln.ventas)}`}></div>
-                    <div style={{ width: `${(ln.costo_total / maxVenta) * 100}%`, background: '#fbbf24', minWidth: ln.costo_total > 0 ? '2px' : 0 }} title={`Costo: ${fmt(ln.costo_total)}`}></div>
-                    <div style={{ width: `${(ln.gastos / maxVenta) * 100}%`, background: '#ef4444', borderRadius: '0 3px 3px 0', minWidth: ln.gastos > 0 ? '2px' : 0 }} title={`Gastos: ${fmt(ln.gastos)}`}></div>
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.65rem', color: '#94a3b8' }}>
-              <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#22c55e', borderRadius: 2, marginRight: 4 }}></span>Ventas</span>
-              <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fbbf24', borderRadius: 2, marginRight: 4 }}></span>Costo</span>
-              <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#ef4444', borderRadius: 2, marginRight: 4 }}></span>Gastos</span>
-            </div>
-          </div>
-        </>
-      )}
+      {subTab === 'dinero' && <RentDinero data={data.dinero} />}
+      {subTab === 'ventas' && <RentVentas data={data.ventas} />}
+      {subTab === 'cobranza' && <RentCobranza data={data.cobranza} />}
+      {subTab === 'cruce' && <RentCruce data={data.cruce} />}
+      {subTab === 'gastos' && <RentGastos data={data.gastos} />}
     </div>
   );
+}
+
+function RentDinero({ data }) {
+  if (!data?.data) return <RentEmpty />;
+  const { data: rows, totales } = data;
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+        <KPI label="Ventas Confirmadas" value={fmt(totales.ventas)} color="#22c55e" icon={ArrowUpRight} />
+        <KPI label="Cobranzas Reales" value={fmt(totales.cobranzas)} color="#059669" icon={CreditCard} />
+        <KPI label="CxC Pendiente" value={fmt(totales.cxc_pendiente)} color="#f59e0b" icon={Clock} />
+        <KPI label="Gastos Directos" value={fmt(totales.gastos)} color="#ef4444" icon={ArrowDownRight} />
+        <KPI label="Saldo Neto" value={fmt(totales.saldo_neto)} color={totales.saldo_neto >= 0 ? '#166534' : '#991b1b'} icon={DollarSign} bold />
+      </div>
+      <RentTable testId="dinero-table" headers={['Linea de Negocio', 'Ventas', 'Cobranzas', 'CxC Pend.', 'Gastos', 'Saldo Neto']}
+        rows={rows.map(r => [r.linea, {v: fmt(r.ventas), c:'#22c55e'}, {v: fmt(r.cobranzas), c:'#059669'}, {v: fmt(r.cxc_pendiente), c:'#f59e0b'}, {v: fmt(r.gastos), c:'#ef4444'}, {v: fmt(r.saldo_neto), c: r.saldo_neto>=0?'#166534':'#991b1b', b:true}])}
+        footer={['TOTAL', {v: fmt(totales.ventas), c:'#22c55e', b:true}, {v: fmt(totales.cobranzas), c:'#059669', b:true}, {v: fmt(totales.cxc_pendiente), c:'#f59e0b', b:true}, {v: fmt(totales.gastos), c:'#ef4444', b:true}, {v: fmt(totales.saldo_neto), c: totales.saldo_neto>=0?'#166534':'#991b1b', b:true}]} />
+    </div>
+  );
+}
+
+function RentVentas({ data }) {
+  if (!data?.data) return <RentEmpty />;
+  const { data: rows, totales } = data;
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+        <KPI label="Total Ventas" value={fmt(totales.ventas)} color="#22c55e" icon={ArrowUpRight} />
+        <KPI label="Total Tickets" value={String(totales.tickets)} color="#3b82f6" icon={BarChart3} />
+        <KPI label="Ticket Promedio" value={fmt(totales.ticket_promedio)} color="#8b5cf6" icon={TrendingUp} />
+      </div>
+      <RentTable testId="ventas-linea-table" headers={['Linea de Negocio', 'Ventas Confirmadas', 'Tickets', 'Ticket Promedio']}
+        rows={rows.map(r => [r.linea, {v: fmt(r.ventas), c:'#22c55e', b:true}, String(r.tickets), {v: fmt(r.ticket_promedio), c:'#8b5cf6'}])}
+        footer={['TOTAL', {v: fmt(totales.ventas), c:'#22c55e', b:true}, {v: String(totales.tickets), b:true}, {v: fmt(totales.ticket_promedio), c:'#8b5cf6', b:true}]} />
+    </div>
+  );
+}
+
+function RentCobranza({ data }) {
+  if (!data?.data) return <RentEmpty />;
+  const { data: rows, totales } = data;
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+        <KPI label="Total Vendido" value={fmt(totales.vendido)} color="#22c55e" icon={ArrowUpRight} />
+        <KPI label="Total Cobrado" value={fmt(totales.cobrado)} color="#059669" icon={CreditCard} />
+        <KPI label="Pendiente Cobrar" value={fmt(totales.pendiente)} color="#ef4444" icon={Clock} />
+        <KPI label="% Cobrado" value={pctFmt(totales.pct_cobrado)} color="#3b82f6" icon={TrendingUp} />
+      </div>
+      <RentTable testId="cobranza-linea-table" headers={['Linea de Negocio', 'Vendido', 'Cobrado', 'Pendiente', '% Cobrado']}
+        rows={rows.map(r => [r.linea, {v: fmt(r.vendido), c:'#22c55e'}, {v: fmt(r.cobrado), c:'#059669', b:true}, {v: fmt(r.pendiente), c:'#ef4444'}, {v: pctFmt(r.pct_cobrado), c: r.pct_cobrado>=80?'#059669':r.pct_cobrado>=50?'#f59e0b':'#ef4444', b:true}])}
+        footer={['TOTAL', {v: fmt(totales.vendido), c:'#22c55e', b:true}, {v: fmt(totales.cobrado), c:'#059669', b:true}, {v: fmt(totales.pendiente), c:'#ef4444', b:true}, {v: pctFmt(totales.pct_cobrado), c:'#3b82f6', b:true}]} />
+    </div>
+  );
+}
+
+function RentCruce({ data }) {
+  if (!data || data.length === 0) return <RentEmpty />;
+  return (
+    <div>
+      {data.map((linea) => (
+        <div key={linea.linea} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '0.75rem', overflow: 'hidden' }}>
+          <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: '#0f172a' }}>{linea.linea}</span>
+            <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#059669' }}>{fmt(linea.total_ventas)}</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.775rem' }}>
+            <thead><tr>
+              {['Marca', 'Ventas', 'Tickets', '%'].map((h, i) => (
+                <th key={i} style={{ padding: '4px 12px', textAlign: i === 0 ? 'left' : 'right', color: '#64748b', fontWeight: 500, fontSize: '0.72rem' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {linea.marcas.map((m) => (
+                <tr key={m.marca} style={{ borderTop: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '5px 12px', fontWeight: 500 }}>{m.marca}</td>
+                  <td style={{ padding: '5px 12px', textAlign: 'right', color: '#22c55e', fontWeight: 600 }}>{fmt(m.ventas)}</td>
+                  <td style={{ padding: '5px 12px', textAlign: 'right', color: '#64748b' }}>{m.tickets}</td>
+                  <td style={{ padding: '5px 12px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <div style={{ width: '50px', height: '5px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: `${m.pct}%`, height: '100%', background: '#22c55e', borderRadius: '3px' }} />
+                      </div>
+                      <span style={{ fontSize: '0.7rem', color: '#64748b', minWidth: '32px', textAlign: 'right' }}>{pctFmt(m.pct)}</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RentGastos({ data }) {
+  if (!data?.data) return <RentEmpty />;
+  const { data: rows, totales } = data;
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+        <KPI label="Total Gastos" value={fmt(totales.total_gastos)} color="#ef4444" icon={ArrowDownRight} />
+        <KPI label="Total Facturas Prov." value={fmt(totales.total_facturas)} color="#f97316" icon={Wallet} />
+        <KPI label="Total Egresos" value={fmt(totales.total_egresos)} color="#991b1b" icon={Banknote} bold />
+      </div>
+      <RentTable testId="gastos-linea-table" headers={['Linea de Negocio', 'Gastos', 'Facturas Prov.', 'Total Egresos']}
+        rows={rows.map(r => [r.linea, {v: fmt(r.total_gastos), c:'#ef4444'}, {v: fmt(r.total_facturas), c:'#f97316'}, {v: fmt(r.total_egresos), c:'#991b1b', b:true}])}
+        footer={['TOTAL', {v: fmt(totales.total_gastos), c:'#ef4444', b:true}, {v: fmt(totales.total_facturas), c:'#f97316', b:true}, {v: fmt(totales.total_egresos), c:'#991b1b', b:true}]} />
+    </div>
+  );
+}
+
+function RentTable({ headers, rows, footer, testId }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }} data-testid={testId}>
+        <thead><tr style={{ background: '#f8fafc' }}>
+          {headers.map((h, i) => (
+            <th key={i} style={{ padding: '0.4rem 0.75rem', textAlign: i === 0 ? 'left' : 'right', color: '#475569', fontWeight: 600, borderBottom: '2px solid #e2e8f0', fontSize: '0.72rem' }}>{h}</th>
+          ))}
+        </tr></thead>
+        <tbody>{rows.map((row, i) => (
+          <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+            {row.map((cell, j) => {
+              const isObj = typeof cell === 'object' && cell !== null;
+              return (<td key={j} style={{ padding: '0.4rem 0.75rem', textAlign: j === 0 ? 'left' : 'right', fontWeight: (j === 0 || (isObj && cell.b)) ? 600 : 400, color: isObj ? cell.c : '#1e293b' }}>{isObj ? cell.v : cell}</td>);
+            })}
+          </tr>
+        ))}</tbody>
+        {footer && (
+          <tfoot><tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
+            {footer.map((cell, j) => {
+              const isObj = typeof cell === 'object' && cell !== null;
+              return (<td key={j} style={{ padding: '0.4rem 0.75rem', textAlign: j === 0 ? 'left' : 'right', fontWeight: 700, color: isObj ? cell.c : '#0f172a' }}>{isObj ? cell.v : cell}</td>);
+            })}
+          </tr></tfoot>
+        )}
+      </table>
+    </div>
+  );
+}
+
+function RentEmpty() {
+  return <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.8rem' }}>Sin datos para el periodo seleccionado</div>;
 }
 
 
