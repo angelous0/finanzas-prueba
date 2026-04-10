@@ -14,51 +14,47 @@ Sistema ERP gerencial para gestión financiera de empresa textil. PostgreSQL + F
 ### Reportes Financieros — HUB CONSOLIDADO (7 tabs)
 1. Balance General (point-in-time con fecha_corte)
 2. Estado de Resultados (ventas, costos, margen, gastos)
-3. **Flujo de Caja** (gráfico ComposedChart bars+line, agrupación diario/semanal/mensual, tabla detalle)
+3. Flujo de Caja (gráfico ComposedChart, agrupación diario/semanal/mensual, tabla detalle)
 4. Inventario Valorizado (MP, PT, WIP)
-5. **Rentabilidad x Línea** (5 sub-tabs: Dinero, Ventas, Cobranza, Línea x Marca, Gastos por Línea)
+5. Rentabilidad x Línea (5 sub-tabs: Dinero, Ventas, Cobranza, Línea x Marca, Gastos)
 6. CxP Aging (antigüedad 5 buckets, resumen proveedor, barra visual)
 7. CxC Aging (antigüedad 5 buckets)
 - Excel export en Flujo, Rentabilidad, CxP Aging, CxC Aging
 
 ### Conciliación Bancaria
-- Auto-matching 1:1 (referencia exacta + monto+fecha)
-- Auto-matching N:1 y 1:N (múltiples movimientos combinados)
+- Auto-matching 1:1, N:1, 1:N
 - UI side-by-side con sugerencias grupales
-- Confirmar sugerencias en lote
 
 ### Órdenes de Compra
 - Dropdown artículos enriquecido (Stock | Línea Negocio | Último Precio)
-- Auto-poblado de unidad, precio unitario, código, descripción
 
 ### Facturas Proveedor
 - Auto-llenado linea_negocio_id desde artículo
-- CRUD completo con líneas de artículos y servicios
-- Vinculación con ingresos de inventario, Canje de letras
+- **UI limpia**: Tabla con 3 acciones visibles + menú "..." para acciones secundarias
+- **Toolbar en modal Ver/Editar**: PDF, Registrar Pago, Vincular Ingresos, Ver Pagos, Canjear/Ver Letras
+- PDF con fondo blanco (fix dark mode)
 
 ### Otros Módulos
-- Dashboard con KPIs
-- Ventas POS (sync con Odoo)
-- Gastos con categorías por línea
-- Unidades Internas de Producción (corte, confección)
-- Valorización Inventario (optimizada, batch queries)
-- Líneas de Negocio (universales, modal vínculos FK)
-- Tesorería, Cuentas Bancarias, CxP, CxC, Letras
+- Dashboard, Ventas POS, Gastos, Unidades Internas, Valorización Inventario
+- Líneas de Negocio, Tesorería, CxP, CxC, Letras
 
-## Limpieza Realizada (2026-04-10)
+## Auditoría PagarFacturas
+- Veredicto: NO es duplicado. Sirve flujo "tesorería batch" distinto a PagoModal
+- Decisión: MANTENER como está
+
+## Limpieza Realizada
 - Eliminadas 3 páginas standalone duplicadas (FlujoCaja, ReportesSimplificados, RentabilidadLinea)
 - Eliminada carpeta legacy/ (20 archivos muertos)
 - Sidebar limpiado (3 entradas duplicadas removidas)
-- Reportes consolidados en hub único: /reportes-financieros
 
 ## Testing
-- Iteration 41: Artículos OC (20/20 passed)
-- Iteration 42: Conciliación N:M + LN autofill (26/26 passed)
-- Iteration 43: 3 Reportes nuevos (30/30 passed)
-- Iteration 44: Consolidación reportes (30/30 passed)
+- Iteration 41: Artículos OC (20/20)
+- Iteration 42: Conciliación N:M + LN autofill (26/26)
+- Iteration 43: 3 Reportes nuevos (30/30)
+- Iteration 44: Consolidación reportes (30/30)
+- Iteration 45: Facturas UI cleanup (18/18)
 
 ## Backlog
-- P2: Split archivos grandes (compras.py, OrdenesCompra.jsx, ConciliacionBancaria.jsx)
-- P2: Auditar módulo PagarFacturas
+- P2: Split archivos grandes (compras.py, OrdenesCompra.jsx)
 - P3: Presupuesto vs Real
 - P3: Proyectos, Capital & ROI
