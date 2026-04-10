@@ -1,0 +1,125 @@
+{
+  "iteration": 45,
+  "date": "2026-04-10",
+  "feature": "Facturas Proveedor UI Cleanup: Simplified table actions, dropdown menu, action toolbar in modal",
+  "summary": "Complete frontend testing of Facturas Proveedor UI cleanup. All tests passed. Table now shows 4 action icons per row (Ver, Editar, PDF, More menu). Three-dot menu opens dropdown with contextual options based on factura estado. Ver/Editar modal has action toolbar with contextual buttons. PDF dark background issue fixed with explicit white background CSS.",
+
+  "features_tested": {
+    "Table_4_action_icons": {
+      "status": "PASSED",
+      "details": "Each row shows exactly 4 action buttons: Ver (eye), Editar (pencil), PDF (download), More (three-dot menu). Edit button hidden for ANULADA facturas."
+    },
+    "Three_dot_menu_dropdown": {
+      "status": "PASSED",
+      "details": "Clicking three-dot menu opens dropdown with contextual options. Dropdown closes on outside click."
+    },
+    "Dropdown_PENDIENTE_options": {
+      "status": "PASSED",
+      "details": "PENDIENTE factura with saldo shows: Registrar Pago, Canjear por Letras, Vincular Ingresos, Eliminar"
+    },
+    "Dropdown_CANJEADO_options": {
+      "status": "PASSED",
+      "details": "CANJEADO factura shows: Ver Letras, Vincular Ingresos"
+    },
+    "Dropdown_PAGADO_options": {
+      "status": "PASSED",
+      "details": "PAGADO factura shows: Ver Pagos, Vincular Ingresos"
+    },
+    "Ver_modal_toolbar": {
+      "status": "PASSED",
+      "details": "Ver modal shows action toolbar below header with contextual buttons (PDF always, Registrar Pago if has saldo, Canjear Letras if pendiente, Ver Letras if canjeado)"
+    },
+    "Toolbar_button_actions": {
+      "status": "PASSED",
+      "details": "Toolbar buttons close modal and open respective modal (Pago, Letras, Ver Pagos, Ver Letras, Vincular Ingresos)"
+    },
+    "PAGADO_column_clickable": {
+      "status": "PASSED",
+      "details": "PAGADO column amount (green text) is clickable and opens Ver Pagos modal"
+    },
+    "CANJEADO_badge_clickable": {
+      "status": "PASSED",
+      "details": "CANJEADO badge has cursor:pointer and clicking opens Ver Letras modal"
+    },
+    "PDF_dark_background_fix": {
+      "status": "PASSED",
+      "details": "PDF generation uses explicit white background CSS: background-color: #ffffff !important; color-scheme: light; -webkit-print-color-adjust: exact"
+    }
+  },
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/test_reports/iteration_45.json"
+  ],
+
+  "tests_executed": [
+    {"name": "Table shows 4 action icons per row", "status": "PASSED"},
+    {"name": "Three-dot menu opens dropdown", "status": "PASSED"},
+    {"name": "Dropdown closes on outside click", "status": "PASSED"},
+    {"name": "PENDIENTE dropdown shows Pagar+Letras+Vincular+Eliminar", "status": "PASSED"},
+    {"name": "CANJEADO dropdown shows Ver Letras+Vincular", "status": "PASSED"},
+    {"name": "PAGADO dropdown shows Ver Pagos+Vincular", "status": "PASSED"},
+    {"name": "Ver modal has action toolbar", "status": "PASSED"},
+    {"name": "Toolbar PDF button exists", "status": "PASSED"},
+    {"name": "Toolbar Registrar Pago opens Pago modal", "status": "PASSED"},
+    {"name": "Toolbar Canjear Letras opens Letras modal", "status": "PASSED"},
+    {"name": "Toolbar Ver Letras opens Ver Letras modal", "status": "PASSED"},
+    {"name": "PAGADO column amount clickable opens Ver Pagos", "status": "PASSED"},
+    {"name": "CANJEADO badge clickable opens Ver Letras", "status": "PASSED"},
+    {"name": "Dropdown Registrar Pago action works", "status": "PASSED"},
+    {"name": "Dropdown Canjear por Letras action works", "status": "PASSED"},
+    {"name": "Dropdown Vincular Ingresos action works", "status": "PASSED"},
+    {"name": "Dropdown Eliminar button exists", "status": "PASSED"},
+    {"name": "PDF generation no console errors", "status": "PASSED"}
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [],
+
+  "success_rate": {
+    "backend": "N/A (frontend only testing)",
+    "frontend": "100% (18/18 tests passed)"
+  },
+
+  "test_credentials": "empresa_id=7 (Ambission Industries), no auth required",
+  "seed_data_creation": "Using existing data: FC-00009 (CANJEADO), FP-2026-00003 (PENDIENTE), FP-2026-00002 (PENDIENTE), FP-2026-00001 (PAGADO)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Facturas Proveedor UI cleanup complete. Table actions simplified to 4 icons (Ver, Editar, PDF, More). Three-dot menu data-testid: menu-factura-{id}, dropdown: dropdown-factura-{id}. Toolbar data-testid: factura-toolbar with buttons toolbar-pdf, toolbar-pagar, toolbar-vincular, toolbar-ver-pagos, toolbar-letras, toolbar-ver-letras. PAGADO column has clickable amounts (btn-link class). CANJEADO badge is clickable with cursor:pointer.",
+  "overall_status": "ALL_PASSED",
+  "verified_data_testids": {
+    "table": "facturas-table",
+    "row": "factura-row-{id}",
+    "ver_button": "ver-factura-{id}",
+    "edit_button": "editar-factura-{id}",
+    "pdf_button": "pdf-factura-{id}",
+    "menu_button": "menu-factura-{id}",
+    "dropdown": "dropdown-factura-{id}",
+    "dropdown_pagar": "pagar-factura-{id}",
+    "dropdown_letras": "letras-factura-{id}",
+    "dropdown_ver_letras": "ver-letras-{id}",
+    "dropdown_ver_pagos": "ver-pagos-{id}",
+    "dropdown_vincular": "vincular-ingresos-{id}",
+    "dropdown_delete": "delete-factura-{id}",
+    "toolbar": "factura-toolbar",
+    "toolbar_pdf": "toolbar-pdf",
+    "toolbar_pagar": "toolbar-pagar",
+    "toolbar_vincular": "toolbar-vincular",
+    "toolbar_ver_pagos": "toolbar-ver-pagos",
+    "toolbar_letras": "toolbar-letras",
+    "toolbar_ver_letras": "toolbar-ver-letras"
+  }
+}

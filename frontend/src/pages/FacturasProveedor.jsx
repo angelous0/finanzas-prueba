@@ -218,6 +218,12 @@ export const FacturasProveedor = () => {
         onClose={() => { setShowFormModal(false); setEditingFactura(null); setViewOnlyMode(false); }}
         onSaved={loadData}
         onProveedorCreated={(newProv) => setProveedores(prev => [...prev, newProv])}
+        onOpenPago={(f) => { setFacturaParaPago(f); setShowPagoModal(true); }}
+        onDownloadPDF={(f) => generatePDFAndPrint(f, proveedores, monedas)}
+        onVincularIngresos={(f) => { setFacturaParaVincular(f); setShowVincularModal(true); }}
+        onVerPagos={(f) => { setFacturaParaVerPagos(f); setShowVerPagosModal(true); }}
+        onOpenLetras={(f) => { setFacturaParaLetras(f); setShowLetrasModal(true); }}
+        onVerLetras={(f) => { setFacturaParaVerLetras(f); setShowVerLetrasModal(true); }}
       />
 
       <PagoModal

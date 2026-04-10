@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createFacturaProveedor, updateFacturaProveedor, createTercero } from '../../services/api';
 import { formatCurrency, calcularTotales, calcularImporteArticulo, getEmptyLinea, getEmptyFormData } from './helpers';
-import { Plus, Trash2, X, FileText, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { Plus, Trash2, X, FileText, ChevronDown, ChevronUp, Copy, DollarSign, Download, Link2, History, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import SearchableSelect from '../../components/SearchableSelect';
 import TableSearchSelect from '../../components/TableSearchSelect';
@@ -9,7 +9,8 @@ import TableSearchSelect from '../../components/TableSearchSelect';
 const FacturaFormModal = ({
   show, editingFactura, readOnly, proveedores, monedas, categorias, lineasNegocio,
   centrosCosto, inventario, modelosCortes, serviciosProduccion = [], valorizacionMap,
-  onClose, onSaved, onProveedorCreated
+  onClose, onSaved, onProveedorCreated,
+  onOpenPago, onDownloadPDF, onVincularIngresos, onVerPagos, onOpenLetras, onVerLetras
 }) => {
   const [formData, setFormData] = useState(getEmptyFormData());
   const [fechaContableManual, setFechaContableManual] = useState(false);
@@ -255,6 +256,17 @@ const FacturaFormModal = ({
   const isLocked = !readOnly && editingFactura && (editingFactura.estado === 'pagado' || editingFactura.estado === 'canjeado');
   const lockedStyle = { background: '#f1f5f9', pointerEvents: 'none', opacity: 0.7 };
 
+  // Computed flags for toolbar
+  const saldo = parseFloat(editingFactura?.saldo_pendiente) || 0;
+  const totalFact = parseFloat(editingFactura?.total) || 0;
+  const pagado = totalFact - saldo;
+  const puedePagar = editingFactura && (editingFactura.estado === 'pendiente' || editingFactura.estado === 'parcial') && saldo > 0;
+  const puedeLetras = editingFactura && editingFactura.estado === 'pendiente' && saldo > 0;
+  const estaCanjeado = editingFactura?.estado === 'canjeado';
+  const tienePagos = pagado > 0;
+  const tieneArticulos = editingFactura && formData.lineas_articulos?.some(l => l.articulo_id);
+  const showToolbar = editingFactura && (readOnly || isLocked);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="factura-modal" onClick={(e) => e.stopPropagation()}>
@@ -276,6 +288,51 @@ const FacturaFormModal = ({
             <button className="modal-close" onClick={onClose}><X size={20} /></button>
           </div>
         </div>
+
+        {/* Action Toolbar */}
+        {showToolbar && (
+          <div data-testid="factura-toolbar" style={{
+            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.5rem',
+            borderBottom: '1px solid #e2e8f0', background: '#f8fafc', flexWrap: 'wrap'
+          }}>
+            {onDownloadPDF && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => onDownloadPDF(editingFactura)}
+                data-testid="toolbar-pdf" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                <Download size={13} /> PDF
+              </button>
+            )}
+            {puedePagar && !estaCanjeado && onOpenPago && (
+              <button type="button" className="btn btn-sm" onClick={() => { onClose(); setTimeout(() => onOpenPago(editingFactura), 100); }}
+                data-testid="toolbar-pagar" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', background: '#059669', color: '#fff', border: 'none' }}>
+                <DollarSign size={13} /> Registrar Pago
+              </button>
+            )}
+            {tieneArticulos && onVincularIngresos && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => { onClose(); setTimeout(() => onVincularIngresos(editingFactura), 100); }}
+                data-testid="toolbar-vincular" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                <Link2 size={13} /> Vincular Ingresos
+              </button>
+            )}
+            {tienePagos && !estaCanjeado && onVerPagos && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => { onClose(); setTimeout(() => onVerPagos(editingFactura), 100); }}
+                data-testid="toolbar-ver-pagos" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                <History size={13} /> Ver Pagos ({pagado > 0 ? `${editingFactura?.moneda_simbolo || 'S/.'} ${pagado.toFixed(2)}` : ''})
+              </button>
+            )}
+            {puedeLetras && onOpenLetras && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => { onClose(); setTimeout(() => onOpenLetras(editingFactura), 100); }}
+                data-testid="toolbar-letras" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                <FileSpreadsheet size={13} /> Canjear Letras
+              </button>
+            )}
+            {estaCanjeado && onVerLetras && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => { onClose(); setTimeout(() => onVerLetras(editingFactura), 100); }}
+                data-testid="toolbar-ver-letras" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                <FileSpreadsheet size={13} /> Ver Letras
+              </button>
+            )}
+          </div>
+        )}
 
         <form onSubmit={(e) => { if (readOnly) { e.preventDefault(); return; } handleSubmit(e, false); }}>
           <fieldset disabled={readOnly} style={{ display: 'contents' }}>

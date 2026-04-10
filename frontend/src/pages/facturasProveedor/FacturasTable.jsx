@@ -1,7 +1,6 @@
 import React from 'react';
 import { formatCurrency, formatDate, estadoBadge } from './helpers';
-import { Plus, Trash2, Search, X, FileText, Edit2, Eye, DollarSign, FileSpreadsheet, History, Download, Link2 } from 'lucide-react';
-import { } from '../../services/api';
+import { Plus, Trash2, Search, X, FileText, Edit2, Eye, DollarSign, FileSpreadsheet, History, Download, Link2, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import SearchableSelect from '../../components/SearchableSelect';
 
@@ -12,6 +11,8 @@ const FacturasTable = ({
   onOpenPago, onOpenLetras, onVerPagos, onVerLetras, onView, onEdit, onDelete, onDownloadPDF,
   onNewFactura, onVincularIngresos
 }) => {
+  const [openMenu, setOpenMenu] = React.useState(null);
+
   const facturasFiltradas = filtroNumero
     ? facturas.filter(f => f.numero?.toLowerCase().includes(filtroNumero.toLowerCase()))
     : facturas;
@@ -21,6 +22,14 @@ const FacturasTable = ({
 
   const clearFilters = () => { setFiltroNumero(''); setFiltroProveedorId(''); setFiltroFecha(''); setFiltroEstado(''); };
   const hasFilters = filtroNumero || filtroProveedorId || filtroFecha || filtroEstado;
+
+  // Close menu on outside click
+  React.useEffect(() => {
+    if (openMenu === null) return;
+    const handler = () => setOpenMenu(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [openMenu]);
 
   return (
     <>
@@ -90,7 +99,7 @@ const FacturasTable = ({
                   <th>Estado</th>
                   <th className="text-center">Ingresos</th>
                   <th className="text-right">Saldo CxP</th>
-                  <th className="text-center" style={{ minWidth: '200px' }}>Acciones</th>
+                  <th className="text-center" style={{ minWidth: '120px' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,6 +111,16 @@ const FacturasTable = ({
                   const puedePagar = (factura.estado === 'pendiente' || factura.estado === 'parcial') && saldo > 0;
                   const tienePagos = pagado > 0;
                   const estaCanjeado = factura.estado === 'canjeado';
+                  const isMenuOpen = openMenu === factura.id;
+
+                  // Build menu items dynamically
+                  const menuItems = [];
+                  if (puedePagar && !estaCanjeado) menuItems.push({ label: 'Registrar Pago', icon: DollarSign, color: '#059669', action: () => onOpenPago(factura), testId: `pagar-factura-${factura.id}` });
+                  if (puedeGenerarLetras) menuItems.push({ label: 'Canjear por Letras', icon: FileSpreadsheet, color: '#2563eb', action: () => onOpenLetras(factura), testId: `letras-factura-${factura.id}` });
+                  if (estaCanjeado) menuItems.push({ label: 'Ver Letras', icon: FileSpreadsheet, color: '#64748b', action: () => onVerLetras(factura), testId: `ver-letras-${factura.id}` });
+                  if (tienePagos && !estaCanjeado) menuItems.push({ label: 'Ver Pagos', icon: History, color: '#64748b', action: () => onVerPagos(factura), testId: `ver-pagos-${factura.id}` });
+                  menuItems.push({ label: 'Vincular Ingresos', icon: Link2, color: '#64748b', action: () => onVincularIngresos(factura), testId: `vincular-ingresos-${factura.id}` });
+                  if (factura.estado === 'pendiente') menuItems.push({ label: 'Eliminar', icon: Trash2, color: '#dc2626', action: () => onDelete(factura.id), testId: `delete-factura-${factura.id}` });
 
                   return (
                     <tr key={factura.id} data-testid={`factura-row-${factura.id}`}>
@@ -136,27 +155,53 @@ const FacturasTable = ({
                         {formatCurrency(saldo, factura.moneda_simbolo)}
                       </td>
                       <td>
-                        <div className="actions-row">
-                          {puedePagar && !estaCanjeado && (
-                            <button className="action-btn action-success" onClick={() => onOpenPago(factura)} title="Pagar" data-testid={`pagar-factura-${factura.id}`}><DollarSign size={15} /></button>
-                          )}
-                          {puedeGenerarLetras && (
-                            <button className="action-btn action-info" onClick={() => onOpenLetras(factura)} title="Canjear por Letras" data-testid={`letras-factura-${factura.id}`}><FileSpreadsheet size={15} /></button>
-                          )}
-                          {estaCanjeado && (
-                            <button className="action-btn" onClick={() => onVerLetras(factura)} title="Ver letras" data-testid={`ver-letras-${factura.id}`}><FileSpreadsheet size={15} /></button>
-                          )}
-                          {tienePagos && !estaCanjeado && (
-                            <button className="action-btn" onClick={() => onVerPagos(factura)} title="Ver pagos" data-testid={`ver-pagos-${factura.id}`}><History size={15} /></button>
-                          )}
-                          <button className="action-btn" onClick={() => onVincularIngresos(factura)} title="Vincular Ingresos MP" data-testid={`vincular-ingresos-${factura.id}`}><Link2 size={15} /></button>
+                        <div className="actions-row" style={{ gap: '2px' }}>
                           <button className="action-btn" onClick={() => onView(factura)} title="Ver" data-testid={`ver-factura-${factura.id}`}><Eye size={15} /></button>
-                          <button className="action-btn" onClick={() => onDownloadPDF(factura)} title="Descargar PDF" data-testid={`pdf-factura-${factura.id}`}><Download size={15} /></button>
                           {factura.estado !== 'anulada' && (
                             <button className="action-btn" onClick={() => onEdit(factura)} title="Editar" data-testid={`editar-factura-${factura.id}`}><Edit2 size={15} /></button>
                           )}
-                          {factura.estado === 'pendiente' && (
-                            <button className="action-btn action-danger" onClick={() => onDelete(factura.id)} title="Eliminar" data-testid={`delete-factura-${factura.id}`}><Trash2 size={15} /></button>
+                          <button className="action-btn" onClick={() => onDownloadPDF(factura)} title="PDF" data-testid={`pdf-factura-${factura.id}`}><Download size={15} /></button>
+                          {menuItems.length > 0 && (
+                            <div style={{ position: 'relative' }}>
+                              <button
+                                className="action-btn"
+                                onClick={(e) => { e.stopPropagation(); setOpenMenu(isMenuOpen ? null : factura.id); }}
+                                title="Mas acciones"
+                                data-testid={`menu-factura-${factura.id}`}
+                                style={{ background: isMenuOpen ? '#f1f5f9' : undefined }}
+                              >
+                                <MoreVertical size={15} />
+                              </button>
+                              {isMenuOpen && (
+                                <div
+                                  data-testid={`dropdown-factura-${factura.id}`}
+                                  style={{
+                                    position: 'absolute', right: 0, top: '100%', zIndex: 50,
+                                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '180px',
+                                    padding: '4px 0', marginTop: '2px'
+                                  }}
+                                >
+                                  {menuItems.map((item, i) => (
+                                    <button
+                                      key={i}
+                                      onClick={(e) => { e.stopPropagation(); setOpenMenu(null); item.action(); }}
+                                      data-testid={item.testId}
+                                      style={{
+                                        display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                                        padding: '7px 12px', border: 'none', background: 'none', cursor: 'pointer',
+                                        fontSize: '0.8rem', color: item.color, fontWeight: 500,
+                                        transition: 'background 0.1s'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    >
+                                      <item.icon size={14} />{item.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
