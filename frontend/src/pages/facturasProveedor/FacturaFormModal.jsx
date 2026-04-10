@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { createFacturaProveedor, updateFacturaProveedor, createTercero } from '../../services/api';
+import { createFacturaProveedor, updateFacturaProveedor, createTercero, getVinculacionesFactura } from '../../services/api';
 import { formatCurrency, calcularTotales, calcularImporteArticulo, getEmptyLinea, getEmptyFormData } from './helpers';
-import { Plus, Trash2, X, FileText, ChevronDown, ChevronUp, Copy, DollarSign, Download, Link2, History, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, X, FileText, ChevronDown, ChevronUp, Copy, DollarSign, Download, Link2, History, FileSpreadsheet, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import SearchableSelect from '../../components/SearchableSelect';
 import TableSearchSelect from '../../components/TableSearchSelect';
@@ -16,6 +16,8 @@ const FacturaFormModal = ({
   const [fechaContableManual, setFechaContableManual] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showDetallesArticulo, setShowDetallesArticulo] = useState(true);
+  const [showVinculados, setShowVinculados] = useState(false);
+  const [vinculados, setVinculados] = useState([]);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -265,7 +267,17 @@ const FacturaFormModal = ({
   const estaCanjeado = editingFactura?.estado === 'canjeado';
   const tienePagos = pagado > 0;
   const tieneArticulos = editingFactura && formData.lineas_articulos?.some(l => l.articulo_id);
+  const tieneVinculados = editingFactura?.vinculacion_resumen?.estado === 'completo' || editingFactura?.vinculacion_resumen?.estado === 'parcial';
   const showToolbar = editingFactura && (readOnly || isLocked);
+
+  const loadVinculados = async () => {
+    if (!editingFactura?.id) return;
+    try {
+      const res = await getVinculacionesFactura(editingFactura.id);
+      setVinculados(res.data);
+      setShowVinculados(true);
+    } catch { toast.error('Error al cargar vinculaciones'); }
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -311,6 +323,12 @@ const FacturaFormModal = ({
               <button type="button" className="btn btn-outline btn-sm" onClick={() => { onClose(); setTimeout(() => onVincularIngresos(editingFactura), 100); }}
                 data-testid="toolbar-vincular" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
                 <Link2 size={13} /> Vincular Ingresos
+              </button>
+            )}
+            {tieneVinculados && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={loadVinculados}
+                data-testid="toolbar-ver-vinculados" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                <Package size={13} /> Ver Vinculados
               </button>
             )}
             {tienePagos && !estaCanjeado && onVerPagos && (
@@ -670,6 +688,76 @@ const FacturaFormModal = ({
             </div>
           </div>
           </fieldset>
+
+          {/* Popup: Ver Vinculados */}
+          {showVinculados && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', zIndex: 1100
+            }} onClick={() => setShowVinculados(false)}>
+              <div style={{
+                background: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+                maxWidth: '700px', width: '90%', maxHeight: '70vh', overflow: 'hidden'
+              }} onClick={e => e.stopPropagation()}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc'
+                }}>
+                  <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Package size={16} color="#059669" /> Ingresos Vinculados
+                  </h3>
+                  <button onClick={() => setShowVinculados(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                    <X size={18} color="#64748b" />
+                  </button>
+                </div>
+                <div style={{ padding: '0.75rem 1rem', maxHeight: '55vh', overflow: 'auto' }} data-testid="vinculados-popup-content">
+                  {vinculados.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+                      Sin ingresos vinculados
+                    </div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }} data-testid="vinculados-table">
+                      <thead>
+                        <tr style={{ background: '#f8fafc' }}>
+                          {['Articulo', 'Codigo', 'Referencia Ingreso', 'Proveedor', 'Cant. Aplicada', 'Cant. Ingreso', 'Fecha'].map((h, i) => (
+                            <th key={i} style={{ padding: '6px 10px', textAlign: i >= 4 ? 'right' : 'left', color: '#64748b', fontWeight: 600, borderBottom: '2px solid #e2e8f0', fontSize: '0.72rem' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vinculados.map((v, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '6px 10px', fontWeight: 500 }}>{v.articulo_nombre || '-'}</td>
+                            <td style={{ padding: '6px 10px', color: '#64748b', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem' }}>{v.articulo_codigo || '-'}</td>
+                            <td style={{ padding: '6px 10px', color: '#2563eb', fontWeight: 500 }}>{v.ingreso_ref || '-'}</td>
+                            <td style={{ padding: '6px 10px', color: '#64748b' }}>{v.ingreso_proveedor || '-'}</td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: '#059669', fontFamily: "'JetBrains Mono', monospace" }}>
+                              {parseFloat(v.cantidad_aplicada || 0).toLocaleString('es-PE')}
+                            </td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
+                              {parseFloat(v.ingreso_cantidad || 0).toLocaleString('es-PE')}
+                            </td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', color: '#64748b' }}>
+                              {v.ingreso_fecha ? new Date(v.ingreso_fecha).toLocaleDateString('es-PE') : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: '2px solid #e2e8f0', background: '#f0fdf4' }}>
+                          <td colSpan={4} style={{ padding: '6px 10px', fontWeight: 700 }}>Total Aplicado</td>
+                          <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: '#059669', fontFamily: "'JetBrains Mono', monospace" }}>
+                            {vinculados.reduce((s, v) => s + parseFloat(v.cantidad_aplicada || 0), 0).toLocaleString('es-PE')}
+                          </td>
+                          <td colSpan={2}></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="factura-modal-footer">
