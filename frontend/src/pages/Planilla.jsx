@@ -90,12 +90,14 @@ export default function Planilla() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const openCreate = () => {
+    setShowView(null);
     setEditingId(null);
     setForm(emptyForm);
     setShowModal(true);
   };
 
   const openEdit = (p) => {
+    setShowView(null);
     setEditingId(p.id);
     setForm({
       periodo: p.periodo || '',
@@ -337,8 +339,8 @@ export default function Planilla() {
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button className="btn btn-ghost btn-sm" title="Ver" onClick={() => setShowView(p)} data-testid={`view-planilla-${p.id}`}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-ghost btn-sm" title="Ver" onClick={() => { setShowModal(false); setShowView(p); }} data-testid={`view-planilla-${p.id}`}>
                         <Eye size={15} />
                       </button>
                       <button className="btn btn-ghost btn-sm" title="Editar" onClick={() => openEdit(p)} data-testid={`edit-planilla-${p.id}`}>
