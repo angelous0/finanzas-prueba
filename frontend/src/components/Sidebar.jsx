@@ -7,7 +7,7 @@ import {
   Tags, GitBranch, Target, X, ChevronLeft,
   Tag, Package, FileSpreadsheet,
   Vault, Layers, Link2, History, BookOpen, PieChart,
-  Factory, ArrowRightLeft, FileText, BarChart3
+  Factory, ArrowRightLeft, FileText, BarChart3, ClipboardList
 } from 'lucide-react';
 
 const navSections = [
@@ -60,6 +60,12 @@ const navSections = [
       { icon: ArrowRightLeft, label: 'Cargos Internos', path: '/cargos-internos' },
       { icon: FileText, label: 'Gastos Unidad', path: '/gastos-unidad-interna' },
       { icon: BarChart3, label: 'Reporte Gerencial', path: '/reporte-unidades-internas' },
+    ]
+  },
+  {
+    title: 'Planilla',
+    items: [
+      { icon: ClipboardList, label: 'Planilla', path: '/planilla' },
     ]
   },
   {

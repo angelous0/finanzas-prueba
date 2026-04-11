@@ -299,4 +299,13 @@ export const deleteGastoUnidadInterna = (id) => api.delete(`/gastos-unidad-inter
 export const getTiposGastoUnidad = () => api.get('/tipos-gasto-unidad');
 export const getReporteUnidadesInternas = (params) => api.get('/reporte-unidades-internas', { params });
 
+// Planilla
+export const getPlanillas = (params) => api.get('/planillas', { params });
+export const getPlanilla = (id) => api.get(`/planillas/${id}`);
+export const createPlanilla = (data) => api.post('/planillas', data);
+export const updatePlanilla = (id, data) => api.put(`/planillas/${id}`, data);
+export const deletePlanilla = (id) => api.delete(`/planillas/${id}`);
+export const getTrabajadoresPlanilla = () => api.get('/planillas/trabajadores/list');
+export const getResumenPlanillas = (params) => api.get('/planillas/resumen/totales', { params });
+
 export default api;

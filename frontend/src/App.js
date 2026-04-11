@@ -40,6 +40,9 @@ import PagarFacturas from './pages/PagarFacturas';
 import ConciliacionBancaria from './pages/ConciliacionBancaria';
 import { HistorialConciliaciones } from './pages/HistorialConciliaciones';
 
+// === Planilla ===
+import Planilla from './pages/Planilla';
+
 // === Unidades Internas de Producción ===
 import UnidadesInternas from './pages/UnidadesInternas';
 import GastosUnidadInterna from './pages/GastosUnidadInterna';
@@ -141,6 +144,7 @@ function AppRoutes() {
         <Route path="/gastos-unidad-interna" element={<GastosUnidadInterna />} />
         <Route path="/cargos-internos" element={<CargosInternos />} />
         <Route path="/reporte-unidades-internas" element={<ReporteUnidadesInternas />} />
+        <Route path="/planilla" element={<Planilla />} />
       </Routes>
     </div>
   );
