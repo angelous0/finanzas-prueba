@@ -34,6 +34,15 @@ Sistema ERP gerencial para gestión financiera de empresa textil. PostgreSQL + F
 - **Toolbar en modal Ver/Editar**: PDF, Registrar Pago, Vincular Ingresos, Ver Pagos, Canjear/Ver Letras
 - PDF con fondo blanco (fix dark mode)
 
+### Planilla (Payroll) — NUEVO
+- CRUD completo: crear/editar/eliminar planillas con detalle de trabajadores
+- Vinculado a prod_personas_produccion (trabajadores), fin_unidad_interna y cont_linea_negocio
+- Línea negocio opcional: si no se asigna, se trata como costo prorrateado
+- Tipos: quincenal, mensual, semanal, gratificación, liquidación
+- Resumen con totales por unidad interna y línea de negocio
+- Cards de métricas: planillas, total bruto, total neto, trabajadores
+- Filtros por tipo y estado
+
 ### Otros Módulos
 - Dashboard, Ventas POS, Gastos, Unidades Internas, Valorización Inventario
 - Líneas de Negocio, Tesorería, CxP, CxC, Letras
@@ -53,8 +62,9 @@ Sistema ERP gerencial para gestión financiera de empresa textil. PostgreSQL + F
 - Iteration 43: 3 Reportes nuevos (30/30)
 - Iteration 44: Consolidación reportes (30/30)
 - Iteration 45: Facturas UI cleanup (18/18)
+- Iteration 46: Planilla CRUD backend + frontend (100% pass)
 
 ## Backlog
-- P2: Split archivos grandes (compras.py, OrdenesCompra.jsx)
-- P3: Presupuesto vs Real
+- P1: Split archivos grandes (compras.py, OrdenesCompra.jsx)
+- P2: Presupuesto vs Real
 - P3: Proyectos, Capital & ROI
